@@ -2,11 +2,14 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
-import { Bot, Sparkles, User, Mic, Languages, Brain } from "lucide-react";
+import { Bot, Sparkles, User, Mic, Languages, Brain, Globe, MessageSquare, GitBranch } from "lucide-react";
 import { BasicInfoSection } from "./BotBuilder/BasicInfoSection";
 import { VoiceSection } from "./BotBuilder/VoiceSection";
 import { LanguageSection } from "./BotBuilder/LanguageSection";
 import { PersonaSection } from "./BotBuilder/PersonaSection";
+import { WebsiteSection } from "./BotBuilder/WebsiteSection";
+import { SlackSection } from "./BotBuilder/SlackSection";
+import { ConversationFlowSection } from "./BotBuilder/ConversationFlowSection";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
 
@@ -25,6 +28,13 @@ interface BotConfig {
   keyTopics: string;
   keywords: string;
   customInstructions: string;
+  isSlackEnabled: boolean;
+  slackCommand: string;
+  slackChannelId: string;
+  conversationFlow: {
+    nodes: any[];
+    edges: any[];
+  };
 }
 
 interface EditBotModalProps {
@@ -51,6 +61,10 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
     keyTopics: "",
     keywords: "",
     customInstructions: "",
+    isSlackEnabled: false,
+    slackCommand: "",
+    slackChannelId: "",
+    conversationFlow: { nodes: [], edges: [] },
   });
 
   // Populate form with bot data when modal opens
@@ -71,6 +85,10 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
         keyTopics: bot.keyTopics || "",
         keywords: bot.keywords || "",
         customInstructions: bot.customInstructions || "",
+        isSlackEnabled: bot.isSlackEnabled || false,
+        slackCommand: bot.slackCommand || "",
+        slackChannelId: bot.slackChannelId || "",
+        conversationFlow: bot.conversationFlow || { nodes: [], edges: [] },
       });
     }
   }, [bot, isOpen]);
@@ -98,6 +116,10 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
       formData.append("key_topics", botConfig.keyTopics);
       formData.append("keywords", botConfig.keywords);
       formData.append("custom_instructions", botConfig.customInstructions);
+      formData.append("is_slack_enabled", botConfig.isSlackEnabled.toString());
+      formData.append("slack_command", botConfig.slackCommand);
+      formData.append("slack_channel_id", botConfig.slackChannelId);
+      formData.append("conversationFlow", JSON.stringify(botConfig.conversationFlow));
 
       if (botConfig.file) {
         formData.append("file", botConfig.file);
@@ -157,6 +179,10 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
             <BasicInfoSection botConfig={botConfig} updateConfig={updateConfig} />
           </CollapsibleSection>
           
+          <CollapsibleSection title="Website & Content" icon={<Globe className="w-5 h-5 text-primary" />}>
+            <WebsiteSection botConfig={botConfig} updateConfig={updateConfig} />
+          </CollapsibleSection>
+          
           <CollapsibleSection title="Voice Configuration" icon={<Mic className="w-5 h-5 text-primary" />}>
             <VoiceSection botConfig={botConfig} updateConfig={updateConfig} />
           </CollapsibleSection>
@@ -167,6 +193,19 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
           
           <CollapsibleSection title="Persona & Behavior" icon={<Brain className="w-5 h-5 text-primary" />}>
             <PersonaSection botConfig={botConfig} updateConfig={updateConfig} />
+          </CollapsibleSection>
+          
+          <CollapsibleSection title="Slack Integration" icon={<MessageSquare className="w-5 h-5 text-primary" />}>
+            <SlackSection botConfig={botConfig} updateConfig={updateConfig} />
+          </CollapsibleSection>
+          
+          <CollapsibleSection title="Conversation Flow" icon={<GitBranch className="w-5 h-5 text-primary" />}>
+            <ConversationFlowSection 
+              botId={bot?.id}
+              onFlowChange={(nodes, edges) => {
+                updateConfig("conversationFlow", { nodes, edges });
+              }}
+            />
           </CollapsibleSection>
 
           <div className="flex justify-end gap-3 pt-6">
