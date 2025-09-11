@@ -141,14 +141,8 @@ export const PublicBotChatPage = () => {
               processNode(nextNode);
             }
           } else {
-            // Flow completed
-            setFlowCompleted(true);
-            setMessages(prev => [...prev, {
-              id: Date.now().toString(),
-              content: "Now feel free to ask me any questions!",
-              sender: 'bot',
-              timestamp: new Date()
-            }]);
+              // Flow completed
+              setFlowCompleted(true);
           }
         }, 1000);
         break;
@@ -286,12 +280,6 @@ export const PublicBotChatPage = () => {
             // No edge from option node - switch to ask API
             setFlowCompleted(true);
             setAwaitingResponse(false);
-            setMessages(prev => [...prev, {
-              id: Date.now().toString(),
-              content: "Now feel free to ask me any questions!",
-              sender: 'bot',
-              timestamp: new Date()
-            }]);
             return;
           }
         }
@@ -319,15 +307,9 @@ export const PublicBotChatPage = () => {
       }
     }
 
-    // Flow completed - no more edges or invalid next node
-    setFlowCompleted(true);
-    setAwaitingResponse(false);
-    setMessages(prev => [...prev, {
-      id: Date.now().toString(),
-      content: "Thank you! Now feel free to ask me any questions.",
-      sender: 'bot',
-      timestamp: new Date()
-    }]);
+      // Flow completed - no more edges or invalid next node
+      setFlowCompleted(true);
+      setAwaitingResponse(false);
   };
 
   useEffect(() => {

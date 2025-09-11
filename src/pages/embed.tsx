@@ -107,12 +107,6 @@ export default function EmbedChat() {
           } else {
             // Flow completed
             setFlowCompleted(true);
-            setMessages(prev => [...prev, {
-              id: Date.now().toString(),
-              from: 'bot',
-              text: "Now feel free to ask me any questions!",
-              timestamp: new Date()
-            }]);
           }
         }, 1000);
         break;
@@ -210,12 +204,6 @@ export default function EmbedChat() {
           // No path for the chosen handle -> complete the flow
           setFlowCompleted(true);
           setAwaitingResponse(false);
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            from: 'bot',
-            text: "Now feel free to ask me any questions!",
-            timestamp: new Date()
-          }]);
           return;
         }
       } else {
@@ -250,12 +238,6 @@ export default function EmbedChat() {
             // No edge from option node - switch to ask API
             setFlowCompleted(true);
             setAwaitingResponse(false);
-            setMessages(prev => [...prev, {
-              id: Date.now().toString(),
-              from: 'bot',
-              text: "Now feel free to ask me any questions!",
-              timestamp: new Date()
-            }]);
             return;
           }
         }
@@ -286,12 +268,6 @@ export default function EmbedChat() {
     // Flow completed - no more edges or invalid next node
     setFlowCompleted(true);
     setAwaitingResponse(false);
-    setMessages(prev => [...prev, {
-      id: Date.now().toString(),
-      from: 'bot',
-      text: "Thank you! Now feel free to ask me any questions.",
-      timestamp: new Date()
-    }]);
   };
 
   // Initialize conversation flow on mount - EXACTLY like chatbot.tsx

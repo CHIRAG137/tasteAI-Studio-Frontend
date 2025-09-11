@@ -146,12 +146,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           } else {
             // Flow completed
             setFlowCompleted(true);
-            setMessages(prev => [...prev, {
-              id: Date.now().toString(),
-              content: "Now feel free to ask me any questions!",
-              sender: 'bot',
-              timestamp: new Date()
-            }]);
           }
         }, 1000);
         break;
@@ -249,12 +243,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           // No path for the chosen handle -> complete the flow
           setFlowCompleted(true);
           setAwaitingResponse(false);
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            content: "Now feel free to ask me any questions!",
-            sender: 'bot',
-            timestamp: new Date()
-          }]);
           return;
         }
       } else {
@@ -289,12 +277,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             // No edge from option node - switch to ask API
             setFlowCompleted(true);
             setAwaitingResponse(false);
-            setMessages(prev => [...prev, {
-              id: Date.now().toString(),
-              content: "Now feel free to ask me any questions!",
-              sender: 'bot',
-              timestamp: new Date()
-            }]);
             return;
           }
         }
@@ -325,12 +307,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     // Flow completed - no more edges or invalid next node
     setFlowCompleted(true);
     setAwaitingResponse(false);
-    setMessages(prev => [...prev, {
-      id: Date.now().toString(),
-      content: "Thank you! Now feel free to ask me any questions.",
-      sender: 'bot',
-      timestamp: new Date()
-    }]);
   };
 
   const handleSendMessage = async () => {
