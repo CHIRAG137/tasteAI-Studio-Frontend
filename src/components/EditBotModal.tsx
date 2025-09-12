@@ -199,13 +199,14 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
             <SlackSection botConfig={botConfig} updateConfig={updateConfig} />
           </CollapsibleSection>
           
-          <ConversationFlowSection 
-            botId={bot?.id}
-            conversationFlow={botConfig.conversationFlow}
-            onFlowUpdate={(flow) => {
-              updateConfig('conversationFlow', flow);
-            }}
-          />
+          <CollapsibleSection title="Conversation Flow" icon={<GitBranch className="w-5 h-5 text-primary" />}>
+            <ConversationFlowSection 
+              botId={bot?.id}
+              onFlowChange={(nodes, edges) => {
+                updateConfig("conversationFlow", { nodes, edges });
+              }}
+            />
+          </CollapsibleSection>
 
           <div className="flex justify-end gap-3 pt-6">
             <Button type="button" variant="outline" onClick={onClose}>

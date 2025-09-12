@@ -138,11 +138,9 @@ interface FlowBuilderProps {
   botId?: string;
   onSave?: (nodes: Node[], edges: Edge[]) => void;
   onFlowChange?: (nodes: Node[], edges: Edge[]) => void; // New prop for real-time updates
-  initialNodes?: Node[];
-  initialEdges?: Edge[];
 }
 
-export function FlowBuilder({ botId, onSave, onFlowChange, initialNodes, initialEdges }: FlowBuilderProps) {
+export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>([
     {
       id: '1',
@@ -165,16 +163,6 @@ export function FlowBuilder({ botId, onSave, onFlowChange, initialNodes, initial
       onFlowChange(nodes, edges);
     }
   }, [nodes, edges, onFlowChange]);
-
-  // Load initial nodes/edges from props
-  useEffect(() => {
-    if (initialNodes) {
-      setNodes(initialNodes as Node<NodeData>[]);
-    }
-    if (initialEdges) {
-      setEdges(initialEdges);
-    }
-  }, [initialNodes, initialEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -318,6 +306,11 @@ export function FlowBuilder({ botId, onSave, onFlowChange, initialNodes, initial
         </Button>
       </div>
 
+      <div className="absolute top-4 right-4 z-10">
+        <Button type="button" onClick={handleSave}>
+          Save Flow
+        </Button>
+      </div>
 
       <ReactFlow
         nodes={nodes}

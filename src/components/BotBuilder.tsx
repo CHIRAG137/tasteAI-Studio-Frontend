@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
@@ -59,14 +59,6 @@ export const BotBuilder = () => {
     setVisibleBotCount(3);
   };
 
-  // Save form data to session storage
-  const saveFormData = () => {
-    const formData = {
-      ...botConfig
-    };
-    sessionStorage.setItem('botBuilderFormData', JSON.stringify(formData));
-  };
-
   const [botConfig, setBotConfig] = useState<BotConfig>({
     name: "",
     websiteUrl: "",
@@ -100,26 +92,6 @@ export const BotBuilder = () => {
       edges: [] 
     },
   });
-
-  // Load form data from session storage on mount
-  React.useEffect(() => {
-    const savedFormData = sessionStorage.getItem('botBuilderFormData');
-    if (savedFormData) {
-      const data = JSON.parse(savedFormData);
-      setBotConfig(data);
-    }
-  }, []);
-
-  // Listen for save form data event
-  React.useEffect(() => {
-    const handleSaveFormData = () => {
-      saveFormData();
-    };
-    window.addEventListener('saveFormData', handleSaveFormData);
-    return () => {
-      window.removeEventListener('saveFormData', handleSaveFormData);
-    };
-  }, [botConfig]);
 
   const fetchBots = async () => {
     try {
@@ -207,9 +179,6 @@ export const BotBuilder = () => {
         title: "Bot Created Successfully!",
         description: result.message || `${botConfig.name} has been created successfully.`,
       });
-
-      // Clear saved form data after successful submission
-      sessionStorage.removeItem('botBuilderFormData');
 
       setBotConfig({
         name: "",
@@ -346,10 +315,16 @@ export const BotBuilder = () => {
                 </CollapsibleSection>
                 
                 <ConversationFlowSection 
-                  botId={selectedBotForEdit?.id}
-                  conversationFlow={botConfig.conversationFlow}
-                  onFlowUpdate={(flow) => {
-                    updateConfig('conversationFlow', flow);
+                  onFlowSave={(nodes, edges) => {
+                    updateConfig('conversationFlow', { nodes, edges });
+                    toast({
+                      title: "Flow Saved",
+                      description: "Conversation flow has been saved to your bot configuration.",
+                    });
+                  }}
+                  onFlowChange={(nodes, edges) => {
+                    // Auto-update the bot config whenever the flow changes
+                    updateConfig('conversationFlow', { nodes, edges });
                   }}
                 />
 

@@ -10,7 +10,6 @@ import Documentation from "./pages/Documentation";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { PublicBotChatPage } from "@/components/PublicBotChatPage";
-import FlowBuilderPage from "./pages/FlowBuilder";
 
 const queryClient = new QueryClient();
 
@@ -27,7 +26,6 @@ const App = () => (
           <Route path="/bot/:botId" element={<PublicBotChatPage />} />
           <Route path="/embed" element={<EmbedChat />} />
           <Route path="/docs/:botId" element={<Documentation />} />
-          <Route path="/flow-builder" element={<FlowBuilderPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
