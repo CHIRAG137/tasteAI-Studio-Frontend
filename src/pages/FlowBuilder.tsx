@@ -18,9 +18,22 @@ export default function FlowBuilderPage() {
 
   useEffect(() => {
     // Load initial flow if provided
-    if (initialFlow) {
+    if (initialFlow && (initialFlow.nodes?.length || initialFlow.edges?.length)) {
       setNodes(initialFlow.nodes || []);
       setEdges(initialFlow.edges || []);
+      return;
+    }
+
+    // Fallback to sessionStorage if available
+    const saved = sessionStorage.getItem('conversationFlow');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setNodes(parsed.nodes || []);
+        setEdges(parsed.edges || []);
+      } catch (e) {
+        // ignore parse errors
+      }
     }
   }, [initialFlow]);
 
@@ -78,6 +91,8 @@ export default function FlowBuilderPage() {
             botId={botId}
             onSave={handleSave}
             onFlowChange={handleFlowChange}
+            initialNodes={nodes}
+            initialEdges={edges}
           />
         </div>
       </main>
