@@ -306,11 +306,6 @@ export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
         </Button>
       </div>
 
-      <div className="absolute top-4 right-4 z-10">
-        <Button type="button" onClick={handleSave}>
-          Save Flow
-        </Button>
-      </div>
 
       <ReactFlow
         nodes={nodes}

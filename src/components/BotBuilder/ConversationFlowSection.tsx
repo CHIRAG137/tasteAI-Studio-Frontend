@@ -29,6 +29,10 @@ export function ConversationFlowSection({
   }, [location.state, onFlowUpdate]);
 
   const handleOpenFlowBuilder = () => {
+    // Save form data before navigating
+    const event = new CustomEvent('saveFormData');
+    window.dispatchEvent(event);
+    
     navigate('/flow-builder', {
       state: {
         initialFlow: conversationFlow,

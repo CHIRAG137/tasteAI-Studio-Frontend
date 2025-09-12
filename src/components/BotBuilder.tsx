@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
@@ -59,6 +59,14 @@ export const BotBuilder = () => {
     setVisibleBotCount(3);
   };
 
+  // Save form data to session storage
+  const saveFormData = () => {
+    const formData = {
+      ...botConfig
+    };
+    sessionStorage.setItem('botBuilderFormData', JSON.stringify(formData));
+  };
+
   const [botConfig, setBotConfig] = useState<BotConfig>({
     name: "",
     websiteUrl: "",
@@ -92,6 +100,26 @@ export const BotBuilder = () => {
       edges: [] 
     },
   });
+
+  // Load form data from session storage on mount
+  React.useEffect(() => {
+    const savedFormData = sessionStorage.getItem('botBuilderFormData');
+    if (savedFormData) {
+      const data = JSON.parse(savedFormData);
+      setBotConfig(data);
+    }
+  }, []);
+
+  // Listen for save form data event
+  React.useEffect(() => {
+    const handleSaveFormData = () => {
+      saveFormData();
+    };
+    window.addEventListener('saveFormData', handleSaveFormData);
+    return () => {
+      window.removeEventListener('saveFormData', handleSaveFormData);
+    };
+  }, [botConfig]);
 
   const fetchBots = async () => {
     try {
@@ -179,6 +207,9 @@ export const BotBuilder = () => {
         title: "Bot Created Successfully!",
         description: result.message || `${botConfig.name} has been created successfully.`,
       });
+
+      // Clear saved form data after successful submission
+      sessionStorage.removeItem('botBuilderFormData');
 
       setBotConfig({
         name: "",
