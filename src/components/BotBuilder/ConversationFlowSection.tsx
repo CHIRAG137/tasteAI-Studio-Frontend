@@ -1,19 +1,43 @@
-import { MessageSquareText } from 'lucide-react';
+import { MessageSquareText, ExternalLink } from 'lucide-react';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
-import { FlowBuilder } from '@/components/FlowBuilder/FlowBuilder';
+import { Button } from '@/components/ui/button';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Node, Edge } from '@xyflow/react';
+import { useEffect } from 'react';
 
 interface ConversationFlowSectionProps {
   botId?: string;
-  onFlowSave?: (nodes: Node[], edges: Edge[]) => void;
-  onFlowChange?: (nodes: Node[], edges: Edge[]) => void; // New prop for real-time updates
+  conversationFlow?: { nodes: Node[]; edges: Edge[] };
+  onFlowUpdate?: (flow: { nodes: Node[]; edges: Edge[] }) => void;
 }
 
 export function ConversationFlowSection({ 
   botId,
-  onFlowSave,
-  onFlowChange 
+  conversationFlow,
+  onFlowUpdate
 }: ConversationFlowSectionProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check if we're returning from the flow builder
+  useEffect(() => {
+    if (location.state?.fromFlowBuilder && location.state?.conversationFlow) {
+      onFlowUpdate?.(location.state.conversationFlow);
+      // Clear the state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, onFlowUpdate]);
+
+  const handleOpenFlowBuilder = () => {
+    navigate('/flow-builder', {
+      state: {
+        initialFlow: conversationFlow,
+        returnPath: location.pathname,
+        botId
+      }
+    });
+  };
+
   return (
     <CollapsibleSection
       title="Conversation Flow"
@@ -23,13 +47,24 @@ export function ConversationFlowSection({
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
           Design a step-by-step conversation flow for your bot. Add messages, questions, confirmations, branching logic, and redirects.
-          Changes are automatically saved to your bot configuration.
         </p>
-        <FlowBuilder 
-          botId={botId} 
-          onSave={onFlowSave}
-          onFlowChange={onFlowChange} // Pass the real-time update handler
-        />
+        
+        {conversationFlow?.nodes?.length ? (
+          <div className="p-4 border rounded-lg bg-muted/50">
+            <p className="text-sm text-muted-foreground mb-2">
+              Flow configured with {conversationFlow.nodes.length} nodes and {conversationFlow.edges.length} connections
+            </p>
+          </div>
+        ) : null}
+
+        <Button 
+          onClick={handleOpenFlowBuilder}
+          className="w-full gap-2"
+          variant="outline"
+        >
+          <ExternalLink className="h-4 w-4" />
+          Open Flow Builder
+        </Button>
       </div>
     </CollapsibleSection>
   );

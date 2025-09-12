@@ -315,16 +315,10 @@ export const BotBuilder = () => {
                 </CollapsibleSection>
                 
                 <ConversationFlowSection 
-                  onFlowSave={(nodes, edges) => {
-                    updateConfig('conversationFlow', { nodes, edges });
-                    toast({
-                      title: "Flow Saved",
-                      description: "Conversation flow has been saved to your bot configuration.",
-                    });
-                  }}
-                  onFlowChange={(nodes, edges) => {
-                    // Auto-update the bot config whenever the flow changes
-                    updateConfig('conversationFlow', { nodes, edges });
+                  botId={selectedBotForEdit?.id}
+                  conversationFlow={botConfig.conversationFlow}
+                  onFlowUpdate={(flow) => {
+                    updateConfig('conversationFlow', flow);
                   }}
                 />
 
