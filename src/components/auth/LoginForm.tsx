@@ -26,7 +26,7 @@ export const LoginForm = () => {
         console.log("Logged in:", response);
 
         // Save token to localStorage using auth utils
-        setAuthToken(response.token!);
+        setAuthToken(response.result.token!);
 
         // redirect to dashboard
         window.location.href = "/";

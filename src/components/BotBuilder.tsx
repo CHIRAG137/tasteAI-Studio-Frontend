@@ -100,7 +100,7 @@ export const BotBuilder = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        const bots = data.bots.map((bot: any) => ({
+        const bots = data.result.bots.map((bot: any) => ({
           id: bot._id,
           name: bot.name,
           description: bot.description,
