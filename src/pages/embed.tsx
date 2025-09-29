@@ -310,14 +310,14 @@ export default function EmbedChat() {
         const fetchData = async () => {
           try {
             // Fetch customization
-            const customizationResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/customizations/${botId}`);
-            if (customizationResponse.data.customization) {
-              setCustomization(customizationResponse.data.customization);
+            const customizationResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`);
+            if (customizationResponse.data.result) {
+              setCustomization(customizationResponse.data.result);
             }
 
             // Fetch bot data
             const botResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`);
-            setBotData(botResponse.data);
+            setBotData(botResponse.data.result);
             
             // DON'T initialize flow here - let the other useEffect handle it
           } catch (error) {

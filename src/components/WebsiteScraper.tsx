@@ -69,8 +69,8 @@ export const WebsiteScraper = ({ websiteUrl }: WebsiteScraperProps) => {
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
-        const urls = data.links.map((url: string) => ({
+      if (response.ok) {
+        const urls = data.result.links.map((url: string) => ({
           url,
           selected: false,
         }));
@@ -138,14 +138,14 @@ export const WebsiteScraper = ({ websiteUrl }: WebsiteScraperProps) => {
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
+      if (response.ok) {
         setScrapeJob({
-          id: data.id,
+          id: data.result.id,
           status: 'in_progress',
         });
         
         // Start polling for results
-        startPolling(data.id);
+        startPolling(data.result.id);
         
         toast({
           title: "Scraping Started",
@@ -174,13 +174,13 @@ export const WebsiteScraper = ({ websiteUrl }: WebsiteScraperProps) => {
 
         const data = await response.json();
 
-        if (response.status === 202) {
+        if (data.result === 202) {
           // Still in progress
           setScrapeProgress(prev => Math.min(prev + 10, 90));
-        } else if (response.status === 200 && data.message === "Job completed.") {
+        } else if (data.result === 200 && data.message.message === "Job completed.") {
           // Completed
-          setScrapeJob(prev => prev ? { ...prev, status: 'completed', data: data.data } : null);
-          setScrapeResults(data.data || []);
+          setScrapeJob(prev => prev ? { ...prev, status: 'completed', data: data.message.data } : null);
+          setScrapeResults(data.message.data || []);
           setScrapeProgress(100);
           setScrapeLoading(false);
           clearInterval(interval);
@@ -188,7 +188,7 @@ export const WebsiteScraper = ({ websiteUrl }: WebsiteScraperProps) => {
           
           toast({
             title: "Scraping Complete",
-            description: `Successfully scraped ${data.data?.length || 0} pages`,
+            description: `Successfully scraped ${data.message.data?.length || 0} pages`,
           });
         } else {
           // Failed

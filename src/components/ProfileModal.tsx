@@ -39,11 +39,10 @@ export const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
       const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: getAuthHeaders(),
       });
-      
       if (response.ok) {
         const data = await response.json();
-        setUserDetails(data.user);
-        setSlackIntegration(data.hasSlackIntegration ? data.slackIntegration : null);
+        setUserDetails(data.result.user);
+        setSlackIntegration(data.result.hasSlackIntegration ? data.result.slackIntegration : null);
       }
     } catch (error) {
       console.error("Failed to fetch user details:", error);

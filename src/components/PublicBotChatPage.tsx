@@ -317,7 +317,7 @@ export const PublicBotChatPage = () => {
       try {
         const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`);
         const data = await res.json();
-        setBot(data);
+        setBot(data.result);
       } catch (err) {
         console.error("Failed to fetch bot:", err);
       } finally {

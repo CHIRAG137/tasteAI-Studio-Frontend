@@ -73,7 +73,7 @@ export const EmbedCustomizer = ({
     if (botId) {
       const fetchCustomization = async () => {
         try {
-          const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/customizations/${botId}`);
+          const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`);
           if (response.data.customization) {
             setCustomization({
               ...defaultCustomization,
@@ -120,7 +120,7 @@ export const EmbedCustomizer = ({
 
   const handleSave = async () => {
     try {
-      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/customizations/${botId}`, customization);
+      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`, customization);
       onSave(customization);
       toast({
         title: "Customization Saved",
