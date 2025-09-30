@@ -19,22 +19,6 @@ interface Message {
   branchOptions?: string[];
 }
 
-interface FlowNode {
-  id: string;
-  type: 'message' | 'question' | 'confirmation' | 'branch' | 'redirection';
-  data: {
-    message?: string;
-    variable?: string;
-    options?: string[];
-    redirectUrl?: string;
-  };
-}
-
-interface ConversationFlow {
-  nodes: FlowNode[];
-  edges: { source: string; target: string; id: string; sourceHandle?: string }[];
-}
-
 export default function EmbedChat() {
   const [searchParams] = useSearchParams();
   const botId = searchParams.get("botId");
@@ -44,29 +28,21 @@ export default function EmbedChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [customization, setCustomization] = useState<EmbedCustomization | null>(null);
   const [botData, setBotData] = useState<any>(null);
-  const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
-  const [flowCompleted, setFlowCompleted] = useState(false);
-  const [collectedVariables, setCollectedVariables] = useState<Record<string, string>>({});
-  const [awaitingResponse, setAwaitingResponse] = useState(false);
+  const [currentPausedFor, setCurrentPausedFor] = useState<any>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { isListening, toggleListening } = useSpeechToText({
-    onResult: (text) => {
-      setInput(prev => prev + (prev ? ' ' : '') + text);
-    },
-    onError: (error) => {
-      console.error("Speech recognition error:", error);
-    },
-    language: 'en-US'
+    onResult: (text) => setInput(prev => prev + (prev ? " " : "") + text),
+    onError: (error) => console.error("Speech recognition error:", error),
+    language: "en-US"
   });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  useEffect(scrollToBottom, [messages]);
 
   // Listen for real-time customization updates from parent window
   useEffect(() => {
@@ -82,260 +58,95 @@ export default function EmbedChat() {
     }
   }, [isPreview]);
 
-  const processNode = (node: FlowNode) => {
-    if (!node) return;
-
-    switch (node.type) {
-      case 'message':
-        // Display message and move to next node
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          from: 'bot',
-          text: node.data.message || '',
-          timestamp: new Date()
-        }]);
-        
-        // Find and process next node
-        setTimeout(() => {
-          const nextEdge = botData?.conversationFlow?.edges.find((e: any) => e.source === node.id);
-          if (nextEdge) {
-            const nextNode = botData?.conversationFlow?.nodes.find((n: any) => n.id === nextEdge.target);
-            if (nextNode) {
-              setCurrentNodeId(nextNode.id);
-              processNode(nextNode);
-            }
-          } else {
-            // Flow completed
-            setFlowCompleted(true);
+  // Fetch bot data and customization
+  useEffect(() => {
+    if (botId && !isPreview) {
+      const fetchData = async () => {
+        try {
+          // Fetch customization
+          const customizationResponse = await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`
+          );
+          if (customizationResponse.data.result) {
+            setCustomization(customizationResponse.data.result);
           }
-        }, 1000);
-        break;
 
-      case 'question':
-        // Display question and wait for user response
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          from: 'bot',
-          text: node.data.message || '',
-          timestamp: new Date()
-        }]);
-        setAwaitingResponse(true);
-        break;
-
-      case 'confirmation':
-        // Display confirmation with yes/no options
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          from: 'bot',
-          text: node.data.message || '',
-          timestamp: new Date(),
-          showConfirmationButtons: true
-        }]);
-        setAwaitingResponse(true);
-        break;
-
-      case 'branch':
-        // Display branch options with buttons
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          from: 'bot',
-          text: node.data.message || 'Please select an option:',
-          timestamp: new Date(),
-          showBranchOptions: true,
-          branchOptions: node.data.options || []
-        }]);
-        setAwaitingResponse(true);
-        break;
-
-      case 'redirection':
-        // Handle redirection
-        if (node.data.redirectUrl) {
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            from: 'bot',
-            text: `Redirecting to: ${node.data.redirectUrl}`,
+          // Fetch bot data
+          const botResponse = await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`
+          );
+          setBotData(botResponse.data.result);
+        } catch (error) {
+          console.error('Error loading data:', error);
+          setMessages([{
+            id: "init",
+            from: "bot",
+            text: "Hello! I'm here to help. What would you like to know?",
             timestamp: new Date()
           }]);
-          setTimeout(() => {
-            window.open(node.data.redirectUrl, '_blank');
-            // Continue flow
-            const nextEdge = botData?.conversationFlow?.edges.find((e: any) => e.source === node.id);
-            if (nextEdge) {
-              const nextNode = botData?.conversationFlow?.nodes.find((n: any) => n.id === nextEdge.target);
-              if (nextNode) {
-                setCurrentNodeId(nextNode.id);
-                processNode(nextNode);
-              }
-            } else {
-              setFlowCompleted(true);
-            }
-          }, 2000);
         }
-        break;
-    }
-  };
+      };
 
-  const handleFlowResponse = (userInput: string) => {
-    const currentNode = botData?.conversationFlow?.nodes.find((n: any) => n.id === currentNodeId);
-    if (!currentNode) return;
-
-    // Store variable if defined
-    if (currentNode.data.variable) {
-      setCollectedVariables(prev => ({
-        ...prev,
-        [currentNode.data.variable]: userInput
-      }));
-    }
-
-    const allEdgesFromNode = botData?.conversationFlow?.edges?.filter((e: any) => e.source === currentNodeId) || [];
-    const handleEdges = allEdgesFromNode.filter(e => typeof e.sourceHandle === 'string' && e.sourceHandle.length > 0);
-    let nextEdge: typeof allEdgesFromNode[number] | undefined;
-
-    if (currentNode.type === 'confirmation') {
-      const normalized = userInput.trim().toLowerCase();
-      const isYes = /\b(yes|y|yeah|yep|sure|ok|okay)\b/.test(normalized);
-      const chosenHandle = isYes ? 'yes' : 'no';
-
-      if (handleEdges.length > 0) {
-        // Only follow handle-specific edges when available
-        nextEdge = handleEdges.find(e => e.sourceHandle === chosenHandle);
-
-        if (!nextEdge) {
-          // No path for the chosen handle -> complete the flow
-          setFlowCompleted(true);
-          setAwaitingResponse(false);
-          return;
-        }
-      } else {
-        // No handle edges exist; fallback to sequential edge (if any)
-        nextEdge = allEdgesFromNode.length === 1 ? allEdgesFromNode[0] : allEdgesFromNode[0];
-      }
-    } else if (currentNode.type === 'branch') {
-      const options = currentNode.data.options || [];
-      const normalized = userInput.trim().toLowerCase();
-      const selectedOption = options.find((option: string) =>
-        normalized.includes(option.toLowerCase())
-      );
-
-      if (selectedOption) {
-        const optionIndex = options.indexOf(selectedOption);
-        // Look for edge from the branch node to option node (e.g., "2-to-opt-0")
-        const optionNodeId = `${currentNodeId}-opt-${optionIndex}`;
-        nextEdge = allEdgesFromNode.find(e => String(e.target) === String(optionNodeId));
-        
-        if (nextEdge) {
-          // Now find the edge from the option node to the next node
-          const edgeFromOption = botData?.conversationFlow?.edges?.find((e: any) => String(e.source) === String(optionNodeId));
-          if (edgeFromOption) {
-            const nextNode = botData?.conversationFlow?.nodes.find((n: any) => String(n.id) === String(edgeFromOption.target));
-            if (nextNode) {
-              setCurrentNodeId(nextNode.id);
-              setAwaitingResponse(false);
-              setTimeout(() => processNode(nextNode), 300);
-              return;
-            }
-          } else {
-            // No edge from option node - switch to ask API
-            setFlowCompleted(true);
-            setAwaitingResponse(false);
-            return;
-          }
-        }
-      }
-
-      // If no valid option selected, ask again
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        from: 'bot',
-        text: `Please choose one of the provided options:\n${(options || []).join('\n')}`,
+      fetchData();
+    } else if (isPreview) {
+      // Preview mode - just set a default message
+      setMessages([{
+        id: "init",
+        from: "bot",
+        text: "Hello! I'm here to help. What would you like to know?",
         timestamp: new Date()
       }]);
-      return;
-    } else {
-      nextEdge = allEdgesFromNode[0];
     }
+  }, [botId, isPreview]);
 
-    if (nextEdge) {
-      const nextNode = botData?.conversationFlow?.nodes.find((n: any) => n.id === nextEdge.target);
-      if (nextNode) {
-        setCurrentNodeId(nextNode.id);
-        setAwaitingResponse(false);
-        setTimeout(() => processNode(nextNode), 300);
-        return;
-      }
-    }
-
-    // Flow completed - no more edges or invalid next node
-    setFlowCompleted(true);
-    setAwaitingResponse(false);
-  };
-
-  // Initialize conversation flow on mount - EXACTLY like chatbot.tsx
+  // Start flow when bot is loaded
   useEffect(() => {
-    if (botData && botData.conversationFlow && botData.conversationFlow.nodes.length > 0 && !flowCompleted) {
-      // Find the first node (usually a message node)
-      const firstNode = botData.conversationFlow.nodes.find((n: any) => 
-        !botData.conversationFlow?.edges.some((e: any) => e.target === n.id)
-      );
-      
-      if (firstNode) {
-        setCurrentNodeId(firstNode.id);
-        processNode(firstNode);
-      } else {
-        // No conversation flow, start with regular greeting
-        setFlowCompleted(true);
-        setMessages([{
-          id: "1",
-          from: "bot",
-          text: `Hello! I'm ${botData.name}. ${botData.description} How can I help you today?`,
-          timestamp: new Date(),
-        }]);
-      }
-    } else if (botData && (!botData.conversationFlow || botData.conversationFlow.nodes.length === 0)) {
-      // No conversation flow defined
-      setFlowCompleted(true);
-      setMessages([{
-        id: "1",
-        from: "bot",
-        text: `Hello! I'm ${botData.name}. ${botData.description} How can I help you today?`,
-        timestamp: new Date(),
-      }]);
-    }
-  }, [botData]); // Only depend on botData like chatbot.tsx
+    if (!botData || isPreview) return;
 
-  useEffect(() => {
-    if (botId) {
-      // Only fetch from API if not in preview mode
-      if (!isPreview) {
-        const fetchData = async () => {
-          try {
-            // Fetch customization
-            const customizationResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`);
-            if (customizationResponse.data.result) {
-              setCustomization(customizationResponse.data.result);
+    const initFlow = async () => {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/flow/start/${botData._id}`,
+          { method: "POST" }
+        );
+        const data = await res.json();
+
+        if (data.sessionId) setSessionId(data.sessionId);
+
+        const botMessages: Message[] = [];
+
+        // Add all messages to display
+        (data.messages || []).forEach((msg: any) => {
+          // Handle redirect nodes - don't display, just redirect
+          if (msg.type === "redirect") {
+            const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
+            if (url) {
+              window.open(url, '_blank');
             }
-
-            // Fetch bot data
-            const botResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`);
-            setBotData(botResponse.data.result);
-            
-            // DON'T initialize flow here - let the other useEffect handle it
-          } catch (error) {
-            console.error('Error loading data:', error);
-            setFlowCompleted(true);
-            setMessages([{
-              id: "init",
-              from: "bot",
-              text: "Hello! I'm here to help. What would you like to know?",
-              timestamp: new Date()
-            }]);
+            return;
           }
-        };
 
-        fetchData();
-      } else {
-        // Preview mode - just set a default message
-        setFlowCompleted(true);
+          botMessages.push({
+            id: Date.now().toString() + Math.random(),
+            from: "bot",
+            text: msg.content || msg.message || "",
+            timestamp: new Date(),
+            showConfirmationButtons: msg.type === "confirmation" && msg.awaitingInput,
+            showBranchOptions: msg.type === "branch" && msg.awaitingInput,
+            branchOptions: msg.options || [],
+          });
+        });
+
+        // Set current paused state
+        if (data.awaitingInput) {
+          setCurrentPausedFor(data.awaitingInput);
+        } else {
+          setCurrentPausedFor(null);
+        }
+
+        setMessages(botMessages);
+      } catch (err) {
+        console.error("Failed to start flow", err);
         setMessages([{
           id: "init",
           from: "bot",
@@ -343,12 +154,14 @@ export default function EmbedChat() {
           timestamp: new Date()
         }]);
       }
-    }
-  }, [botId, isPreview]);
+    };
+    
+    initFlow();
+  }, [botData, isPreview]);
 
   // Update welcome message when customization changes in preview mode
   useEffect(() => {
-    if (customization && isPreview && messages.length === 1 && messages[0].from === "bot" && flowCompleted) {
+    if (customization && isPreview && messages.length === 1 && messages[0].from === "bot") {
       setMessages([{
         id: "init",
         from: "bot",
@@ -356,38 +169,31 @@ export default function EmbedChat() {
         timestamp: new Date()
       }]);
     }
-  }, [customization?.welcomeMessage, isPreview, flowCompleted]);
+  }, [customization?.welcomeMessage, isPreview]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || !botId || isLoading) return;
-
-    const userMessage: Message = { 
-      id: Date.now().toString(),
-      from: "user", 
-      text: input, 
-      timestamp: new Date() 
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-
-    // Check if we're in conversation flow mode
-    if (!flowCompleted && awaitingResponse) {
-      // Handle flow response
-      handleFlowResponse(userMessage.text);
-      return;
-    }
-
-    // Otherwise, use the askBot API (only if not in preview mode)
-    setIsLoading(true);
+  const handleSendMessage = async (overrideInput?: string, isBranchOption?: boolean) => {
+    const messageToSend = overrideInput || input.trim();
+    
+    if (!messageToSend || isLoading) return;
 
     // In preview mode, just show a demo response
     if (isPreview) {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        from: "user",
+        text: messageToSend,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+      setInput("");
+      setIsLoading(true);
+
       setTimeout(() => {
-        const botMessage: Message = { 
+        const botMessage: Message = {
           id: (Date.now() + 1).toString(),
-          from: "bot", 
-          text: "This is a preview response. Your actual bot will respond based on your training data.", 
-          timestamp: new Date() 
+          from: "bot",
+          text: "This is a preview response. Your actual bot will respond based on your training data.",
+          timestamp: new Date()
         };
         setMessages((prev) => [...prev, botMessage]);
         setIsLoading(false);
@@ -395,41 +201,128 @@ export default function EmbedChat() {
       return;
     }
 
+    if (!sessionId) return;
+
+    // Clear current paused state immediately to hide buttons
+    setCurrentPausedFor(null);
+
+    // Create user message for display
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      from: "user",
+      text: messageToSend,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
+
     try {
-      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`, {
-        botId,
-        question: userMessage.text,
+      // Prepare request body based on the type of input
+      let requestBody: any = {};
+      
+      if (currentPausedFor?.type === "branch" || isBranchOption) {
+        requestBody.optionIndexOrLabel = messageToSend;
+      } else {
+        requestBody.input = messageToSend;
+      }
+
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/respond`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send message");
+      }
+
+      const botMessages: Message[] = [];
+
+      // Add all messages to display - these are NEW messages only
+      (data.messages || []).forEach((msg: any) => {
+        // Handle redirect nodes - don't display, just redirect
+        if (msg.type === "redirect") {
+          const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
+          if (url) {
+            window.open(url, '_blank');
+          }
+          return;
+        }
+
+        botMessages.push({
+          id: Date.now().toString() + Math.random(),
+          from: "bot",
+          text: msg.content || msg.message || "",
+          timestamp: new Date(),
+          showConfirmationButtons: msg.type === "confirmation" && msg.awaitingInput,
+          showBranchOptions: msg.type === "branch" && msg.awaitingInput,
+          branchOptions: msg.options || [],
+        });
       });
-      const botMessage: Message = { 
-        id: (Date.now() + 1).toString(),
-        from: "bot", 
-        text: res.data.answer, 
-        timestamp: new Date() 
-      };
-      setMessages((prev) => [...prev, botMessage]);
-    } catch (err) {
-      setMessages((prev) => [...prev, { 
-        id: (Date.now() + 2).toString(),
-        from: "bot", 
-        text: "Sorry, I'm having trouble connecting right now. Please try again.", 
-        timestamp: new Date() 
-      }]);
+
+      // Set current paused state
+      if (data.awaitingInput) {
+        setCurrentPausedFor(data.awaitingInput);
+      } else {
+        setCurrentPausedFor(null);
+      }
+
+      // Check if flow finished
+      if (data.finished) {
+        botMessages.push({
+          id: Date.now().toString() + Math.random(),
+          from: "bot",
+          text: "Thank you! This conversation has ended.",
+          timestamp: new Date(),
+        });
+        setCurrentPausedFor(null);
+      }
+
+      // Append new bot messages to existing messages
+      setMessages((prev) => [...prev, ...botMessages]);
+    } catch (err: any) {
+      console.error(err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString() + Math.random(),
+          from: "bot",
+          text: "Sorry, I'm having trouble connecting right now. Please try again.",
+          timestamp: new Date(),
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleConfirmationClick = (answer: string) => {
+    handleSendMessage(answer, false);
+  };
+
+  const handleBranchOptionClick = (option: string) => {
+    handleSendMessage(option, true);
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSendMessage();
     }
   };
 
-  const handleVoiceInput = () => {
-    if (!botData?.voiceEnabled) return;
-    toggleListening();
-  };
+  const handleVoiceInput = () => botData?.voiceEnabled && toggleListening();
+
+  const isAwaitingInput = currentPausedFor !== null;
+  const canSendText = !isPreview && (!isAwaitingInput || (isAwaitingInput && 
+    currentPausedFor?.type !== "branch"));
 
   if (!botId) {
     return (
@@ -442,7 +335,7 @@ export default function EmbedChat() {
     );
   }
 
-  // Apply custom styles with CSS variables for easier updates
+  // Apply custom styles
   const customStyles = customization ? {
     '--custom-primary': customization.primaryColor,
     '--custom-bg': customization.backgroundColor,
@@ -512,7 +405,7 @@ export default function EmbedChat() {
                   />
                 </div>
               )}
-              <div className={`flex flex-col gap-2`}>
+              <div className="flex flex-col gap-2">
                 <div className={`max-w-[80%] ${msg.from === "user" ? "ml-auto" : ""}`}>
                   <div 
                     className="p-3 transition-all duration-200"
@@ -532,59 +425,34 @@ export default function EmbedChat() {
                     {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
-                {msg.showConfirmationButtons && awaitingResponse && msg.from === "bot" && (
+
+                {msg.showConfirmationButtons && isAwaitingInput && msg.from === "bot" && (
                   <div className="flex gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => {
-                        setMessages(prev => [...prev, {
-                          id: Date.now().toString(),
-                          from: "user",
-                          text: "Yes",
-                          timestamp: new Date(),
-                        }]);
-                        handleFlowResponse("Yes");
-                      }}
-                      className="hover:bg-primary hover:text-primary-foreground"
+                      onClick={() => handleConfirmationClick("yes")}
                     >
                       Yes
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => {
-                        setMessages(prev => [...prev, {
-                          id: Date.now().toString(),
-                          from: "user",
-                          text: "No",
-                          timestamp: new Date(),
-                        }]);
-                        handleFlowResponse("No");
-                      }}
-                      className="hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={() => handleConfirmationClick("no")}
                     >
                       No
                     </Button>
                   </div>
                 )}
-                {msg.showBranchOptions && awaitingResponse && msg.from === "bot" && msg.branchOptions && (
+
+                {msg.showBranchOptions && isAwaitingInput && msg.from === "bot" && msg.branchOptions && (
                   <div className="flex flex-wrap gap-2">
                     {msg.branchOptions.map((option, index) => (
                       <Button
                         key={index}
                         size="sm"
                         variant="outline"
-                        onClick={() => {
-                          setMessages(prev => [...prev, {
-                            id: Date.now().toString(),
-                            from: "user",
-                            text: option,
-                            timestamp: new Date(),
-                          }]);
-                          handleFlowResponse(option);
-                        }}
-                        className="hover:bg-primary hover:text-primary-foreground"
+                        onClick={() => handleBranchOptionClick(option)}
                       >
                         {option}
                       </Button>
@@ -592,6 +460,7 @@ export default function EmbedChat() {
                   </div>
                 )}
               </div>
+
               {msg.from === "user" && (
                 <div 
                   className="flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200"
@@ -672,7 +541,7 @@ export default function EmbedChat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder={customization?.placeholder || "Type your message..."}
-              disabled={isLoading}
+              disabled={isLoading || !canSendText}
               className={`flex-1 transition-all duration-200 ${botData?.voiceEnabled ? 'pr-10' : ''}`}
               style={{
                 borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined,
@@ -680,7 +549,7 @@ export default function EmbedChat() {
                 color: customization?.textColor || undefined
               }}
             />
-            {botData?.voiceEnabled && (
+            {botData?.voiceEnabled && canSendText && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -690,17 +559,13 @@ export default function EmbedChat() {
                 }`}
                 title={isListening ? "Stop recording" : "Start voice input"}
               >
-                {isListening ? (
-                  <MicOff className="h-4 w-4" />
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
+                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               </Button>
             )}
           </div>
           <Button 
-            onClick={sendMessage} 
-            disabled={!input.trim() || isLoading}
+            onClick={() => handleSendMessage()} 
+            disabled={!input.trim() || isLoading || !canSendText}
             size="icon"
             className="shrink-0 transition-all duration-200"
             style={{
