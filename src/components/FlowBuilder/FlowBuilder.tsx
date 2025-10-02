@@ -18,18 +18,19 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { X, Plus, MessageSquare, HelpCircle, GitBranch, CheckCircle, Link2 } from 'lucide-react';
+import { X, Plus, MessageSquare, HelpCircle, GitBranch, CheckCircle, Link2, Code } from 'lucide-react';
 
 // Node type definitions
 interface NodeData extends Record<string, unknown> {
   label: string;
-  type: 'message' | 'question' | 'confirmation' | 'branch' | 'redirect' | 'branchOption';
+  type: 'message' | 'question' | 'confirmation' | 'branch' | 'redirect' | 'branchOption' | 'code';
   message?: string;
   variable?: string;
   options?: string[];
   redirectUrl?: string;
+  code?: string;
+  timeout?: number;
 }
 
 // Custom Node Components
@@ -101,7 +102,6 @@ const BranchNode = ({ data }: { data: NodeData }) => (
     <p className="text-xs text-muted-foreground">
       {data.message || "Conditional branch"}
     </p>
-    {/* ✅ Only one source handle */}
     <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
   </div>
 );
@@ -125,6 +125,39 @@ const RedirectNode = ({ data }: { data: NodeData }) => (
   </div>
 );
 
+const CodeNode = ({ data }: { data: NodeData }) => (
+  <div className="bg-card border-2 border-yellow-500/20 rounded-lg p-4 min-w-[200px]">
+    <Handle type="target" position={Position.Top} className="w-3 h-3" />
+    <div className="flex items-center gap-2 mb-2">
+      <Code className="w-4 h-4 text-yellow-500" />
+      <span className="font-semibold text-sm">Code</span>
+    </div>
+    <p className="text-xs text-muted-foreground font-mono">
+      {data.code ? `${data.code.slice(0, 30)}...` : 'No code set'}
+    </p>
+    <div className="flex gap-4 mt-2">
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="success"
+        className="w-3 h-3 !left-[30%]"
+        style={{ background: 'green' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="error"
+        className="w-3 h-3 !left-[70%]"
+        style={{ background: 'red' }}
+      />
+    </div>
+    <div className="flex justify-between text-xs mt-1">
+      <span className="text-green-500">Success</span>
+      <span className="text-red-500">Error</span>
+    </div>
+  </div>
+);
+
 const nodeTypes: NodeTypes = {
   message: MessageNode,
   question: QuestionNode,
@@ -132,12 +165,13 @@ const nodeTypes: NodeTypes = {
   branch: BranchNode,
   branchOption: BranchOptionNode,
   redirect: RedirectNode,
+  code: CodeNode,
 };
 
 interface FlowBuilderProps {
   botId?: string;
   onSave?: (nodes: Node[], edges: Edge[]) => void;
-  onFlowChange?: (nodes: Node[], edges: Edge[]) => void; // New prop for real-time updates
+  onFlowChange?: (nodes: Node[], edges: Edge[]) => void;
 }
 
 export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
@@ -157,7 +191,6 @@ export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
   const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
   const [showNodeEditor, setShowNodeEditor] = useState(false);
 
-  // Auto-save flow changes to parent component
   useEffect(() => {
     if (onFlowChange) {
       onFlowChange(nodes, edges);
@@ -183,6 +216,10 @@ export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
         label: `${type} Node`,
         type,
         message: '',
+        ...(type === 'code' && {
+          code: '// Write your JavaScript code here\n// Available: axios, variables, getVariable(), setVariable()\n\n',
+          timeout: 5000
+        }),
       },
     };
     setNodes((nds) => [...nds, newNode]);
@@ -199,12 +236,10 @@ export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
       const branchNode = updatedNodes.find((n) => n.id === nodeId);
 
       if (branchNode?.data.type === "branch" && data.options) {
-        // Remove old option nodes for this branch
         updatedNodes = updatedNodes.filter(
           (n) => !n.id.startsWith(`${nodeId}-opt-`)
         );
 
-        // Create new option nodes
         const optionNodes: Node<NodeData>[] = data.options.map((opt, i) => ({
           id: `${nodeId}-opt-${i}`,
           type: "branchOption",
@@ -217,12 +252,10 @@ export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
 
         updatedNodes = [...updatedNodes, ...optionNodes];
 
-        // Remove old option edges
         setEdges((eds) =>
           eds.filter((e) => !e.source.startsWith(`${nodeId}`))
         );
 
-        // Add edges branch -> option nodes
         setEdges((eds) => [
           ...eds,
           ...data.options.map((_, i) => ({
@@ -258,7 +291,7 @@ export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
 
   return (
     <div className="h-[600px] relative">
-      <div className="absolute top-4 left-4 z-10 flex gap-2">
+      <div className="absolute top-4 left-4 z-10 flex gap-2 flex-wrap max-w-[600px]">
         <Button
           type="button"
           size="sm"
@@ -304,6 +337,16 @@ export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
           <Link2 className="w-4 h-4 mr-2" />
           Redirect
         </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => addNode('code')}
+          className="bg-yellow-500/10 hover:bg-yellow-500/20"
+        >
+          <Code className="w-4 h-4 mr-2" />
+          Code
+        </Button>
       </div>
 
       <div className="absolute top-4 right-4 z-10">
@@ -328,7 +371,7 @@ export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
 
       {/* Node Editor Panel */}
       {showNodeEditor && selectedNode && (
-        <Card className="absolute top-20 right-4 z-50 w-80 p-4 shadow-lg bg-card">
+        <Card className="absolute top-20 right-4 z-50 w-96 p-4 shadow-lg bg-card max-h-[500px] overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold">Edit Node</h3>
             <Button
@@ -435,6 +478,46 @@ export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
                   onMouseDown={(e) => e.stopPropagation()}
                 />
               </div>
+            )}
+
+            {selectedNode.data.type === 'code' && (
+              <>
+                <div>
+                  <Label htmlFor="node-code">JavaScript Code</Label>
+                  <Textarea
+                    id="node-code"
+                    value={selectedNode.data.code || ''}
+                    onChange={(e) => updateNode(selectedNode.id, { code: e.target.value })}
+                    placeholder="// Your JavaScript code here"
+                    className="mt-1 nodrag font-mono text-xs h-64"
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Available: axios, variables, getVariable(), setVariable()
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="node-timeout">Timeout (ms)</Label>
+                  <Input
+                    id="node-timeout"
+                    type="number"
+                    value={selectedNode.data.timeout || 5000}
+                    onChange={(e) => updateNode(selectedNode.id, { timeout: parseInt(e.target.value) || 5000 })}
+                    placeholder="5000"
+                    className="mt-1 nodrag"
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  />
+                </div>
+                <div className="bg-yellow-50 dark:bg-yellow-950/20 p-3 rounded text-xs space-y-1">
+                  <p className="font-semibold">Example Usage:</p>
+                  <code className="block">const email = getVariable('userEmail');</code>
+                  <code className="block">const res = await axios.get('...');</code>
+                  <code className="block">setVariable('data', res.data);</code>
+                  <code className="block">result = res.data; // output</code>
+                </div>
+              </>
             )}
 
             <Button
