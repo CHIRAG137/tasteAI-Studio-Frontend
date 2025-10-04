@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { EmbedCustomization } from "@/components/EmbedCustomizer";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 
@@ -30,6 +31,7 @@ export default function EmbedChat() {
   const [botData, setBotData] = useState<any>(null);
   const [currentPausedFor, setCurrentPausedFor] = useState<any>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [flowFinished, setFlowFinished] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { isListening, toggleListening } = useSpeechToText({
@@ -137,11 +139,24 @@ export default function EmbedChat() {
           });
         });
 
-        // Set current paused state
-        if (data.awaitingInput) {
-          setCurrentPausedFor(data.awaitingInput);
-        } else {
+        // Check if flow finished immediately
+        if (data.finished) {
+          setFlowFinished(true);
           setCurrentPausedFor(null);
+          
+          botMessages.push({
+            id: Date.now().toString() + Math.random(),
+            from: "bot",
+            text: "Feel free to ask me any questions!",
+            timestamp: new Date(),
+          });
+        } else {
+          // Set current paused state only if flow not finished
+          if (data.awaitingInput) {
+            setCurrentPausedFor(data.awaitingInput);
+          } else {
+            setCurrentPausedFor(null);
+          }
         }
 
         setMessages(botMessages);
@@ -171,6 +186,68 @@ export default function EmbedChat() {
     }
   }, [customization?.welcomeMessage, isPreview]);
 
+  // Handle Q&A mode after flow ends
+  const handleAskQuestion = async () => {
+    const question = input.trim();
+    
+    if (!question || isLoading) return;
+
+    // Create user message for display
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      from: "user",
+      text: question,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question,
+            botId: botData._id,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to get answer");
+      }
+
+      // Add bot response
+      const botMessage: Message = {
+        id: Date.now().toString() + Math.random(),
+        from: "bot",
+        text: data.result.answer || "I couldn't find an answer to that question.",
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (err: any) {
+      console.error(err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString() + Math.random(),
+          from: "bot",
+          text: "I'm having trouble answering that. Please try again.",
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSendMessage = async (overrideInput?: string, isBranchOption?: boolean) => {
     const messageToSend = overrideInput || input.trim();
     
@@ -198,6 +275,12 @@ export default function EmbedChat() {
         setMessages((prev) => [...prev, botMessage]);
         setIsLoading(false);
       }, 1000);
+      return;
+    }
+
+    // If flow is finished, use Q&A mode instead
+    if (flowFinished) {
+      handleAskQuestion();
       return;
     }
 
@@ -276,13 +359,15 @@ export default function EmbedChat() {
 
       // Check if flow finished
       if (data.finished) {
+        setFlowFinished(true);
+        setCurrentPausedFor(null);
+        
         botMessages.push({
           id: Date.now().toString() + Math.random(),
           from: "bot",
-          text: "Thank you! This conversation has ended.",
+          text: "Thank you! The conversation flow has ended. Feel free to ask me any questions!",
           timestamp: new Date(),
         });
-        setCurrentPausedFor(null);
       }
 
       // Append new bot messages to existing messages
@@ -321,8 +406,9 @@ export default function EmbedChat() {
   const handleVoiceInput = () => botData?.voiceEnabled && toggleListening();
 
   const isAwaitingInput = currentPausedFor !== null;
-  const canSendText = !isPreview && (!isAwaitingInput || (isAwaitingInput && 
-    currentPausedFor?.type !== "branch"));
+  const canSendText = isPreview || flowFinished || (isAwaitingInput && 
+    currentPausedFor?.type !== "branch" && 
+    !currentPausedFor?.showConfirmationButtons);
 
   if (!botId) {
     return (
@@ -376,7 +462,7 @@ export default function EmbedChat() {
             style={{ color: customization?.primaryColor || undefined }}
           />
         </div>
-        <div>
+        <div className="flex-1">
           <h3 className="font-semibold text-sm transition-all duration-200">
             {customization?.headerTitle || "Chat Assistant"}
           </h3>
@@ -384,6 +470,18 @@ export default function EmbedChat() {
             {customization?.headerSubtitle || "Online"}
           </p>
         </div>
+        {flowFinished && (
+          <Badge 
+            variant="secondary" 
+            className="text-xs"
+            style={{
+              backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
+              color: customization?.primaryColor || undefined
+            }}
+          >
+            Q&A Mode
+          </Badge>
+        )}
       </div>
 
       {/* Messages Area */}
@@ -426,7 +524,7 @@ export default function EmbedChat() {
                   </p>
                 </div>
 
-                {msg.showConfirmationButtons && isAwaitingInput && msg.from === "bot" && (
+                {msg.showConfirmationButtons && isAwaitingInput && msg.from === "bot" && !flowFinished && (
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -445,7 +543,7 @@ export default function EmbedChat() {
                   </div>
                 )}
 
-                {msg.showBranchOptions && isAwaitingInput && msg.from === "bot" && msg.branchOptions && (
+                {msg.showBranchOptions && isAwaitingInput && msg.from === "bot" && msg.branchOptions && !flowFinished && (
                   <div className="flex flex-wrap gap-2">
                     {msg.branchOptions.map((option, index) => (
                       <Button
@@ -540,7 +638,11 @@ export default function EmbedChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder={customization?.placeholder || "Type your message..."}
+              placeholder={
+                flowFinished 
+                  ? "Ask me anything..." 
+                  : (customization?.placeholder || "Type your message...")
+              }
               disabled={isLoading || !canSendText}
               className={`flex-1 transition-all duration-200 ${botData?.voiceEnabled ? 'pr-10' : ''}`}
               style={{
