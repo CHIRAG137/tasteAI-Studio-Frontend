@@ -40,6 +40,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPausedFor, setCurrentPausedFor] = useState<any>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [flowFinished, setFlowFinished] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -90,11 +91,24 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           });
         });
 
-        // Set current paused state
-        if (data.awaitingInput) {
-          setCurrentPausedFor(data.awaitingInput);
-        } else {
+        // Check if flow finished immediately
+        if (data.finished) {
+          setFlowFinished(true);
           setCurrentPausedFor(null);
+          
+          botMessages.push({
+            id: Date.now().toString() + Math.random(),
+            content: "Feel free to ask me any questions!",
+            sender: "bot",
+            timestamp: new Date(),
+          });
+        } else {
+          // Set current paused state only if flow not finished
+          if (data.awaitingInput) {
+            setCurrentPausedFor(data.awaitingInput);
+          } else {
+            setCurrentPausedFor(null);
+          }
         }
 
         setMessages(botMessages);
@@ -110,7 +124,80 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     initFlow();
   }, [bot.id]);
 
+  // Handle Q&A mode after flow ends
+  const handleAskQuestion = async () => {
+    const question = inputMessage.trim();
+    
+    if (!question || isLoading) return;
+
+    // Create user message for display
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: question,
+      sender: "user",
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputMessage("");
+    setIsLoading(true);
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question,
+            botId: bot.id,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to get answer");
+      }
+
+      // Add bot response
+      const botMessage: Message = {
+        id: Date.now().toString() + Math.random(),
+        content: data.result.answer || "I couldn't find an answer to that question.",
+        sender: "bot",
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: err.message || "Something went wrong",
+        variant: "destructive"
+      });
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString() + Math.random(),
+          content: "I'm having trouble answering that. Please try again.",
+          sender: "bot",
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSendMessage = async (overrideInput?: string, isBranchOption?: boolean) => {
+    // If flow is finished, use Q&A mode instead
+    if (flowFinished) {
+      handleAskQuestion();
+      return;
+    }
+
     const messageToSend = overrideInput || inputMessage.trim();
     
     if (!messageToSend || isLoading || !sessionId) return;
@@ -192,13 +279,15 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
       // Check if flow finished
       if (data.finished) {
+        setFlowFinished(true);
+        setCurrentPausedFor(null);
+        
         botMessages.push({
           id: Date.now().toString() + Math.random(),
-          content: "Thank you! This conversation has ended.",
+          content: "Thank you! The conversation flow has ended. Feel free to ask me any questions!",
           sender: "bot",
           timestamp: new Date(),
         });
-        setCurrentPausedFor(null);
       }
 
       // Append new bot messages to existing messages
@@ -242,9 +331,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const handleVoiceInput = () => bot.voiceEnabled && toggleListening();
 
   const isAwaitingInput = currentPausedFor !== null;
-  const canSendText = isAwaitingInput && 
+  const canSendText = flowFinished || (isAwaitingInput && 
     currentPausedFor?.type !== "branch" && 
-    !currentPausedFor?.showConfirmationButtons;
+    !currentPausedFor?.showConfirmationButtons);
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -260,6 +349,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="secondary" className="text-xs bg-white/20 text-white hover:bg-white/30">{bot.primaryPurpose}</Badge>
                   <Badge variant="secondary" className="text-xs bg-white/20 text-white hover:bg-white/30">{bot.conversationalTone}</Badge>
+                  {flowFinished && <Badge variant="secondary" className="text-xs bg-green-500/80 text-white">Q&A Mode</Badge>}
                 </div>
               </div>
             </div>
@@ -283,14 +373,14 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       <span className="text-xs opacity-70 mt-1 block">{msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                     </div>
 
-                    {msg.showConfirmationButtons && isAwaitingInput && msg.sender === "bot" && (
+                    {msg.showConfirmationButtons && isAwaitingInput && msg.sender === "bot" && !flowFinished && (
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => handleConfirmationClick("yes")}>Yes</Button>
                         <Button size="sm" variant="outline" onClick={() => handleConfirmationClick("no")}>No</Button>
                       </div>
                     )}
 
-                    {msg.showBranchOptions && isAwaitingInput && msg.sender === "bot" && msg.branchOptions && (
+                    {msg.showBranchOptions && isAwaitingInput && msg.sender === "bot" && msg.branchOptions && !flowFinished && (
                       <div className="flex flex-wrap gap-2">
                         {msg.branchOptions.map((opt, idx) => (
                           <Button key={idx} size="sm" variant="outline" onClick={() => handleBranchOptionClick(opt)}>{opt}</Button>
@@ -333,7 +423,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   value={inputMessage} 
                   onChange={e => setInputMessage(e.target.value)} 
                   onKeyPress={handleKeyPress} 
-                  placeholder={canSendText ? "Type your message..." : "Select an option above..."} 
+                  placeholder={flowFinished ? "Ask me anything..." : (canSendText ? "Type your message..." : "Select an option above...")} 
                   disabled={isLoading || !canSendText} 
                   className="pr-12" 
                 />
