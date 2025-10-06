@@ -4,8 +4,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar, MessageSquare, Clock, User, Search } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X } from "lucide-react";
 import { useState } from "react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface Session {
   id: string;
@@ -79,6 +83,7 @@ const mockSessions: Session[] = [
 export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModalProps) => {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [searchFilter, setSearchFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
 
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -113,7 +118,19 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
     const matchesMessages = session.messages.some((msg) =>
       msg.content.toLowerCase().includes(searchLower)
     );
-    return matchesUserId || matchesMessages;
+    const matchesSearch = matchesUserId || matchesMessages;
+
+    if (dateFilter) {
+      const sessionDate = new Date(session.timestamp);
+      const filterDate = new Date(dateFilter);
+      const matchesDate = 
+        sessionDate.getFullYear() === filterDate.getFullYear() &&
+        sessionDate.getMonth() === filterDate.getMonth() &&
+        sessionDate.getDate() === filterDate.getDate();
+      return matchesSearch && matchesDate;
+    }
+
+    return matchesSearch;
   });
 
   return (
@@ -129,7 +146,7 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
         <div className="flex h-[600px]">
           {/* Sessions List */}
           <div className="w-1/3 border-r">
-            <div className="p-4 pb-0">
+            <div className="p-4 pb-2 space-y-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -139,6 +156,39 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
                   className="pl-9"
                 />
               </div>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateFilter && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFilter ? format(dateFilter, "PPP") : "Filter by date"}
+                    {dateFilter && (
+                      <X 
+                        className="ml-auto h-4 w-4 hover:text-destructive" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDateFilter(undefined);
+                        }}
+                      />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateFilter}
+                    onSelect={setDateFilter}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <ScrollArea className="h-full">
               <div className="p-4 space-y-3">
