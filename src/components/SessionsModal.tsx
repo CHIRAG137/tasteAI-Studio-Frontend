@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MessageSquare, Clock, User } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Calendar, MessageSquare, Clock, User, Search } from "lucide-react";
 import { useState } from "react";
 
 interface Session {
@@ -77,6 +78,7 @@ const mockSessions: Session[] = [
 
 export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModalProps) => {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [searchFilter, setSearchFilter] = useState("");
 
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -105,6 +107,15 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
     });
   };
 
+  const filteredSessions = mockSessions.filter((session) => {
+    const searchLower = searchFilter.toLowerCase();
+    const matchesUserId = session.userId.toLowerCase().includes(searchLower);
+    const matchesMessages = session.messages.some((msg) =>
+      msg.content.toLowerCase().includes(searchLower)
+    );
+    return matchesUserId || matchesMessages;
+  });
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[80vh] p-0">
@@ -118,9 +129,20 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
         <div className="flex h-[600px]">
           {/* Sessions List */}
           <div className="w-1/3 border-r">
+            <div className="p-4 pb-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by user or message..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
             <ScrollArea className="h-full">
               <div className="p-4 space-y-3">
-                {mockSessions.map((session) => (
+                {filteredSessions.map((session) => (
                   <Card
                     key={session.id}
                     className={`cursor-pointer transition-all hover:shadow-md ${
@@ -156,6 +178,13 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
                     </CardContent>
                   </Card>
                 ))}
+
+                {filteredSessions.length === 0 && mockSessions.length > 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>No sessions match your search</p>
+                  </div>
+                )}
 
                 {mockSessions.length === 0 && (
                   <div className="text-center py-12 text-muted-foreground">
