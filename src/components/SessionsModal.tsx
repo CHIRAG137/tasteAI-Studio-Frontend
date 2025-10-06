@@ -298,10 +298,6 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
                       </div>
                     </CardHeader>
                     <CardContent className="p-4 pt-0 space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Calendar className="w-3 h-3" />
-                        {formatDate(session.timestamp)}
-                      </div>
                       {session.duration && (
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Clock className="w-3 h-3" />
