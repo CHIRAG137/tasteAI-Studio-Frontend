@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X } from "lucide-react";
+import { Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X, Filter } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Session {
   id: string;
@@ -83,7 +84,10 @@ const mockSessions: Session[] = [
 export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModalProps) => {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [searchFilter, setSearchFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [minMessages, setMinMessages] = useState<number | undefined>(undefined);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -113,25 +117,45 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
   };
 
   const filteredSessions = mockSessions.filter((session) => {
-    const searchLower = searchFilter.toLowerCase();
-    const matchesUserId = session.userId.toLowerCase().includes(searchLower);
-    const matchesMessages = session.messages.some((msg) =>
-      msg.content.toLowerCase().includes(searchLower)
-    );
-    const matchesSearch = matchesUserId || matchesMessages;
-
-    if (dateFilter) {
-      const sessionDate = new Date(session.timestamp);
-      const filterDate = new Date(dateFilter);
-      const matchesDate = 
-        sessionDate.getFullYear() === filterDate.getFullYear() &&
-        sessionDate.getMonth() === filterDate.getMonth() &&
-        sessionDate.getDate() === filterDate.getDate();
-      return matchesSearch && matchesDate;
+    // Search filter
+    if (searchFilter) {
+      const searchLower = searchFilter.toLowerCase();
+      const matchesUserId = session.userId.toLowerCase().includes(searchLower);
+      const matchesMessages = session.messages.some((msg) =>
+        msg.content.toLowerCase().includes(searchLower)
+      );
+      if (!matchesUserId && !matchesMessages) return false;
     }
 
-    return matchesSearch;
+    // Date range filter
+    const sessionDate = new Date(session.timestamp);
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      if (sessionDate < start) return false;
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      if (sessionDate > end) return false;
+    }
+
+    // Message count filter
+    if (minMessages && session.messages.length < minMessages) {
+      return false;
+    }
+
+    return true;
   });
+
+  const clearAllFilters = () => {
+    setSearchFilter("");
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setMinMessages(undefined);
+  };
+
+  const hasActiveFilters = searchFilter || startDate || endDate || minMessages;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -145,8 +169,8 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
 
         <div className="flex h-[600px]">
           {/* Sessions List */}
-          <div className="w-1/3 border-r">
-            <div className="p-4 pb-2 space-y-2">
+          <div className="w-1/3 border-r flex flex-col">
+            <div className="p-4 pb-2 space-y-2 border-b">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -157,38 +181,100 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
                 />
               </div>
               
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateFilter && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateFilter ? format(dateFilter, "PPP") : "Filter by date"}
-                    {dateFilter && (
-                      <X 
-                        className="ml-auto h-4 w-4 hover:text-destructive" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDateFilter(undefined);
-                        }}
-                      />
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateFilter}
-                    onSelect={setDateFilter}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
+              <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <div className="flex items-center gap-2">
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Filter className="w-4 h-4 mr-2" />
+                      Advanced Filters
+                      {hasActiveFilters && (
+                        <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                          {[searchFilter, startDate, endDate, minMessages].filter(Boolean).length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                  {hasActiveFilters && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={clearAllFilters}
+                      className="px-2"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                
+                <CollapsibleContent className="space-y-3 mt-3">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">Date Range</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                              "justify-start text-left font-normal",
+                              !startDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-1 h-3 w-3" />
+                            {startDate ? format(startDate, "MMM dd") : "Start"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={startDate}
+                            onSelect={setStartDate}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                              "justify-start text-left font-normal",
+                              !endDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-1 h-3 w-3" />
+                            {endDate ? format(endDate, "MMM dd") : "End"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={endDate}
+                            onSelect={setEndDate}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">Min Messages</label>
+                    <Input
+                      type="number"
+                      placeholder="e.g., 5"
+                      value={minMessages ?? ""}
+                      onChange={(e) => setMinMessages(e.target.value ? parseInt(e.target.value) : undefined)}
+                      min="1"
+                      className="h-8"
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
             <ScrollArea className="h-full">
               <div className="p-4 space-y-3">
