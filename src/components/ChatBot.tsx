@@ -415,7 +415,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       </div>
                     )}
 
-                    {msg.showBranchOptions && msg.sender === "bot" && msg.branchOptions && !flowFinished && (
+                    {msg.showBranchOptions && msg.sender === "bot" && msg.branchOptions && (
                       <div className="flex flex-wrap gap-2">
                         {msg.branchOptions.map((opt, idx) => (
                           <Button 
@@ -423,7 +423,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                             size="sm" 
                             variant="outline" 
                             onClick={() => handleBranchOptionClick(opt, msg.id)}
-                            disabled={!!msg.selectedBranch}
+                            disabled={!!!msg.selectedBranch || flowFinished}
                             className={msg.selectedBranch === opt ? "bg-blue-100 border-blue-500" : ""}
                           >
                             {opt}
