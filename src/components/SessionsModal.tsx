@@ -58,11 +58,23 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
             userId: s.variables?.username || "Unknown User",
             timestamp: s.createdAt,
             duration: s.duration,
-            messages: s.history.map((h: any) => ({
-              role: h.fromUser ? "user" : "assistant",
-              content: typeof h.content === "object" ? JSON.stringify(h.content) : h.content,
-              timestamp: h.timestamp,
-            })),
+            messages: s.history.map((h: any) => {
+              let content = "";
+
+              if (h.type === "branch_select" && h.content?.selected) {
+                content = `✅ Selected Branch: ${h.content.selected}`;
+              } else if (typeof h.content === "object") {
+                content = JSON.stringify(h.content);
+              } else {
+                content = h.content;
+              }
+
+              return {
+                role: h.fromUser ? "user" : "assistant",
+                content,
+                timestamp: h.timestamp,
+              };
+            }),
           }));
           setSessions(mappedSessions);
         }
