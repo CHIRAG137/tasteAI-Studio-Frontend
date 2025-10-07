@@ -109,7 +109,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         if (data.finished) {
           setFlowFinished(true);
           setCurrentPausedFor(null);
-          
+
           botMessages.push({
             id: Date.now().toString() + Math.random(),
             content: "Feel free to ask me any questions!",
@@ -141,7 +141,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   // Handle Q&A mode after flow ends
   const handleAskQuestion = async () => {
     const question = inputMessage.trim();
-    
+
     if (!question || isLoading) return;
 
     // Create user message for display
@@ -213,7 +213,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     }
 
     const messageToSend = overrideInput || inputMessage.trim();
-    
+
     if (!messageToSend || isLoading || !sessionId) return;
 
     // Clear current paused state immediately to hide buttons
@@ -234,7 +234,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     try {
       // Prepare request body based on the type of input
       let requestBody: any = {};
-      
+
       if (currentPausedFor?.type === "branch" || isBranchOption) {
         // For branch nodes, send optionIndexOrLabel
         requestBody.optionIndexOrLabel = messageToSend;
@@ -308,7 +308,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       if (data.finished) {
         setFlowFinished(true);
         setCurrentPausedFor(null);
-        
+
         botMessages.push({
           id: Date.now().toString() + Math.random(),
           content: "Thank you! The conversation flow has ended. Feel free to ask me any questions!",
@@ -354,18 +354,18 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     handleSendMessage(option, true);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => { 
-    if (e.key === "Enter" && !e.shiftKey) { 
-      e.preventDefault(); 
-      handleSendMessage(); 
-    } 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
-  
+
   const handleVoiceInput = () => bot.voiceEnabled && toggleListening();
 
   const isAwaitingInput = currentPausedFor !== null;
-  const canSendText = flowFinished || (isAwaitingInput && 
-    currentPausedFor?.type !== "branch" && 
+  const canSendText = flowFinished || (isAwaitingInput &&
+    currentPausedFor?.type !== "branch" &&
     !currentPausedFor?.showConfirmationButtons);
 
   return (
@@ -418,13 +418,13 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     {msg.showBranchOptions && msg.sender === "bot" && msg.branchOptions && (
                       <div className="flex flex-wrap gap-2">
                         {msg.branchOptions.map((opt, idx) => (
-                          <Button 
-                            key={idx} 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            key={idx}
+                            size="sm"
+                            variant="outline"
                             onClick={() => handleBranchOptionClick(opt, msg.id)}
-                            disabled={!!msg.selectedBranch || flowFinished}
-                            className={msg.selectedBranch === opt ? "bg-blue-100 border-blue-500" : ""}
+                            disabled={!!msg.selectedBranch}
+                            className={msg.selectedBranch === opt ? "bg-blue-500 text-white border-blue-600" : ""}
                           >
                             {opt}
                           </Button>
@@ -462,31 +462,31 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           <div className="border-t p-4 bg-background">
             <div className="flex gap-2">
               <div className="flex-1 relative">
-                <Input 
-                  ref={inputRef} 
-                  value={inputMessage} 
-                  onChange={e => setInputMessage(e.target.value)} 
-                  onKeyPress={handleKeyPress} 
-                  placeholder={flowFinished ? "Ask me anything..." : (canSendText ? "Type your message..." : "Select an option above...")} 
-                  disabled={isLoading || !canSendText} 
-                  className="pr-12" 
+                <Input
+                  ref={inputRef}
+                  value={inputMessage}
+                  onChange={e => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder={flowFinished ? "Ask me anything..." : (canSendText ? "Type your message..." : "Select an option above...")}
+                  disabled={isLoading || !canSendText}
+                  className="pr-12"
                 />
                 {bot.voiceEnabled && canSendText && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={handleVoiceInput} 
-                    className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${isListening ? "text-red-500 animate-pulse" : "text-gray-500 hover:text-blue-600"}`} 
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleVoiceInput}
+                    className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${isListening ? "text-red-500 animate-pulse" : "text-gray-500 hover:text-blue-600"}`}
                     title={isListening ? "Stop recording" : "Start voice input"}
                   >
                     {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                   </Button>
                 )}
               </div>
-              <Button 
-                onClick={() => handleSendMessage()} 
-                disabled={!inputMessage.trim() || isLoading || !canSendText} 
-                size="icon" 
+              <Button
+                onClick={() => handleSendMessage()}
+                disabled={!inputMessage.trim() || isLoading || !canSendText}
+                size="icon"
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
               >
                 <Send className="h-4 w-4" />
