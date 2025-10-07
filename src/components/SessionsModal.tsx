@@ -75,6 +75,7 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
                 timestamp: h.timestamp,
               };
             }),
+
           }));
           setSessions(mappedSessions);
         }
@@ -95,11 +96,23 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
           id: s.sessionId,
           userId: s.history.find(h => h.fromUser)?.content || "Unknown User",
           timestamp: s.createdAt,
-          messages: s.history.map((h: any) => ({
-            role: h.fromUser ? "user" : "assistant",
-            content: typeof h.content === "object" ? JSON.stringify(h.content) : h.content,
-            timestamp: h.timestamp,
-          })),
+          messages: s.history.map((h: any) => {
+            let content = "";
+
+            if (h.type === "branch_select" && h.content?.selected) {
+              content = `Selected Branch: ${h.content.selected}`;
+            } else if (typeof h.content === "object") {
+              content = JSON.stringify(h.content);
+            } else {
+              content = h.content;
+            }
+
+            return {
+              role: h.fromUser ? "user" : "assistant",
+              content,
+              timestamp: h.timestamp,
+            };
+          }),
         };
         setSelectedSession(mappedSession);
       }
