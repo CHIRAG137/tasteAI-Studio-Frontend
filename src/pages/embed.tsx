@@ -157,7 +157,7 @@ export default function EmbedChat() {
         if (data.finished) {
           setFlowFinished(true);
           setCurrentPausedFor(null);
-          
+
           botMessages.push({
             id: Date.now().toString() + Math.random(),
             from: "bot",
@@ -184,7 +184,7 @@ export default function EmbedChat() {
         }]);
       }
     };
-    
+
     initFlow();
   }, [botData, isPreview]);
 
@@ -203,7 +203,7 @@ export default function EmbedChat() {
   // Handle Q&A mode after flow ends
   const handleAskQuestion = async () => {
     const question = input.trim();
-    
+
     if (!question || isLoading) return;
 
     // Create user message for display
@@ -264,7 +264,7 @@ export default function EmbedChat() {
 
   const handleSendMessage = async (overrideInput?: string, isBranchOption?: boolean) => {
     const messageToSend = overrideInput || input.trim();
-    
+
     if (!messageToSend || isLoading) return;
 
     // In preview mode, just show a demo response
@@ -318,7 +318,7 @@ export default function EmbedChat() {
     try {
       // Prepare request body based on the type of input
       let requestBody: any = {};
-      
+
       if (currentPausedFor?.type === "branch" || isBranchOption) {
         requestBody.optionIndexOrLabel = messageToSend;
       } else {
@@ -388,7 +388,7 @@ export default function EmbedChat() {
       if (data.finished) {
         setFlowFinished(true);
         setCurrentPausedFor(null);
-        
+
         botMessages.push({
           id: Date.now().toString() + Math.random(),
           from: "bot",
@@ -439,8 +439,8 @@ export default function EmbedChat() {
   const handleVoiceInput = () => botData?.voiceEnabled && toggleListening();
 
   const isAwaitingInput = currentPausedFor !== null;
-  const canSendText = isPreview || flowFinished || (isAwaitingInput && 
-    currentPausedFor?.type !== "branch" && 
+  const canSendText = isPreview || flowFinished || (isAwaitingInput &&
+    currentPausedFor?.type !== "branch" &&
     !currentPausedFor?.showConfirmationButtons);
 
   if (!botId) {
@@ -467,7 +467,7 @@ export default function EmbedChat() {
   } as React.CSSProperties : {};
 
   return (
-    <div 
+    <div
       className="flex flex-col h-full border border-border/20 transition-all duration-200"
       style={{
         backgroundColor: customization?.backgroundColor || undefined,
@@ -476,21 +476,21 @@ export default function EmbedChat() {
       }}
     >
       {/* Chat Header */}
-      <div 
+      <div
         className="flex items-center gap-3 p-4 border-b transition-all duration-200"
         style={{
           backgroundColor: customization?.headerBackground || undefined,
           borderRadius: customization ? `${customization.borderRadius}px ${customization.borderRadius}px 0 0` : undefined
         }}
       >
-        <div 
+        <div
           className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200"
           style={{
             backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
             borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
           }}
         >
-          <Bot 
+          <Bot
             className="h-4 w-4 transition-colors duration-200"
             style={{ color: customization?.primaryColor || undefined }}
           />
@@ -504,8 +504,8 @@ export default function EmbedChat() {
           </p>
         </div>
         {flowFinished && (
-          <Badge 
-            variant="secondary" 
+          <Badge
+            variant="secondary"
             className="text-xs"
             style={{
               backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
@@ -523,14 +523,14 @@ export default function EmbedChat() {
           {messages.map((msg) => (
             <div key={msg.id} className={`flex gap-3 ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
               {msg.from === "bot" && (
-                <div 
+                <div
                   className="flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200"
                   style={{
                     backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
                     borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
                   }}
                 >
-                  <Bot 
+                  <Bot
                     className="h-3 w-3 transition-colors duration-200"
                     style={{ color: customization?.primaryColor || undefined }}
                   />
@@ -539,14 +539,14 @@ export default function EmbedChat() {
               <div className="flex flex-col gap-2">
                 {msg.text && (
                   <div className={`max-w-[80%] ${msg.from === "user" ? "ml-auto" : ""}`}>
-                    <div 
+                    <div
                       className="p-3 transition-all duration-200"
                       style={{
-                        backgroundColor: msg.from === "user" 
+                        backgroundColor: msg.from === "user"
                           ? customization?.userMessageColor || undefined
                           : customization?.botMessageColor || undefined,
-                        color: msg.from === "user" && customization?.userMessageColor 
-                          ? '#ffffff' 
+                        color: msg.from === "user" && customization?.userMessageColor
+                          ? '#ffffff'
                           : customization?.textColor || undefined,
                         borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : '8px'
                       }}
@@ -578,22 +578,22 @@ export default function EmbedChat() {
                   </div>
                 )}
 
-                {msg.showBranchOptions && msg.from === "bot" && msg.branchOptions && !flowFinished && (
+                {msg.showBranchOptions && msg.from === "bot" && msg.branchOptions && (
                   <div className="flex flex-wrap gap-2">
-                    {msg.branchOptions.map((option, index) => (
+                    {msg.branchOptions.map((opt, idx) => (
                       <Button
-                        key={index}
+                        key={idx}
                         size="sm"
                         variant="outline"
-                        onClick={() => handleBranchOptionClick(option, msg.id)}
+                        onClick={() => handleBranchOptionClick(opt, msg.id)}
                         disabled={!!msg.selectedBranch}
                         style={{
-                          borderColor: msg.selectedBranch === option ? customization?.primaryColor || undefined : undefined,
-                          backgroundColor: msg.selectedBranch === option ? `${customization?.primaryColor}20` || undefined : undefined,
+                          borderColor: msg.selectedBranch === opt ? customization?.primaryColor || undefined : undefined,
+                          backgroundColor: msg.selectedBranch === opt ? `${customization?.primaryColor}20` || undefined : undefined,
                           color: customization?.primaryColor || undefined,
                         }}
                       >
-                        {option}
+                        {opt}
                       </Button>
                     ))}
                   </div>
@@ -601,14 +601,14 @@ export default function EmbedChat() {
               </div>
 
               {msg.from === "user" && (
-                <div 
+                <div
                   className="flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200"
                   style={{
                     backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
                     borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
                   }}
                 >
-                  <User 
+                  <User
                     className="h-3 w-3 transition-colors duration-200"
                     style={{ color: customization?.primaryColor || undefined }}
                   />
@@ -616,22 +616,22 @@ export default function EmbedChat() {
               )}
             </div>
           ))}
-          
+
           {isLoading && (
             <div className="flex gap-3 justify-start">
-              <div 
+              <div
                 className="flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200"
                 style={{
                   backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
                   borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
                 }}
               >
-                <Bot 
+                <Bot
                   className="h-3 w-3 transition-colors duration-200"
                   style={{ color: customization?.primaryColor || undefined }}
                 />
               </div>
-              <div 
+              <div
                 className="p-3 transition-all duration-200"
                 style={{
                   backgroundColor: customization?.botMessageColor || undefined,
@@ -639,22 +639,22 @@ export default function EmbedChat() {
                 }}
               >
                 <div className="flex space-x-1">
-                  <div 
+                  <div
                     className="w-2 h-2 opacity-50 rounded-full animate-bounce"
                     style={{ backgroundColor: customization?.textColor || undefined }}
                   ></div>
-                  <div 
-                    className="w-2 h-2 opacity-50 rounded-full animate-bounce" 
-                    style={{ 
+                  <div
+                    className="w-2 h-2 opacity-50 rounded-full animate-bounce"
+                    style={{
                       animationDelay: "0.1s",
-                      backgroundColor: customization?.textColor || undefined 
+                      backgroundColor: customization?.textColor || undefined
                     }}
                   ></div>
-                  <div 
-                    className="w-2 h-2 opacity-50 rounded-full animate-bounce" 
-                    style={{ 
+                  <div
+                    className="w-2 h-2 opacity-50 rounded-full animate-bounce"
+                    style={{
                       animationDelay: "0.2s",
-                      backgroundColor: customization?.textColor || undefined 
+                      backgroundColor: customization?.textColor || undefined
                     }}
                   ></div>
                 </div>
@@ -666,7 +666,7 @@ export default function EmbedChat() {
       </ScrollArea>
 
       {/* Input Area */}
-      <div 
+      <div
         className="p-4 border-t transition-all duration-200"
         style={{
           backgroundColor: customization?.headerBackground || undefined,
@@ -680,8 +680,8 @@ export default function EmbedChat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder={
-                flowFinished 
-                  ? "Ask me anything..." 
+                flowFinished
+                  ? "Ask me anything..."
                   : (customization?.placeholder || "Type your message...")
               }
               disabled={isLoading || !canSendText}
@@ -697,17 +697,16 @@ export default function EmbedChat() {
                 variant="ghost"
                 size="icon"
                 onClick={handleVoiceInput}
-                className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${
-                  isListening ? "text-red-500 animate-pulse" : "text-muted-foreground hover:text-primary"
-                }`}
+                className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${isListening ? "text-red-500 animate-pulse" : "text-muted-foreground hover:text-primary"
+                  }`}
                 title={isListening ? "Stop recording" : "Start voice input"}
               >
                 {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               </Button>
             )}
           </div>
-          <Button 
-            onClick={() => handleSendMessage()} 
+          <Button
+            onClick={() => handleSendMessage()}
             disabled={!input.trim() || isLoading || !canSendText}
             size="icon"
             className="shrink-0 transition-all duration-200"
