@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalIcon, MessageSquare, Clock, User, Search, X, Filter } from "lucide-react";
+import { Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X, Filter, Sparkles, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getAuthHeaders } from "@/utils/auth";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Message {
   role: "user" | "assistant";
@@ -43,6 +44,31 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [minMessages, setMinMessages] = useState<number | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  
+  // Summarizer states
+  const [summary, setSummary] = useState<string>("");
+  const [summarizing, setSummarizing] = useState(false);
+  const [summarizerAvailable, setSummarizerAvailable] = useState<boolean | null>(null);
+  const [summarizerError, setSummarizerError] = useState<string>("");
+  const [showSummary, setShowSummary] = useState(false);
+
+  // Check summarizer availability on mount
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if ('Summarizer' in self) {
+        try {
+          const availability = await (self as any).Summarizer.availability();
+          setSummarizerAvailable(availability !== 'unavailable');
+        } catch (error) {
+          console.error('Error checking summarizer availability:', error);
+          setSummarizerAvailable(false);
+        }
+      } else {
+        setSummarizerAvailable(false);
+      }
+    };
+    checkAvailability();
+  }, []);
 
   // Fetch all sessions
   useEffect(() => {
@@ -87,6 +113,10 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
   // Fetch single session
   const selectSession = async (sessionId: string) => {
     setLoading(true);
+    setSummary("");
+    setShowSummary(false);
+    setSummarizerError("");
+    
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}/history/${sessionId}`, { headers: getAuthHeaders(), });
       const data = await res.json();
@@ -120,6 +150,63 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
       console.error("Error fetching session:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Summarize the selected session
+  const summarizeSession = async () => {
+    if (!selectedSession || selectedSession.messages.length === 0) return;
+
+    setSummarizing(true);
+    setSummarizerError("");
+    setSummary("");
+
+    try {
+      // Check for user activation
+      if (!navigator.userActivation.isActive) {
+        throw new Error("User activation required. Please click the button again.");
+      }
+
+      // Prepare the conversation text
+      const conversationText = selectedSession.messages
+        .map(msg => `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`)
+        .join("\n\n");
+
+      // Create summarizer with options
+      const options = {
+        sharedContext: `This is a chat conversation between a user and a chatbot named ${botName}`,
+        type: 'key-points',
+        format: 'markdown',
+        length: 'medium',
+        monitor(m: any) {
+          m.addEventListener('downloadprogress', (e: any) => {
+            console.log(`Downloaded ${e.loaded * 100}%`);
+          });
+        }
+      };
+
+      const summarizer = await (self as any).Summarizer.create(options);
+
+      // Use streaming summarization for real-time updates
+      const stream = summarizer.summarizeStreaming(conversationText, {
+        context: 'Provide a concise summary of the key points discussed in this conversation.',
+      });
+
+      let fullSummary = "";
+      for await (const chunk of stream) {
+        fullSummary = chunk;
+        setSummary(chunk);
+      }
+
+      setShowSummary(true);
+      
+      // Clean up
+      summarizer.destroy();
+    } catch (error: any) {
+      console.error('Error summarizing session:', error);
+      setSummarizerError(error.message || 'Failed to generate summary. Please try again.');
+    } finally {
+      setSummarizing(false);
     }
   };
 
@@ -224,7 +311,7 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
                               !startDate && "text-muted-foreground"
                             )}
                           >
-                            <CalIcon className="mr-1 h-3 w-3" />
+                            <CalendarIcon className="mr-1 h-3 w-3" />
                             {startDate ? format(startDate, "MMM dd") : "Start"}
                           </Button>
                         </PopoverTrigger>
@@ -243,7 +330,7 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
                               !endDate && "text-muted-foreground"
                             )}
                           >
-                            <CalIcon className="mr-1 h-3 w-3" />
+                            <CalendarIcon className="mr-1 h-3 w-3" />
                             {endDate ? format(endDate, "MMM dd") : "End"}
                           </Button>
                         </PopoverTrigger>
@@ -323,7 +410,7 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
             {selectedSession ? (
               <>
                 <div className="p-6 pb-4 border-b shrink-0">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-3">
                     <div>
                       <h3 className="font-semibold text-lg">Session Replay</h3>
                       <p className="text-sm text-muted-foreground">
@@ -337,6 +424,71 @@ export const SessionsModal = ({ isOpen, onClose, botId, botName }: SessionsModal
                       </Badge>
                     )}
                   </div>
+
+                  {/* Summarizer Button */}
+                  {summarizerAvailable && (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={summarizeSession}
+                        disabled={summarizing || selectedSession.messages.length === 0}
+                        size="sm"
+                        variant="secondary"
+                        className="w-full"
+                      >
+                        {summarizing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Generating Summary...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Summarize Conversation
+                          </>
+                        )}
+                      </Button>
+                      {showSummary && (
+                        <Button
+                          onClick={() => setShowSummary(!showSummary)}
+                          size="sm"
+                          variant="outline"
+                        >
+                          {showSummary ? "Hide" : "Show"}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {summarizerAvailable === false && (
+                    <Alert>
+                      <AlertDescription className="text-xs">
+                        AI summarization is not available in your browser. Please use Chrome 138+ on supported platforms.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {summarizerError && (
+                    <Alert variant="destructive" className="mt-2">
+                      <AlertDescription className="text-xs">
+                        {summarizerError}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Summary Display */}
+                  {showSummary && summary && (
+                    <div className="mt-3 p-4 bg-muted rounded-lg border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        <h4 className="font-semibold text-sm">AI Summary</h4>
+                      </div>
+                      <div className="text-sm prose prose-sm max-w-none">
+                        {summary.split('\n').map((line, i) => (
+                          <p key={i} className="mb-1">{line}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <ScrollArea className="flex-1">
