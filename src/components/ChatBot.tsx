@@ -80,13 +80,26 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             return; // Skip adding to messages
           }
 
+          // For branch nodes with awaitingInput, only show buttons without text
+          if (msg.type === "branch" && msg.awaitingInput) {
+            botMessages.push({
+              id: Date.now().toString() + Math.random(),
+              content: "", // No text content for branch nodes
+              sender: "bot",
+              timestamp: new Date(),
+              showBranchOptions: true,
+              branchOptions: msg.options || [],
+            });
+            return;
+          }
+
           botMessages.push({
             id: Date.now().toString() + Math.random(),
             content: msg.content || msg.message || "",
             sender: "bot",
             timestamp: new Date(),
             showConfirmationButtons: msg.type === "confirmation" && msg.awaitingInput,
-            showBranchOptions: msg.type === "branch" && msg.awaitingInput,
+            showBranchOptions: false,
             branchOptions: msg.options || [],
           });
         });
@@ -257,13 +270,26 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           return; // Skip adding to messages
         }
 
+        // For branch nodes with awaitingInput, only show buttons without text
+        if (msg.type === "branch" && msg.awaitingInput) {
+          botMessages.push({
+            id: Date.now().toString() + Math.random(),
+            content: "", // No text content for branch nodes
+            sender: "bot",
+            timestamp: new Date(),
+            showBranchOptions: true,
+            branchOptions: msg.options || [],
+          });
+          return;
+        }
+
         botMessages.push({
           id: Date.now().toString() + Math.random(),
           content: msg.content || msg.message || "",
           sender: "bot",
           timestamp: new Date(),
           showConfirmationButtons: msg.type === "confirmation" && msg.awaitingInput,
-          showBranchOptions: msg.type === "branch" && msg.awaitingInput,
+          showBranchOptions: false,
           branchOptions: msg.options || [],
         });
       });

@@ -128,13 +128,26 @@ export default function EmbedChat() {
             return;
           }
 
+          // For branch nodes with awaitingInput, only show buttons without text
+          if (msg.type === "branch" && msg.awaitingInput) {
+            botMessages.push({
+              id: Date.now().toString() + Math.random(),
+              from: "bot",
+              text: "", // No text content for branch nodes
+              timestamp: new Date(),
+              showBranchOptions: true,
+              branchOptions: msg.options || [],
+            });
+            return;
+          }
+
           botMessages.push({
             id: Date.now().toString() + Math.random(),
             from: "bot",
             text: msg.content || msg.message || "",
             timestamp: new Date(),
             showConfirmationButtons: msg.type === "confirmation" && msg.awaitingInput,
-            showBranchOptions: msg.type === "branch" && msg.awaitingInput,
+            showBranchOptions: false,
             branchOptions: msg.options || [],
           });
         });
@@ -339,13 +352,26 @@ export default function EmbedChat() {
           return;
         }
 
+        // For branch nodes with awaitingInput, only show buttons without text
+        if (msg.type === "branch" && msg.awaitingInput) {
+          botMessages.push({
+            id: Date.now().toString() + Math.random(),
+            from: "bot",
+            text: "", // No text content for branch nodes
+            timestamp: new Date(),
+            showBranchOptions: true,
+            branchOptions: msg.options || [],
+          });
+          return;
+        }
+
         botMessages.push({
           id: Date.now().toString() + Math.random(),
           from: "bot",
           text: msg.content || msg.message || "",
           timestamp: new Date(),
           showConfirmationButtons: msg.type === "confirmation" && msg.awaitingInput,
-          showBranchOptions: msg.type === "branch" && msg.awaitingInput,
+          showBranchOptions: false,
           branchOptions: msg.options || [],
         });
       });
