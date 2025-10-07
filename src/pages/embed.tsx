@@ -530,25 +530,27 @@ export default function EmbedChat() {
                 </div>
               )}
               <div className="flex flex-col gap-2">
-                <div className={`max-w-[80%] ${msg.from === "user" ? "ml-auto" : ""}`}>
-                  <div 
-                    className="p-3 transition-all duration-200"
-                    style={{
-                      backgroundColor: msg.from === "user" 
-                        ? customization?.userMessageColor || undefined
-                        : customization?.botMessageColor || undefined,
-                      color: msg.from === "user" && customization?.userMessageColor 
-                        ? '#ffffff' 
-                        : customization?.textColor || undefined,
-                      borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : '8px'
-                    }}
-                  >
-                    <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                {msg.text && (
+                  <div className={`max-w-[80%] ${msg.from === "user" ? "ml-auto" : ""}`}>
+                    <div 
+                      className="p-3 transition-all duration-200"
+                      style={{
+                        backgroundColor: msg.from === "user" 
+                          ? customization?.userMessageColor || undefined
+                          : customization?.botMessageColor || undefined,
+                        color: msg.from === "user" && customization?.userMessageColor 
+                          ? '#ffffff' 
+                          : customization?.textColor || undefined,
+                        borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : '8px'
+                      }}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                    </div>
+                    <p className="text-xs opacity-70 mt-1 px-1">
+                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
                   </div>
-                  <p className="text-xs opacity-70 mt-1 px-1">
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
+                )}
 
                 {msg.showConfirmationButtons && isAwaitingInput && msg.from === "bot" && !flowFinished && (
                   <div className="flex gap-2">

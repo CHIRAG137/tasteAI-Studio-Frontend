@@ -394,10 +394,12 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     </Avatar>
                   )}
                   <div className="flex flex-col gap-2 max-w-[80%]">
-                    <div className={`rounded-lg px-3 py-2 ${msg.sender === "user" ? "bg-blue-600 text-white ml-auto" : "bg-gray-100 dark:bg-gray-800"}`}>
-                      <p className="text-sm whitespace-pre-wrap">{typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}</p>
-                      <span className="text-xs opacity-70 mt-1 block">{msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                    </div>
+                    {msg.content && (
+                      <div className={`rounded-lg px-3 py-2 ${msg.sender === "user" ? "bg-blue-600 text-white ml-auto" : "bg-gray-100 dark:bg-gray-800"}`}>
+                        <p className="text-sm whitespace-pre-wrap">{typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}</p>
+                        <span className="text-xs opacity-70 mt-1 block">{msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                      </div>
+                    )}
 
                     {msg.showConfirmationButtons && isAwaitingInput && msg.sender === "bot" && !flowFinished && (
                       <div className="flex gap-2">
