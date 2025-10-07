@@ -18,6 +18,7 @@ interface Message {
   showConfirmationButtons?: boolean;
   showBranchOptions?: boolean;
   branchOptions?: string[];
+  selectedBranch?: string;
 }
 
 export const PublicBotChatPage = () => {
@@ -353,7 +354,13 @@ export const PublicBotChatPage = () => {
     handleSendMessage(answer, false);
   };
 
-  const handleBranchOptionClick = (option: string) => {
+  const handleBranchOptionClick = (option: string, messageId: string) => {
+    // Mark the branch as selected in the message
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId ? { ...msg, selectedBranch: option } : msg
+      )
+    );
     handleSendMessage(option, true);
   };
 
@@ -436,10 +443,17 @@ export const PublicBotChatPage = () => {
                       </div>
                     )}
 
-                    {msg.showBranchOptions && isAwaitingInput && msg.sender === "bot" && msg.branchOptions && !flowFinished && (
+                    {msg.showBranchOptions && msg.sender === "bot" && msg.branchOptions && !flowFinished && (
                       <div className="flex flex-wrap gap-2">
                         {msg.branchOptions.map((opt, idx) => (
-                          <Button key={idx} size="sm" variant="outline" onClick={() => handleBranchOptionClick(opt)}>
+                          <Button 
+                            key={idx} 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleBranchOptionClick(opt, msg.id)}
+                            disabled={!!msg.selectedBranch}
+                            className={msg.selectedBranch === opt ? "bg-blue-100 border-blue-500" : ""}
+                          >
                             {opt}
                           </Button>
                         ))}

@@ -18,6 +18,7 @@ interface Message {
   showConfirmationButtons?: boolean;
   showBranchOptions?: boolean;
   branchOptions?: string[];
+  selectedBranch?: string;
 }
 
 export default function EmbedChat() {
@@ -418,7 +419,13 @@ export default function EmbedChat() {
     handleSendMessage(answer, false);
   };
 
-  const handleBranchOptionClick = (option: string) => {
+  const handleBranchOptionClick = (option: string, messageId: string) => {
+    // Mark the branch as selected in the message
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId ? { ...msg, selectedBranch: option } : msg
+      )
+    );
     handleSendMessage(option, true);
   };
 
@@ -571,14 +578,20 @@ export default function EmbedChat() {
                   </div>
                 )}
 
-                {msg.showBranchOptions && isAwaitingInput && msg.from === "bot" && msg.branchOptions && !flowFinished && (
+                {msg.showBranchOptions && msg.from === "bot" && msg.branchOptions && !flowFinished && (
                   <div className="flex flex-wrap gap-2">
                     {msg.branchOptions.map((option, index) => (
                       <Button
                         key={index}
                         size="sm"
                         variant="outline"
-                        onClick={() => handleBranchOptionClick(option)}
+                        onClick={() => handleBranchOptionClick(option, msg.id)}
+                        disabled={!!msg.selectedBranch}
+                        style={{
+                          borderColor: msg.selectedBranch === option ? customization?.primaryColor || undefined : undefined,
+                          backgroundColor: msg.selectedBranch === option ? `${customization?.primaryColor}20` || undefined : undefined,
+                          color: customization?.primaryColor || undefined,
+                        }}
                       >
                         {option}
                       </Button>
