@@ -9,6 +9,7 @@ import EmbedChat from "./pages/embed";
 import Documentation from "./pages/Documentation";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Sessions from "./pages/Sessions";
 import { PublicBotChatPage } from "@/components/PublicBotChatPage";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/bot/:botId" element={<PublicBotChatPage />} />
+          <Route path="/sessions/:botId" element={<Sessions />} />
           <Route path="/embed" element={<EmbedChat />} />
           <Route path="/docs/:botId" element={<Documentation />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

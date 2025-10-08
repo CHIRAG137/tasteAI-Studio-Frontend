@@ -16,7 +16,6 @@ import { BotCard } from "@/components/BotCard";
 import { ChatBot } from "@/components/ChatBot";
 import { IntegrationModal } from "@/components/IntegrationModal";
 import { EditBotModal } from "@/components/EditBotModal";
-import { SessionsModal } from "@/components/SessionsModal";
 import { useNavigate } from "react-router-dom";
 import { getAuthHeaders, isAuthenticated } from "@/utils/auth";
 import { Navbar } from "@/components/Navbar";
@@ -51,7 +50,6 @@ export const BotBuilder = () => {
   const [visibleBotCount, setVisibleBotCount] = useState(3);
   const [selectedBotForIntegration, setSelectedBotForIntegration] = useState<any | null>(null);
   const [selectedBotForEdit, setSelectedBotForEdit] = useState<any | null>(null);
-  const [selectedBotForSessions, setSelectedBotForSessions] = useState<any | null>(null);
 
   const handleShowMore = () => {
     setVisibleBotCount(prev => Math.min(prev + 3, savedBots.length));
@@ -237,8 +235,7 @@ export const BotBuilder = () => {
   };
 
   const handleSessions = (id: string) => {
-    const bot = savedBots.find(b => b.id === id);
-    if (bot) setSelectedBotForSessions(bot);
+    navigate(`/sessions/${id}`);
   };
 
   const handleDelete = async (id: string) => {
@@ -413,15 +410,6 @@ export const BotBuilder = () => {
           onClose={() => setSelectedBotForEdit(null)}
           bot={selectedBotForEdit}
           onBotUpdated={fetchBots}
-        />
-      )}
-
-      {selectedBotForSessions && (
-        <SessionsModal
-          isOpen={!!selectedBotForSessions}
-          onClose={() => setSelectedBotForSessions(null)}
-          botId={selectedBotForSessions.id}
-          botName={selectedBotForSessions.name}
         />
       )}
     </>
