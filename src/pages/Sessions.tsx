@@ -530,21 +530,23 @@ export default function Sessions() {
                 <ScrollArea className="flex-1">
                   <div className="px-6 pb-6 space-y-4">
                     {selectedSession.messages.map((message, index) => (
-                      <div key={index} className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
-                        <div className={cn(
-                          "flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-lg",
-                          message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
-                        )}>
-                          {message.role === "user" ? <User className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
-                        </div>
-                        <div className={`flex flex-col gap-1 ${message.role === "user" ? "items-end" : "items-start"}`}>
+                      <div key={index} className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <div className={`flex gap-3 max-w-[85%] ${message.role === "user" ? "flex-row-reverse" : ""}`}>
                           <div className={cn(
-                            "rounded-lg px-4 py-2 max-w-[80%] break-words",
+                            "flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-lg",
                             message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
                           )}>
-                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                            {message.role === "user" ? <User className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
                           </div>
-                          <span className="text-xs text-muted-foreground">{formatTime(message.timestamp)}</span>
+                          <div className={`flex flex-col gap-1 ${message.role === "user" ? "items-end" : "items-start"}`}>
+                            <div className={cn(
+                              "rounded-lg px-4 py-2 w-fit min-w-[100px]",
+                              message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                            )}>
+                              <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{formatTime(message.timestamp)}</span>
+                          </div>
                         </div>
                       </div>
                     ))}
