@@ -192,6 +192,7 @@ export default function Sessions() {
         type: 'key-points',
         format: 'markdown',
         length: 'medium',
+        language: 'en',
         monitor(m: any) {
           m.addEventListener('downloadprogress', (e: any) => {
             console.log(`Downloaded ${e.loaded * 100}%`);
