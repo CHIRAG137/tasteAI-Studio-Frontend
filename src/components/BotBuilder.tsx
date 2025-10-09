@@ -14,6 +14,7 @@ import { Node, Edge } from '@xyflow/react';
 import { useToast } from "@/hooks/use-toast";
 import { BotCard } from "@/components/BotCard";
 import { ChatBot } from "@/components/ChatBot";
+import { IntegrationModal } from "@/components/IntegrationModal";
 import { useNavigate } from "react-router-dom";
 import { getAuthHeaders, isAuthenticated } from "@/utils/auth";
 import { Navbar } from "@/components/Navbar";
@@ -46,6 +47,7 @@ export const BotBuilder = () => {
   const [savedBots, setSavedBots] = useState<any[]>([]);
   const [selectedBotForTest, setSelectedBotForTest] = useState<any | null>(null);
   const [visibleBotCount, setVisibleBotCount] = useState(3);
+  const [selectedBotForIntegration, setSelectedBotForIntegration] = useState<any | null>(null);
 
   const handleShowMore = () => {
     setVisibleBotCount(prev => Math.min(prev + 3, savedBots.length));
@@ -221,7 +223,8 @@ export const BotBuilder = () => {
 
 
   const handleIntegrate = (id: string) => {
-    navigate(`/integrate/${id}`);
+    const bot = savedBots.find(b => b.id === id);
+    if (bot) setSelectedBotForIntegration(bot);
   };
 
   const handleEdit = (id: string) => {
@@ -387,6 +390,15 @@ export const BotBuilder = () => {
 
       {selectedBotForTest && (
         <ChatBot bot={selectedBotForTest} onClose={() => setSelectedBotForTest(null)} />
+      )}
+
+      {selectedBotForIntegration && (
+        <IntegrationModal
+          isOpen={!!selectedBotForIntegration}
+          onClose={() => setSelectedBotForIntegration(null)}
+          botId={selectedBotForIntegration.id}
+          botName={selectedBotForIntegration.name}
+        />
       )}
     </>
   );
