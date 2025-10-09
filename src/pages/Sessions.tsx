@@ -40,7 +40,7 @@ export default function Sessions() {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [minMessages, setMinMessages] = useState<number | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  
+
   // Summarizer states
   const [summary, setSummary] = useState<string>("");
   const [summarizing, setSummarizing] = useState(false);
@@ -94,8 +94,8 @@ export default function Sessions() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}/history`, { 
-        headers: getAuthHeaders() 
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}/history`, {
+        headers: getAuthHeaders()
       });
       const data = await res.json();
       if (data?.status === "success" && Array.isArray(data.result?.sessions)) {
@@ -134,10 +134,10 @@ export default function Sessions() {
     setSummary("");
     setShowSummary(false);
     setSummarizerError("");
-    
+
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}/history/${sessionId}`, { 
-        headers: getAuthHeaders() 
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}/history/${sessionId}`, {
+        headers: getAuthHeaders()
       });
       const data = await res.json();
       if (data?.status === "success" && data.result) {
@@ -192,7 +192,6 @@ export default function Sessions() {
         type: 'key-points',
         format: 'markdown',
         length: 'medium',
-        language: 'en',
         monitor(m: any) {
           m.addEventListener('downloadprogress', (e: any) => {
             console.log(`Downloaded ${e.loaded * 100}%`);
@@ -202,16 +201,12 @@ export default function Sessions() {
 
       const summarizer = await (self as any).Summarizer.create(options);
 
-      const stream = summarizer.summarize(conversationText, {
+      // Use summarize() instead of summarizeStreaming() - it returns a Promise
+      const result = await summarizer.summarize(conversationText, {
         context: 'Provide a concise summary of the key points discussed in this conversation.',
       });
 
-      let fullSummary = "";
-      for await (const chunk of stream) {
-        fullSummary = chunk;
-        setSummary(chunk);
-      }
-
+      setSummary(result);
       setShowSummary(true);
       summarizer.destroy();
     } catch (error: any) {
