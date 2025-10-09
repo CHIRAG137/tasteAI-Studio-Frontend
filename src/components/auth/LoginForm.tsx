@@ -8,8 +8,10 @@ import { Link } from "react-router-dom";
 import { loginUser } from "@/api/auth";
 import { setAuthToken } from "@/utils/auth";
 import { GoogleLogin } from "@react-oauth/google";
+import { useToast } from "@/hooks/use-toast";
 
 export const LoginForm = () => {
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,20 +22,30 @@ export const LoginForm = () => {
       const response = await loginUser({ email, password });
 
       if (response.error) {
-        alert(response.error);
+        toast({
+          title: "Error",
+          description: response.error,
+          variant: "destructive",
+        });
       } else {
-        alert("Login successful!");
-        console.log("Logged in:", response);
-
         // Save token to localStorage using auth utils
         setAuthToken(response.result.token!);
+
+        toast({
+          title: "Success",
+          description: "Login successful!",
+        });
 
         // redirect to dashboard
         window.location.href = "/";
       }
     } catch (err) {
       console.error(err);
-      alert("Something went wrong");
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
+      });
     }
   };
 
@@ -51,10 +63,20 @@ export const LoginForm = () => {
       // store JWT
       setAuthToken(data.token);
 
+      toast({
+        title: "Success",
+        description: "Login successful!",
+      });
+
       // redirect to homepage
       window.location.href = "/";
     } catch (err) {
       console.error("Google login error:", err);
+      toast({
+        title: "Error",
+        description: "Google login failed",
+        variant: "destructive",
+      });
     }
   };
 

@@ -8,8 +8,10 @@ import { Link } from "react-router-dom";
 import { registerUser } from "@/api/auth";
 import { setAuthToken } from "@/utils/auth";
 import { GoogleLogin } from "@react-oauth/google";
+import { useToast } from "@/hooks/use-toast";
 
 export const RegisterForm = () => {
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -22,7 +24,11 @@ export const RegisterForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match");
+      toast({
+        title: "Error",
+        description: "Passwords don't match",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -34,16 +40,27 @@ export const RegisterForm = () => {
       });
 
       if (response.error) {
-        alert(response.error);
+        toast({
+          title: "Error",
+          description: response.error,
+          variant: "destructive",
+        });
       } else {
-        alert("Registration successful!");
-        console.log("User registered:", response);
-        // redirect to login
-        window.location.href = "/login";
+        setAuthToken(response.result?.token || response.token);
+        toast({
+          title: "Success",
+          description: "Registration successful!",
+        });
+        // redirect to home
+        window.location.href = "/";
       }
     } catch (err) {
       console.error(err);
-      alert("Something went wrong");
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
+      });
     }
   };
 
@@ -61,10 +78,20 @@ export const RegisterForm = () => {
       // store JWT
       setAuthToken(data.token);
 
+      toast({
+        title: "Success",
+        description: "Registration successful!",
+      });
+
       // redirect to homepage
       window.location.href = "/";
     } catch (err) {
       console.error("Google login error:", err);
+      toast({
+        title: "Error",
+        description: "Google registration failed",
+        variant: "destructive",
+      });
     }
   };
 
