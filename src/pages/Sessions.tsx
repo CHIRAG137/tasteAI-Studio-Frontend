@@ -202,7 +202,7 @@ export default function Sessions() {
 
       const summarizer = await (self as any).Summarizer.create(options);
 
-      const stream = summarizer.summarizeStreaming(conversationText, {
+      const stream = summarizer.summarize(conversationText, {
         context: 'Provide a concise summary of the key points discussed in this conversation.',
       });
 
