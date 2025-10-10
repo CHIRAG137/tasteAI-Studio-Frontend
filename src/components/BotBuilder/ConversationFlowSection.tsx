@@ -9,12 +9,16 @@ interface ConversationFlowSectionProps {
   botId?: string;
   onFlowSave?: (nodes: Node[], edges: Edge[]) => void;
   onFlowChange?: (nodes: Node[], edges: Edge[]) => void;
+  initialNodes?: Node[];
+  initialEdges?: Edge[];
 }
 
 export function ConversationFlowSection({ 
   botId,
   onFlowSave,
-  onFlowChange 
+  onFlowChange,
+  initialNodes,
+  initialEdges
 }: ConversationFlowSectionProps) {
   const [isMaximized, setIsMaximized] = useState(false);
 
@@ -42,11 +46,15 @@ export function ConversationFlowSection({
               Maximize
             </Button>
           </div>
-          <FlowBuilder 
-            botId={botId} 
-            onSave={onFlowSave}
-            onFlowChange={onFlowChange}
-          />
+          {!isMaximized && (
+            <FlowBuilder 
+              botId={botId} 
+              onSave={onFlowSave}
+              onFlowChange={onFlowChange}
+              initialNodes={initialNodes}
+              initialEdges={initialEdges}
+            />
+          )}
         </div>
       </CollapsibleSection>
 
@@ -72,6 +80,8 @@ export function ConversationFlowSection({
                 onSave={onFlowSave}
                 onFlowChange={onFlowChange}
                 isMaximized={true}
+                initialNodes={initialNodes}
+                initialEdges={initialEdges}
               />
             </div>
           </div>

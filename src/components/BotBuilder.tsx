@@ -324,6 +324,8 @@ export const BotBuilder = () => {
                     // Auto-update the bot config whenever the flow changes
                     updateConfig('conversationFlow', { nodes, edges });
                   }}
+                  initialNodes={botConfig.conversationFlow?.nodes}
+                  initialEdges={botConfig.conversationFlow?.edges}
                 />
 
                 <div className="flex justify-end pt-6">

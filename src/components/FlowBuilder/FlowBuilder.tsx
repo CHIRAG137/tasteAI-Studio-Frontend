@@ -173,10 +173,12 @@ interface FlowBuilderProps {
   onSave?: (nodes: Node[], edges: Edge[]) => void;
   onFlowChange?: (nodes: Node[], edges: Edge[]) => void;
   isMaximized?: boolean;
+  initialNodes?: Node[];
+  initialEdges?: Edge[];
 }
 
-export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false }: FlowBuilderProps) {
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>([
+export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, initialNodes, initialEdges }: FlowBuilderProps) {
+  const defaultNodes: Node<NodeData>[] = initialNodes as Node<NodeData>[] || [
     {
       id: '1',
       type: 'message',
@@ -187,8 +189,10 @@ export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false }
         message: 'Hello! I\'m here to help you. Let\'s start by getting some information.'
       },
     },
-  ]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  ];
+
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>(defaultNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges || []);
   const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
   const [showNodeEditor, setShowNodeEditor] = useState(false);
 
