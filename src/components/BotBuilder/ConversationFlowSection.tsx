@@ -59,7 +59,7 @@ export function ConversationFlowSection({
       </CollapsibleSection>
 
       {isMaximized && (
-        <div className="fixed inset-0 z-50 bg-background">
+        <div className="fixed inset-0 z-[100] bg-background overflow-hidden">
           <div className="h-full flex flex-col">
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="text-xl font-semibold flex items-center gap-2">
