@@ -26,28 +26,25 @@ export const Navbar = () => {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-6">
             <h1 className="text-xl font-bold text-foreground">tasteAI Studio</h1>
-            
-            <div className="hidden md:flex items-center gap-4">
-              <Button
-                variant="ghost"
-                onClick={() => scrollToSection('your-bots')}
-                className="text-sm"
-              >
-                <Bot className="w-4 h-4 mr-2" />
-                Your Bots
-              </Button>
-            </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <Button
+              variant="ghost"
+              onClick={() => scrollToSection('your-bots')}
+              className="text-sm"
+            >
+              <Bot className="w-4 h-4 mr-2" />
+              Your Bots
+            </Button>
+            <Button
               onClick={() => scrollToSection('bot-builder')}
-              className="bg-gradient-primary hover:opacity-90 animate-pulse hover:animate-none transition-all hover:scale-105"
+              className="bg-gradient-primary hover:opacity-90 animate-pulse hover:animate-none transition-all hover:scale-60"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Bot
             </Button>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -69,9 +66,9 @@ export const Navbar = () => {
         </div>
       </nav>
 
-      <ProfileModal 
-        isOpen={isProfileOpen} 
-        onClose={() => setIsProfileOpen(false)} 
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
       />
     </>
   );
