@@ -172,9 +172,10 @@ interface FlowBuilderProps {
   botId?: string;
   onSave?: (nodes: Node[], edges: Edge[]) => void;
   onFlowChange?: (nodes: Node[], edges: Edge[]) => void;
+  isMaximized?: boolean;
 }
 
-export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
+export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false }: FlowBuilderProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>([
     {
       id: '1',
@@ -290,7 +291,7 @@ export function FlowBuilder({ botId, onSave, onFlowChange }: FlowBuilderProps) {
   };
 
   return (
-    <div className="h-[600px] relative">
+    <div className={isMaximized ? "h-full relative" : "h-[600px] relative"}>
       <div className="absolute top-4 left-4 z-10 flex gap-2 flex-wrap max-w-[600px]">
         <Button
           type="button"
