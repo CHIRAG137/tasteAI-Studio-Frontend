@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MessageSquareText, Maximize2, Minimize2 } from 'lucide-react';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
 import { FlowBuilder } from '@/components/FlowBuilder/FlowBuilder';
@@ -21,6 +22,16 @@ export function ConversationFlowSection({
   initialEdges
 }: ConversationFlowSectionProps) {
   const [isMaximized, setIsMaximized] = useState(false);
+
+  useEffect(() => {
+    if (isMaximized) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isMaximized]);
 
   return (
     <>
@@ -58,10 +69,10 @@ export function ConversationFlowSection({
         </div>
       </CollapsibleSection>
 
-      {isMaximized && (
-        <div className="fixed inset-0 z-[100] bg-background overflow-hidden">
-          <div className="h-full flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b">
+      {isMaximized && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-background overscroll-none overflow-hidden">
+          <div className="h-screen flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b bg-card">
               <h2 className="text-xl font-semibold flex items-center gap-2">
                 <MessageSquareText className="w-5 h-5" />
                 Conversation Flow Builder
@@ -74,7 +85,7 @@ export function ConversationFlowSection({
                 Minimize
               </Button>
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-h-0">
               <FlowBuilder 
                 botId={botId} 
                 onSave={onFlowSave}
@@ -85,8 +96,10 @@ export function ConversationFlowSection({
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+
     </>
   );
 }
