@@ -295,88 +295,92 @@ export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, 
   };
 
   return (
-    <div className={isMaximized ? "h-full relative" : "h-[600px] relative"}>
-      <div className="absolute top-4 left-4 z-10 flex gap-2 flex-wrap max-w-[600px]">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => addNode('message')}
-        >
-          <MessageSquare className="w-4 h-4 mr-2" />
-          Message
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => addNode('question')}
-        >
-          <HelpCircle className="w-4 h-4 mr-2" />
-          Question
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => addNode('confirmation')}
-        >
-          <CheckCircle className="w-4 h-4 mr-2" />
-          Confirmation
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => addNode('branch')}
-        >
-          <GitBranch className="w-4 h-4 mr-2" />
-          Branch
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => addNode('redirect')}
-        >
-          <Link2 className="w-4 h-4 mr-2" />
-          Redirect
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => addNode('code')}
-          className="bg-yellow-500/10 hover:bg-yellow-500/20"
-        >
-          <Code className="w-4 h-4 mr-2" />
-          Code
-        </Button>
-      </div>
-
-      <div className="absolute top-4 right-4 z-10">
+    <div className={isMaximized ? "h-full flex flex-col" : "h-[600px] flex flex-col"}>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-4 p-3 border-b bg-card/50">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => addNode('message')}
+          >
+            <MessageSquare className="w-4 h-4 mr-2" />
+            Message
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => addNode('question')}
+          >
+            <HelpCircle className="w-4 h-4 mr-2" />
+            Question
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => addNode('confirmation')}
+          >
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Confirmation
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => addNode('branch')}
+          >
+            <GitBranch className="w-4 h-4 mr-2" />
+            Branch
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => addNode('redirect')}
+          >
+            <Link2 className="w-4 h-4 mr-2" />
+            Redirect
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => addNode('code')}
+            className="bg-yellow-500/10 hover:bg-yellow-500/20"
+          >
+            <Code className="w-4 h-4 mr-2" />
+            Code
+          </Button>
+        </div>
+        
         <Button type="button" onClick={handleSave}>
           Save Flow
         </Button>
       </div>
 
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodeClick={onNodeClick}
-        nodeTypes={nodeTypes}
-        fitView
-      >
-        <Controls />
-        <Background />
-      </ReactFlow>
+      {/* Flow Canvas */}
+      <div className="flex-1 relative">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          nodeTypes={nodeTypes}
+          fitView
+        >
+          <Controls />
+          <Background />
+        </ReactFlow>
+      </div>
 
       {/* Node Editor Panel */}
       {showNodeEditor && selectedNode && (
-        <Card className="absolute top-20 right-4 z-50 w-96 p-4 shadow-lg bg-card max-h-[500px] overflow-y-auto">
+        <Card className="absolute top-4 right-4 z-50 w-96 p-4 shadow-lg bg-card max-h-[calc(100%-2rem)] overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold">Edit Node</h3>
             <Button
