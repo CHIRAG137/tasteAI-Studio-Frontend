@@ -68,7 +68,7 @@ const EditBot = () => {
   useEffect(() => {
     const fetchBot = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots`, {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`, {
           headers: getAuthHeaders(),
         });
         
@@ -76,11 +76,9 @@ const EditBot = () => {
           throw new Error("Failed to fetch bot");
         }
 
-        const data = await response.json();
-        const bot = data.result.bots.find((b: any) => b._id === botId);
+        const bot = await response.json();
         
-        if (bot) {
-          setBotConfig({
+        setBotConfig({
             name: bot.name || "",
             websiteUrl: bot.website_url || "",
             description: bot.description || "",
@@ -100,7 +98,6 @@ const EditBot = () => {
             slackChannelId: bot.slack_channel_id || "",
             conversationFlow: bot.conversationFlow || { nodes: [], edges: [] },
           });
-        }
       } catch (error) {
         console.error("Error fetching bot:", error);
         toast({

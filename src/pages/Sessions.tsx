@@ -72,12 +72,11 @@ export default function Sessions() {
 
     const fetchBotInfo = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots`, {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`, {
           headers: getAuthHeaders(),
         });
         if (res.ok) {
-          const data = await res.json();
-          const bot = data.result.bots.find((b: any) => b._id === botId);
+          const bot = await res.json();
           if (bot) setBotName(bot.name);
         }
       } catch (error) {

@@ -44,7 +44,12 @@ export default function Documentation() {
   const fetchBot = async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`);
-      setBot(response.data);
+      const botData = response.data;
+      setBot({
+        id: botData._id,
+        name: botData.name,
+        description: botData.description
+      });
     } catch (error) {
       console.error("Error fetching bot:", error);
       toast({
