@@ -37,7 +37,7 @@ export function ConversationFlowSection({
     <>
       <CollapsibleSection
         title="Conversation Flow"
-        icon={<MessageSquareText className="w-5 h-5" />}
+        icon={<MessageSquareText className="w-5 h-5 text-primary" />}
         defaultOpen={false}
       >
         <div className="space-y-4">
@@ -74,7 +74,7 @@ export function ConversationFlowSection({
           <div className="h-screen flex flex-col">
             <div className="flex items-center justify-between p-4 border-b bg-card">
               <h2 className="text-xl font-semibold flex items-center gap-2">
-                <MessageSquareText className="w-5 h-5" />
+                <MessageSquareText className="w-5 h-5 text-primary" />
                 Conversation Flow Builder
               </h2>
               <Button
