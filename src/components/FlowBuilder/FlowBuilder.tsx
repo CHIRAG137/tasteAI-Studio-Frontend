@@ -349,7 +349,6 @@ export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, 
             size="sm"
             variant="outline"
             onClick={() => addNode('code')}
-            className="bg-yellow-500/10 hover:bg-yellow-500/20"
           >
             <Code className="w-4 h-4 mr-2" />
             Code
