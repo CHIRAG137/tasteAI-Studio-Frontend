@@ -76,7 +76,8 @@ const EditBot = () => {
           throw new Error("Failed to fetch bot");
         }
 
-        const bot = await response.json();
+        const data = await response.json();
+        const bot = data.result;
         
         setBotConfig({
             name: bot.name || "",
@@ -246,6 +247,8 @@ const EditBot = () => {
                   onFlowChange={(nodes, edges) => {
                     updateConfig("conversationFlow", { nodes, edges });
                   }}
+                  initialNodes={botConfig.conversationFlow.nodes}
+                  initialEdges={botConfig.conversationFlow.edges}
                 />
               </CollapsibleSection>
 
