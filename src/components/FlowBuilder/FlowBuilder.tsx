@@ -355,10 +355,6 @@ export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, 
             Code
           </Button>
         </div>
-        
-        <Button type="button" onClick={handleSave}>
-          Save Flow
-        </Button>
       </div>
 
       {/* Flow Canvas */}
