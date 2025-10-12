@@ -25,15 +25,15 @@ interface WebsiteScraperProps {
 
 export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScraperProps) => {
   const { toast } = useToast();
-  
+
   // Step 1: URL search
   const [searchLoading, setSearchLoading] = useState(false);
   const [foundUrls, setFoundUrls] = useState<FoundUrl[]>([]);
-  
+
   // Step 2: URL selection and scraping
   const [scrapeLoading, setScrapeLoading] = useState(false);
   const [scrapeJob, setScrapeJob] = useState<ScrapeJob | null>(null);
-  
+
   // Step 3: Results polling
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [scrapeProgress, setScrapeProgress] = useState(0);
@@ -93,22 +93,22 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
   };
 
   const handleUrlSelection = (index: number, checked: boolean) => {
-    setFoundUrls(prev => 
-      prev.map((item, i) => 
+    setFoundUrls(prev =>
+      prev.map((item, i) =>
         i === index ? { ...item, selected: checked } : item
       )
     );
   };
 
   const selectAllUrls = (checked: boolean) => {
-    setFoundUrls(prev => 
+    setFoundUrls(prev =>
       prev.map(item => ({ ...item, selected: checked }))
     );
   };
 
   const handleScrapeSelected = async () => {
     const selectedUrls = foundUrls.filter(item => item.selected).map(item => item.url);
-    
+
     if (selectedUrls.length === 0) {
       toast({
         title: "No URLs Selected",
@@ -120,7 +120,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
 
     setScrapeLoading(true);
     setScrapeProgress(0);
-    
+
     try {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/scrape/urls`, {
         method: "POST",
@@ -141,10 +141,10 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
           id: data.result.id,
           status: 'in_progress',
         });
-        
+
         // Start polling for results
         startPolling(data.result.id);
-        
+
         toast({
           title: "Scraping Started",
           description: `Started scraping ${selectedUrls.length} URLs`,
@@ -183,7 +183,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
           setScrapeLoading(false);
           clearInterval(interval);
           setPollingInterval(null);
-          
+
           toast({
             title: "Scraping Complete",
             description: `Successfully scraped ${data.message.data?.length || 0} pages`,
@@ -194,7 +194,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
           setScrapeLoading(false);
           clearInterval(interval);
           setPollingInterval(null);
-          
+
           toast({
             title: "Scraping Failed",
             description: "The scraping job failed",
@@ -235,7 +235,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
 
     // Pass the markdown data to parent component
     onScrapedDataReady(markdownData);
-    
+
     toast({
       title: "Data Ready",
       description: `${markdownData.length} pages ready for bot training`,
@@ -247,7 +247,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
     setScrapeJob(null);
     setScrapeResults([]);
     setScrapeProgress(0);
-    
+
     if (pollingInterval) {
       clearInterval(pollingInterval);
       setPollingInterval(null);
@@ -262,7 +262,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
         <p className="text-sm text-muted-foreground">
           Search and scrape specific pages from your website to train your bot with relevant content.
         </p>
-        <Button 
+        <Button
           onClick={handleSearchUrls}
           disabled={!websiteUrl?.trim() || searchLoading || scrapeLoading}
           className="bg-gradient-primary hover:opacity-90"
@@ -311,7 +311,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
                   checked={item.selected}
                   onCheckedChange={(checked) => handleUrlSelection(index, !!checked)}
                 />
-                <label 
+                <label
                   htmlFor={`url-${index}`}
                   className="text-sm text-muted-foreground truncate flex-1 cursor-pointer"
                 >
@@ -321,7 +321,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
             ))}
           </div>
 
-          <Button 
+          <Button
             onClick={handleScrapeSelected}
             disabled={selectedCount === 0 || scrapeLoading}
             className="w-full bg-gradient-primary hover:opacity-90"
@@ -359,7 +359,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
             <CheckCircle className="w-5 h-5 text-success" />
             <h3 className="text-lg font-semibold">Scraping Complete</h3>
           </div>
-          
+
           <div className="bg-muted/50 rounded-lg p-4">
             <p className="text-sm">
               Successfully scraped <strong>{scrapeResults.length}</strong> pages.
@@ -371,7 +371,8 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
             <Button onClick={resetScraper} variant="outline">
               Scrape Another Website
             </Button>
-            <Button 
+            <Button
+              type="button"
               onClick={handleUseForTraining}
               className="bg-gradient-primary hover:opacity-90"
             >
@@ -387,7 +388,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
             <AlertCircle className="w-5 h-5 text-destructive" />
             <h3 className="text-lg font-semibold text-destructive">Scraping Failed</h3>
           </div>
-          
+
           <Button onClick={resetScraper} variant="outline">
             Try Again
           </Button>
