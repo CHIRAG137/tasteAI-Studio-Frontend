@@ -39,12 +39,11 @@ export const Navbar = () => {
             </Button>
             <Button
               onClick={() => scrollToSection('bot-builder')}
-              className="bg-gradient-primary hover:opacity-90 animate-pulse hover:animate-none transition-all hover:scale-60"
+              className="bg-gradient-primary hover:opacity-90 transition-all hover:animate-none [animation:slow-zoom_6s_ease-in-out_infinite] [@keyframes_slow-zoom:{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}]"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Bot
             </Button>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
