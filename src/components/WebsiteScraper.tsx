@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Globe, Search, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { Search, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
 
@@ -23,9 +20,10 @@ interface ScrapeJob {
 
 interface WebsiteScraperProps {
   websiteUrl: string;
+  onScrapedDataReady: (markdownData: string[]) => void;
 }
 
-export const WebsiteScraper = ({ websiteUrl }: WebsiteScraperProps) => {
+export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScraperProps) => {
   const { toast } = useToast();
   
   // Step 1: URL search
@@ -211,6 +209,39 @@ export const WebsiteScraper = ({ websiteUrl }: WebsiteScraperProps) => {
     setPollingInterval(interval);
   };
 
+  const handleUseForTraining = () => {
+    if (scrapeResults.length === 0) {
+      toast({
+        title: "No Data Available",
+        description: "No scraped data available for training",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Extract markdown content from all scraped pages
+    const markdownData = scrapeResults
+      .map(result => result.markdown)
+      .filter(markdown => markdown && markdown.trim().length > 0);
+
+    if (markdownData.length === 0) {
+      toast({
+        title: "No Content Found",
+        description: "No markdown content found in scraped data",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Pass the markdown data to parent component
+    onScrapedDataReady(markdownData);
+    
+    toast({
+      title: "Data Ready",
+      description: `${markdownData.length} pages ready for bot training`,
+    });
+  };
+
   const resetScraper = () => {
     setFoundUrls([]);
     setScrapeJob(null);
@@ -250,124 +281,118 @@ export const WebsiteScraper = ({ websiteUrl }: WebsiteScraperProps) => {
         </Button>
       </div>
 
-          {/* Step 2: URL Selection */}
-          {foundUrls.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Found URLs ({foundUrls.length})</h3>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="select-all"
-                      checked={selectedCount === foundUrls.length}
-                      onCheckedChange={selectAllUrls}
-                    />
-                    <label htmlFor="select-all" className="text-sm font-medium">
-                      Select All
-                    </label>
-                  </div>
-                  <Badge variant="secondary">
-                    {selectedCount} selected
-                  </Badge>
-                </div>
+      {/* Step 2: URL Selection */}
+      {foundUrls.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Found URLs ({foundUrls.length})</h3>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="select-all"
+                  checked={selectedCount === foundUrls.length}
+                  onCheckedChange={selectAllUrls}
+                />
+                <label htmlFor="select-all" className="text-sm font-medium">
+                  Select All
+                </label>
               </div>
-
-              <div className="max-h-60 overflow-y-auto border border-border rounded-md p-3 space-y-2">
-                {foundUrls.map((item, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`url-${index}`}
-                      checked={item.selected}
-                      onCheckedChange={(checked) => handleUrlSelection(index, !!checked)}
-                    />
-                    <label 
-                      htmlFor={`url-${index}`}
-                      className="text-sm text-muted-foreground truncate flex-1 cursor-pointer"
-                    >
-                      {item.url}
-                    </label>
-                  </div>
-                ))}
-              </div>
-
-              <Button 
-                onClick={handleScrapeSelected}
-                disabled={selectedCount === 0 || scrapeLoading}
-                className="w-full bg-gradient-primary hover:opacity-90"
-              >
-                {scrapeLoading ? (
-                  <>
-                    <Clock className="w-4 h-4 mr-2 animate-spin" />
-                    Scraping in Progress...
-                  </>
-                ) : (
-                  `Scrape Selected URLs (${selectedCount})`
-                )}
-              </Button>
+              <Badge variant="secondary">
+                {selectedCount} selected
+              </Badge>
             </div>
-          )}
+          </div>
 
-          {/* Step 3: Scraping Progress */}
-          {scrapeLoading && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-primary animate-spin" />
-                <span className="text-sm font-medium">Scraping in progress...</span>
-              </div>
-              <Progress value={scrapeProgress} className="w-full" />
-              <p className="text-xs text-muted-foreground">
-                This may take a few minutes depending on the number of URLs
-              </p>
-            </div>
-          )}
-
-          {/* Step 4: Results */}
-          {scrapeJob?.status === 'completed' && scrapeResults.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-success" />
-                <h3 className="text-lg font-semibold">Scraping Complete</h3>
-              </div>
-              
-              <div className="bg-muted/50 rounded-lg p-4">
-                <p className="text-sm">
-                  Successfully scraped <strong>{scrapeResults.length}</strong> pages.
-                  The content is now ready to be used for training your bot.
-                </p>
-              </div>
-
-              <div className="flex gap-4">
-                <Button onClick={resetScraper} variant="outline">
-                  Scrape Another Website
-                </Button>
-                <Button 
-                  onClick={() => {
-                    // TODO: Add functionality to use scraped data for bot training
-                    toast({
-                      title: "Feature Coming Soon",
-                      description: "Bot training with scraped data will be available soon",
-                    });
-                  }}
-                  className="bg-gradient-primary hover:opacity-90"
+          <div className="max-h-60 overflow-y-auto border border-border rounded-md p-3 space-y-2">
+            {foundUrls.map((item, index) => (
+              <div key={index} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`url-${index}`}
+                  checked={item.selected}
+                  onCheckedChange={(checked) => handleUrlSelection(index, !!checked)}
+                />
+                <label 
+                  htmlFor={`url-${index}`}
+                  className="text-sm text-muted-foreground truncate flex-1 cursor-pointer"
                 >
-                  Use for Bot Training
-                </Button>
+                  {item.url}
+                </label>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
 
-          {scrapeJob?.status === 'failed' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-destructive" />
-                <h3 className="text-lg font-semibold text-destructive">Scraping Failed</h3>
-              </div>
-              
-              <Button onClick={resetScraper} variant="outline">
-                Try Again
-              </Button>
-            </div>
-          )}
+          <Button 
+            onClick={handleScrapeSelected}
+            disabled={selectedCount === 0 || scrapeLoading}
+            className="w-full bg-gradient-primary hover:opacity-90"
+          >
+            {scrapeLoading ? (
+              <>
+                <Clock className="w-4 h-4 mr-2 animate-spin" />
+                Scraping in Progress...
+              </>
+            ) : (
+              `Scrape Selected URLs (${selectedCount})`
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* Step 3: Scraping Progress */}
+      {scrapeLoading && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-primary animate-spin" />
+            <span className="text-sm font-medium">Scraping in progress...</span>
+          </div>
+          <Progress value={scrapeProgress} className="w-full" />
+          <p className="text-xs text-muted-foreground">
+            This may take a few minutes depending on the number of URLs
+          </p>
+        </div>
+      )}
+
+      {/* Step 4: Results */}
+      {scrapeJob?.status === 'completed' && scrapeResults.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-success" />
+            <h3 className="text-lg font-semibold">Scraping Complete</h3>
+          </div>
+          
+          <div className="bg-muted/50 rounded-lg p-4">
+            <p className="text-sm">
+              Successfully scraped <strong>{scrapeResults.length}</strong> pages.
+              The content is now ready to be used for training your bot.
+            </p>
+          </div>
+
+          <div className="flex gap-4">
+            <Button onClick={resetScraper} variant="outline">
+              Scrape Another Website
+            </Button>
+            <Button 
+              onClick={handleUseForTraining}
+              className="bg-gradient-primary hover:opacity-90"
+            >
+              Use for Bot Training
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {scrapeJob?.status === 'failed' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-destructive" />
+            <h3 className="text-lg font-semibold text-destructive">Scraping Failed</h3>
+          </div>
+          
+          <Button onClick={resetScraper} variant="outline">
+            Try Again
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

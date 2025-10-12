@@ -9,6 +9,11 @@ interface WebsiteSectionProps {
 }
 
 export const WebsiteSection = ({ botConfig, updateConfig }: WebsiteSectionProps) => {
+  const handleScrapedData = (markdownData: string[]) => {
+    // Store the scraped markdown data in the bot config
+    updateConfig("scrapedMarkdown", markdownData);
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -25,7 +30,19 @@ export const WebsiteSection = ({ botConfig, updateConfig }: WebsiteSectionProps)
         />
       </div>
       
-      <WebsiteScraper websiteUrl={botConfig.websiteUrl} />
+      <WebsiteScraper 
+        websiteUrl={botConfig.websiteUrl} 
+        onScrapedDataReady={handleScrapedData}
+      />
+      
+      {/* Show indicator if scraped data is available */}
+      {botConfig.scrapedMarkdown && botConfig.scrapedMarkdown.length > 0 && (
+        <div className="bg-success/10 border border-success/20 rounded-md p-3">
+          <p className="text-sm text-success">
+            ✓ {botConfig.scrapedMarkdown.length} pages ready for training
+          </p>
+        </div>
+      )}
     </div>
   );
 };

@@ -18,7 +18,6 @@ import { useNavigate } from "react-router-dom";
 import { getAuthHeaders, isAuthenticated } from "@/utils/auth";
 import { Navbar } from "@/components/Navbar";
 
-
 interface BotConfig {
   name: string;
   websiteUrl: string;
@@ -37,6 +36,7 @@ interface BotConfig {
   isSlackEnabled: boolean;
   slackChannelId: string;
   conversationFlow?: { nodes: Node[]; edges: Edge[] };
+  scrapedMarkdown?: string[];
 }
 
 export const BotBuilder = () => {
@@ -72,20 +72,20 @@ export const BotBuilder = () => {
     customInstructions: "",
     isSlackEnabled: false,
     slackChannelId: "",
-    conversationFlow: { 
+    conversationFlow: {
       nodes: [
         {
           id: '1',
           type: 'message',
           position: { x: 250, y: 50 },
-          data: { 
+          data: {
             label: 'Welcome Message',
             type: 'message',
             message: 'Hello! I\'m here to help you. Let\'s start by getting some information.'
           },
         },
-      ], 
-      edges: [] 
+      ],
+      edges: []
     },
   });
 
@@ -151,9 +151,15 @@ export const BotBuilder = () => {
       formData.append("custom_instructions", botConfig.customInstructions);
       formData.append("is_slack_enabled", botConfig.isSlackEnabled.toString());
       formData.append("slack_channel_id", botConfig.slackChannelId);
-      
-      // Add conversation flow - always include it (backend expects it)
+
+      // Add conversation flow
       formData.append("conversationFlow", JSON.stringify(botConfig.conversationFlow || { nodes: [], edges: [] }));
+
+      // Add scraped markdown data if available
+      if (botConfig.scrapedMarkdown && botConfig.scrapedMarkdown.length > 0) {
+        // Send as JSON array
+        formData.append("scraped_content", JSON.stringify(botConfig.scrapedMarkdown));
+      }
 
       if (botConfig.file) {
         formData.append("file", botConfig.file);
@@ -176,6 +182,7 @@ export const BotBuilder = () => {
         description: result.message || `${botConfig.name} has been created successfully.`,
       });
 
+      // Reset bot config including scraped markdown
       setBotConfig({
         name: "",
         websiteUrl: "",
@@ -194,6 +201,7 @@ export const BotBuilder = () => {
         isSlackEnabled: false,
         slackChannelId: "",
         conversationFlow: { nodes: [], edges: [] },
+        scrapedMarkdown: [],
       });
 
       // Reload all bots after creating new one
@@ -311,8 +319,8 @@ export const BotBuilder = () => {
                 <CollapsibleSection title="Add Bot to Slack Channel" icon={<MessageSquare className="w-5 h-5 text-primary" />}>
                   <SlackSection botConfig={botConfig} updateConfig={updateConfig} />
                 </CollapsibleSection>
-                
-                <ConversationFlowSection 
+
+                <ConversationFlowSection
                   onFlowSave={(nodes, edges) => {
                     updateConfig('conversationFlow', { nodes, edges });
                     toast({
