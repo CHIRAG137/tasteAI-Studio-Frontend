@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Target, MessageCircle, Palette, Users, Hash, Settings } from "lucide-react";
+import { useEffect } from "react";
 
 interface PersonaSectionProps {
   botConfig: any;
@@ -11,6 +12,14 @@ interface PersonaSectionProps {
 }
 
 export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps) => {
+
+  useEffect(() => {
+    if (!botConfig.primaryPurpose) updateConfig("primaryPurpose", "customer-support");
+    if (!botConfig.conversationalTone) updateConfig("conversationalTone", "professional");
+    if (!botConfig.responseStyle) updateConfig("responseStyle", "concise");
+    if (!botConfig.targetAudience) updateConfig("targetAudience", "customers");
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -20,7 +29,10 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
             <Target className="w-4 h-4 text-primary" />
             Primary Purpose
           </Label>
-          <Select value={botConfig.primaryPurpose} onValueChange={(value) => updateConfig("primaryPurpose", value)}>
+          <Select
+            value={botConfig.primaryPurpose || "customer-support"}
+            onValueChange={(value) => updateConfig("primaryPurpose", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select primary purpose" />
             </SelectTrigger>
@@ -43,7 +55,10 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
             <MessageCircle className="w-4 h-4 text-primary" />
             Conversational Tone
           </Label>
-          <Select value={botConfig.conversationalTone} onValueChange={(value) => updateConfig("conversationalTone", value)}>
+          <Select
+            value={botConfig.conversationalTone || "professional"}
+            onValueChange={(value) => updateConfig("conversationalTone", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select tone" />
             </SelectTrigger>
@@ -66,7 +81,10 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
             <Palette className="w-4 h-4 text-primary" />
             Response Style
           </Label>
-          <Select value={botConfig.responseStyle} onValueChange={(value) => updateConfig("responseStyle", value)}>
+          <Select
+            value={botConfig.responseStyle || "concise"}
+            onValueChange={(value) => updateConfig("responseStyle", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select response style" />
             </SelectTrigger>
@@ -87,7 +105,10 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
             <Users className="w-4 h-4 text-primary" />
             Target Audience
           </Label>
-          <Select value={botConfig.targetAudience} onValueChange={(value) => updateConfig("targetAudience", value)}>
+          <Select
+            value={botConfig.targetAudience || "customers"}
+            onValueChange={(value) => updateConfig("targetAudience", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select target audience" />
             </SelectTrigger>
