@@ -36,6 +36,9 @@ interface BotConfig {
     nodes: any[];
     edges: any[];
   };
+  scrapedMarkdown?: string[];
+  scrapedUrls?: string[];
+  existingScrapedUrls?: string[];
 }
 
 const EditBot = () => {
@@ -63,6 +66,9 @@ const EditBot = () => {
     slackCommand: "",
     slackChannelId: "",
     conversationFlow: { nodes: [], edges: [] },
+    scrapedMarkdown: [],
+    scrapedUrls: [],
+    existingScrapedUrls: [],
   });
 
   useEffect(() => {
@@ -80,25 +86,28 @@ const EditBot = () => {
         const bot = data.result;
         
         setBotConfig({
-            name: bot.name || "",
-            websiteUrl: bot.website_url || "",
-            description: bot.description || "",
-            file: null,
-            voiceEnabled: bot.is_voice_enabled || false,
-            languages: bot.supported_languages || ["English"],
-            primaryPurpose: bot.primary_purpose || "",
-            specializationArea: bot.specialisation_area || "",
-            conversationalTone: bot.conversation_tone || "",
-            responseStyle: bot.response_style || "",
-            targetAudience: bot.target_audience || "",
-            keyTopics: bot.key_topics || "",
-            keywords: bot.keywords || "",
-            customInstructions: bot.custom_instructions || "",
-            isSlackEnabled: bot.is_slack_enabled || false,
-            slackCommand: bot.slack_command || "",
-            slackChannelId: bot.slack_channel_id || "",
-            conversationFlow: bot.conversationFlow || { nodes: [], edges: [] },
-          });
+          name: bot.name || "",
+          websiteUrl: bot.website_url || "",
+          description: bot.description || "",
+          file: null,
+          voiceEnabled: bot.is_voice_enabled || false,
+          languages: bot.supported_languages || ["English"],
+          primaryPurpose: bot.primary_purpose || "",
+          specializationArea: bot.specialisation_area || "",
+          conversationalTone: bot.conversation_tone || "",
+          responseStyle: bot.response_style || "",
+          targetAudience: bot.target_audience || "",
+          keyTopics: bot.key_topics || "",
+          keywords: bot.keywords || "",
+          customInstructions: bot.custom_instructions || "",
+          isSlackEnabled: bot.is_slack_enabled || false,
+          slackCommand: bot.slack_command || "",
+          slackChannelId: bot.slack_channel_id || "",
+          conversationFlow: bot.conversationFlow || { nodes: [], edges: [] },
+          scrapedMarkdown: [],
+          scrapedUrls: [],
+          existingScrapedUrls: bot.scraped_urls || [],
+        });
       } catch (error) {
         console.error("Error fetching bot:", error);
         toast({
@@ -141,6 +150,16 @@ const EditBot = () => {
       formData.append("slack_command", botConfig.slackCommand);
       formData.append("slack_channel_id", botConfig.slackChannelId);
       formData.append("conversationFlow", JSON.stringify(botConfig.conversationFlow));
+
+      // Add new scraped markdown data if available
+      if (botConfig.scrapedMarkdown && botConfig.scrapedMarkdown.length > 0) {
+        formData.append("scraped_content", JSON.stringify(botConfig.scrapedMarkdown));
+      }
+
+      // Add new scraped URLs if available (will be merged with existing ones in backend)
+      if (botConfig.scrapedUrls && botConfig.scrapedUrls.length > 0) {
+        formData.append("scraped_urls", JSON.stringify(botConfig.scrapedUrls));
+      }
 
       if (botConfig.file) {
         formData.append("file", botConfig.file);
