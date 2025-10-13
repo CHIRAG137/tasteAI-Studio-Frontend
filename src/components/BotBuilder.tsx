@@ -37,6 +37,7 @@ interface BotConfig {
   slackChannelId: string;
   conversationFlow?: { nodes: Node[]; edges: Edge[] };
   scrapedMarkdown?: string[];
+  scrapedUrls?: string[]
 }
 
 export const BotBuilder = () => {
@@ -161,6 +162,12 @@ export const BotBuilder = () => {
         formData.append("scraped_content", JSON.stringify(botConfig.scrapedMarkdown));
       }
 
+      // Add scraped URLs if available
+      if (botConfig.scrapedUrls && botConfig.scrapedUrls.length > 0) {
+        // Send as JSON array
+        formData.append("scraped_urls", JSON.stringify(botConfig.scrapedUrls));
+      }
+
       if (botConfig.file) {
         formData.append("file", botConfig.file);
       }
@@ -202,6 +209,7 @@ export const BotBuilder = () => {
         slackChannelId: "",
         conversationFlow: { nodes: [], edges: [] },
         scrapedMarkdown: [],
+        scrapedUrls: [],
       });
 
       // Reload all bots after creating new one

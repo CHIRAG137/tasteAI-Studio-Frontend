@@ -9,9 +9,10 @@ interface WebsiteSectionProps {
 }
 
 export const WebsiteSection = ({ botConfig, updateConfig }: WebsiteSectionProps) => {
-  const handleScrapedData = (markdownData: string[]) => {
-    // Store the scraped markdown data in the bot config
+  const handleScrapedData = (markdownData: string[], scrapedUrls: string[]) => {
+    // Store the scraped markdown data and URLs in the bot config
     updateConfig("scrapedMarkdown", markdownData);
+    updateConfig("scrapedUrls", scrapedUrls);
   };
 
   return (
