@@ -3,17 +3,15 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { 
   ArrowLeft, 
   Code2, 
-  Globe, 
-  Palette, 
   Copy, 
   ExternalLink,
   Settings,
-  Check
+  Check,
+  Palette
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { EmbedCustomizer, EmbedCustomization } from "@/components/EmbedCustomizer";
@@ -95,71 +93,13 @@ export default function Documentation() {
   const embedUrl = `${window.location.origin}/embed?botId=${botId}`;
   
   const basicEmbedCode = `<!-- Basic Embed Code -->
-<iframe 
-  src="${embedUrl}"
-  width="400" 
-  height="600"
-  frameborder="0"
-  style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-</iframe>`;
-
-  const advancedEmbedCode = `<!-- Advanced Embed with Custom Styling -->
-<div id="chatbot-container">
-  <iframe 
-    src="${embedUrl}"
-    width="100%" 
-    height="500"
-    frameborder="0"
-    style="border-radius: 12px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);">
-  </iframe>
-</div>
-
-<style>
-#chatbot-container {
-  max-width: 400px;
-  margin: 20px auto;
-  padding: 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-}
-
-@media (max-width: 768px) {
-  #chatbot-container {
-    max-width: 100%;
-    margin: 10px;
-  }
-  
-  #chatbot-container iframe {
-    height: 400px;
-  }
-}
-</style>`;
-
-  const jsIntegrationCode = `<!-- JavaScript Integration -->
-<div id="chatbot-widget"></div>
-
+<script src="https://tastebot-studio-backend-gvvb.onrender.com/widget.js"></script>
 <script>
-function loadChatbot() {
-  const container = document.getElementById('chatbot-widget');
-  const iframe = document.createElement('iframe');
-  
-  iframe.src = '${embedUrl}';
-  iframe.width = '400';
-  iframe.height = '600';
-  iframe.frameBorder = '0';
-  iframe.style.borderRadius = '8px';
-  iframe.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-  
-  container.appendChild(iframe);
-  
-  // Optional: Add custom styling or events
-  iframe.onload = function() {
-    console.log('Chatbot loaded successfully');
-  };
-}
-
-// Load when page is ready
-document.addEventListener('DOMContentLoaded', loadChatbot);
+  ChatBotWidget.init({
+    botId: "${botId}",
+    apiUrl: "https://tastebot-studio.onrender.com",
+    position: "bottom-right",
+  });
 </script>`;
 
   const CodeBlock = ({ code, language, type }: { code: string; language: string; type: string }) => (
@@ -188,7 +128,7 @@ document.addEventListener('DOMContentLoaded', loadChatbot);
   );
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="container mx-auto p-6 max-w-5xl">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" onClick={() => navigate('/')} className="p-2">
@@ -245,99 +185,127 @@ document.addEventListener('DOMContentLoaded', loadChatbot);
         </CardContent>
       </Card>
 
-      {/* Integration Methods */}
-      <Tabs defaultValue="basic" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="basic">Basic Embed</TabsTrigger>
-          <TabsTrigger value="advanced">Advanced Styling</TabsTrigger>
-          <TabsTrigger value="javascript">JavaScript Integration</TabsTrigger>
-        </TabsList>
+      {/* Embed Code Section */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Code2 className="h-5 w-5 text-primary" />
+            Embed Code
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">
+            The simplest way to embed your chatbot. Choose between direct HTML integration or Google Tag Manager.
+          </p>
+          <CodeBlock code={basicEmbedCode} language="HTML" type="Basic Embed" />
+          
+          <Separator className="my-6" />
+          
+          <div className="space-y-4">
+            <h4 className="font-semibold text-base">📋 Installation Instructions</h4>
+            
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-4 rounded-lg">
+              <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <Code2 className="h-4 w-4" />
+                Method 1: Direct HTML Integration (For Developers)
+              </h5>
+              <ol className="text-sm space-y-2 text-muted-foreground">
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">1.</span>
+                  <span>Open your website's <code className="bg-background px-1.5 py-0.5 rounded text-xs">index.html</code> file in a code editor</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">2.</span>
+                  <span>Locate the <code className="bg-background px-1.5 py-0.5 rounded text-xs">&lt;body&gt;</code> tag in your HTML file</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">3.</span>
+                  <span>Paste the embed code above just before the closing <code className="bg-background px-1.5 py-0.5 rounded text-xs">&lt;/body&gt;</code> tag</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">4.</span>
+                  <span>Save the file and refresh your website</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">5.</span>
+                  <span>The chatbot widget will appear at the bottom-right corner of your website</span>
+                </li>
+              </ol>
+            </div>
 
-        <TabsContent value="basic" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5 text-primary" />
-                Basic HTML Embed
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                The simplest way to embed your chatbot. Just copy and paste this code into your HTML.
-              </p>
-              <CodeBlock code={basicEmbedCode} language="HTML" type="Basic Embed" />
-              
-              <div className="bg-muted p-4 rounded-lg">
-                <h4 className="font-semibold text-sm mb-2">Features:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Easy to implement - just copy and paste</li>
-                  <li>• Responsive design</li>
-                  <li>• Works on any website</li>
-                  <li>• Secure iframe implementation</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-4 rounded-lg">
+              <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Method 2: Google Tag Manager (No Coding Required)
+              </h5>
+              <ol className="text-sm space-y-2 text-muted-foreground">
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">1.</span>
+                  <span>Log in to your <a href="https://tagmanager.google.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">Google Tag Manager</a> account</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">2.</span>
+                  <span>Select your website's container</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">3.</span>
+                  <span>Click <strong>"Add a new tag"</strong> button</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">4.</span>
+                  <span>Click on <strong>"Tag Configuration"</strong> and choose <strong>"Custom HTML"</strong></span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">5.</span>
+                  <span>Copy and paste the embed code above into the HTML field</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">6.</span>
+                  <span>Under <strong>"Triggering"</strong>, select <strong>"All Pages"</strong> to display the chatbot on every page</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">7.</span>
+                  <span>Name your tag (e.g., "Chatbot Widget - {bot.name}")</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">8.</span>
+                  <span>Click <strong>"Save"</strong> and then <strong>"Submit"</strong> to publish the changes</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">9.</span>
+                  <span>The chatbot will appear on your website within a few minutes</span>
+                </li>
+              </ol>
+            </div>
+          </div>
 
-        <TabsContent value="advanced" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5 text-primary" />
-                Advanced Styling
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                Enhanced embed with custom styling and responsive design.
-              </p>
-              <CodeBlock code={advancedEmbedCode} language="HTML + CSS" type="Advanced Embed" />
-              
-              <div className="bg-muted p-4 rounded-lg">
-                <h4 className="font-semibold text-sm mb-2">Additional Features:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Custom container styling</li>
-                  <li>• Gradient backgrounds</li>
-                  <li>• Responsive breakpoints</li>
-                  <li>• Enhanced shadows and borders</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <Separator className="my-6" />
+          
+          <div className="bg-muted p-4 rounded-lg">
+            <h4 className="font-semibold text-sm mb-2">✨ Features:</h4>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>• Easy to implement - just copy and paste</li>
+              <li>• Automatically positioned at bottom-right corner</li>
+              <li>• Responsive design that works on all devices</li>
+              <li>• Works on any website or platform</li>
+              <li>• Secure iframe implementation</li>
+            </ul>
+          </div>
 
-        <TabsContent value="javascript" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Code2 className="h-5 w-5 text-primary" />
-                JavaScript Integration
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                Dynamic loading with JavaScript for more control and customization.
-              </p>
-              <CodeBlock code={jsIntegrationCode} language="JavaScript" type="JS Integration" />
-              
-              <div className="bg-muted p-4 rounded-lg">
-                <h4 className="font-semibold text-sm mb-2">Benefits:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Dynamic loading</li>
-                  <li>• Event handling</li>
-                  <li>• Conditional loading</li>
-                  <li>• Custom initialization</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-4 rounded-lg">
+            <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+              💡 Pro Tip
+            </h4>
+            <p className="text-sm text-muted-foreground">
+              For WordPress, Shopify, Wix, or Squarespace users: Use Google Tag Manager for the easiest installation without touching any code!
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Customization Section */}
       {customization && (
-        <Card className="mt-6">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Palette className="h-5 w-5 text-primary" />
