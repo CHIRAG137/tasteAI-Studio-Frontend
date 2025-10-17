@@ -5,16 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Palette, Save, Eye, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getAuthHeaders } from "@/utils/auth";
 
 export interface EmbedCustomization {
   botId: string;
   headerTitle: string;
   headerSubtitle: string;
-  welcomeMessage: string;
   placeholder: string;
   primaryColor: string;
   backgroundColor: string;
@@ -39,7 +38,6 @@ interface EmbedCustomizerProps {
 const defaultCustomization: Omit<EmbedCustomization, 'botId'> = {
   headerTitle: "Chat Assistant",
   headerSubtitle: "Online",
-  welcomeMessage: "Hello! I'm here to help. What would you like to know?",
   placeholder: "Type your message...",
   primaryColor: "#3b82f6",
   backgroundColor: "#ffffff",
@@ -120,7 +118,7 @@ export const EmbedCustomizer = ({
 
   const handleSave = async () => {
     try {
-      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`, customization);
+      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`, customization, {headers: getAuthHeaders()});
       onSave(customization);
       toast({
         title: "Customization Saved",
@@ -213,16 +211,6 @@ export const EmbedCustomizer = ({
                 <CardTitle className="text-lg">Message Settings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="welcomeMessage">Welcome Message</Label>
-                  <Textarea
-                    id="welcomeMessage"
-                    value={customization.welcomeMessage}
-                    onChange={(e) => handleInputChange('welcomeMessage', e.target.value)}
-                    placeholder="Hello! I'm here to help..."
-                    rows={2}
-                  />
-                </div>
                 <div>
                   <Label htmlFor="placeholder">Input Placeholder</Label>
                   <Input

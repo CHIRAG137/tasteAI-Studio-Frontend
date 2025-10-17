@@ -91,16 +91,34 @@ export default function EmbedChat() {
       };
 
       fetchData();
-    } else if (isPreview) {
-      // Preview mode - just set a default message
-      setMessages([{
-        id: "init",
-        from: "bot",
-        text: "Hello! I'm here to help. What would you like to know?",
-        timestamp: new Date()
-      }]);
     }
   }, [botId, isPreview]);
+
+  // Set preview messages when in preview mode
+  useEffect(() => {
+    if (isPreview) {
+      setMessages([
+        {
+          id: "bot-preview-1",
+          from: "bot",
+          text: "Hello! I'm here to help. What would you like to know?",
+          timestamp: new Date(Date.now() - 60000)
+        },
+        {
+          id: "user-preview-1",
+          from: "user",
+          text: "This is a preview of a user message",
+          timestamp: new Date(Date.now() - 30000)
+        },
+        {
+          id: "bot-preview-2",
+          from: "bot",
+          text: "This is how my responses will look with your customized colors!",
+          timestamp: new Date()
+        }
+      ]);
+    }
+  }, [isPreview]);
 
   // Start flow when bot is loaded
   useEffect(() => {
@@ -187,18 +205,6 @@ export default function EmbedChat() {
 
     initFlow();
   }, [botData, isPreview]);
-
-  // Update welcome message when customization changes in preview mode
-  useEffect(() => {
-    if (customization && isPreview && messages.length === 1 && messages[0].from === "bot") {
-      setMessages([{
-        id: "init",
-        from: "bot",
-        text: customization.welcomeMessage,
-        timestamp: new Date()
-      }]);
-    }
-  }, [customization?.welcomeMessage, isPreview]);
 
   // Handle Q&A mode after flow ends
   const handleAskQuestion = async () => {
