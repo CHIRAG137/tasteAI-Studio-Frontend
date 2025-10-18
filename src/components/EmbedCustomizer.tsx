@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import axios from "axios";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { Palette, Save, Eye, RotateCcw } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Palette, Save, Eye, RotateCcw, Code } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
 
@@ -24,6 +25,8 @@ export interface EmbedCustomization {
   borderRadius: string;
   fontFamily: string;
   headerBackground: string;
+  customCSS?: string;
+  useCustomCSS?: boolean;
 }
 
 interface EmbedCustomizerProps {
@@ -47,8 +50,59 @@ const defaultCustomization: Omit<EmbedCustomization, 'botId'> = {
   textColor: "#1e293b",
   borderRadius: "8",
   fontFamily: "Inter, sans-serif",
-  headerBackground: "#ffffff"
+  headerBackground: "#ffffff",
+  customCSS: "",
+  useCustomCSS: false
 };
+
+const defaultCustomCSS = `/* Chat container */
+.embed-chat-container {
+  /* background-color: #ffffff; */
+}
+
+/* Chat header */
+.embed-chat-header {
+  /* background-color: #ffffff; */
+  /* border-bottom: 1px solid #e2e8f0; */
+}
+
+/* Bot icon */
+.embed-bot-icon {
+  /* background-color: rgba(59, 130, 246, 0.2); */
+  /* color: #3b82f6; */
+}
+
+/* User message bubble */
+.embed-user-message {
+  /* background-color: #3b82f6; */
+  /* color: #ffffff; */
+  /* border-radius: 8px; */
+}
+
+/* Bot message bubble */
+.embed-bot-message {
+  /* background-color: #f1f5f9; */
+  /* color: #1e293b; */
+  /* border-radius: 8px; */
+}
+
+/* Input field */
+.embed-input {
+  /* background-color: #ffffff; */
+  /* border-color: #e2e8f0; */
+  /* border-radius: 8px; */
+}
+
+/* Send button */
+.embed-send-button {
+  /* background-color: #3b82f6; */
+  /* border-radius: 8px; */
+}
+
+/* Loading dots */
+.embed-loading-dot {
+  /* background-color: #94a3b8; */
+}`;
 
 export const EmbedCustomizer = ({
   isOpen,
@@ -66,17 +120,19 @@ export const EmbedCustomizer = ({
     headerTitle: botName || defaultCustomization.headerTitle,
     ...initialCustomization
   });
+  const [activeTab, setActiveTab] = useState<string>("visual");
 
   useEffect(() => {
     if (botId) {
       const fetchCustomization = async () => {
         try {
-          const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`);
-          if (response.data.customization) {
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`);
+          const data = await response.json();
+          if (data.customization) {
             setCustomization({
               ...defaultCustomization,
               botId,
-              ...response.data.customization
+              ...data.customization
             });
           } else {
             setCustomization({
@@ -109,7 +165,7 @@ export const EmbedCustomizer = ({
     }
   }, [customization]);
 
-  const handleInputChange = (field: keyof EmbedCustomization, value: string) => {
+  const handleInputChange = (field: keyof EmbedCustomization, value: string | boolean) => {
     setCustomization(prev => ({
       ...prev,
       [field]: value
@@ -118,7 +174,20 @@ export const EmbedCustomizer = ({
 
   const handleSave = async () => {
     try {
-      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`, customization, { headers: getAuthHeaders() });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          },
+          body: JSON.stringify(customization)
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to save');
+
       onSave(customization);
       toast({
         title: "Customization Saved",
@@ -147,11 +216,18 @@ export const EmbedCustomizer = ({
     });
   };
 
+  const handleInsertTemplate = () => {
+    setCustomization(prev => ({
+      ...prev,
+      customCSS: defaultCustomCSS
+    }));
+  };
+
   const previewUrl = `${window.location.origin}/embed?botId=${botId}&preview=true`;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-6xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
             <Palette className="h-6 w-6 text-primary" />
@@ -162,169 +238,198 @@ export const EmbedCustomizer = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Customization Form */}
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-            {/* Header Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Header Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="headerTitle">Header Title</Label>
-                  <Input
-                    id="headerTitle"
-                    value={customization.headerTitle}
-                    onChange={(e) => handleInputChange('headerTitle', e.target.value)}
-                    placeholder="Chat Assistant"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="headerSubtitle">Header Subtitle</Label>
-                  <Input
-                    id="headerSubtitle"
-                    value={customization.headerSubtitle}
-                    onChange={(e) => handleInputChange('headerSubtitle', e.target.value)}
-                    placeholder="Online"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="headerBackground">Header Background Color</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="color"
-                      value={customization.headerBackground}
-                      onChange={(e) => handleInputChange('headerBackground', e.target.value)}
-                      className="w-12 h-12 p-1 rounded-full cursor-pointer"
-                    />
-                    <Input
-                      value={customization.headerBackground}
-                      onChange={(e) => handleInputChange('headerBackground', e.target.value)}
-                      placeholder="#ffffff"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="visual" className="flex items-center gap-2">
+                  <Palette className="h-4 w-4" />
+                  Visual Editor
+                </TabsTrigger>
+                <TabsTrigger value="css" className="flex items-center gap-2">
+                  <Code className="h-4 w-4" />
+                  CSS Editor
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Message Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Message Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="placeholder">Input Placeholder</Label>
-                  <Input
-                    id="placeholder"
-                    value={customization.placeholder}
-                    onChange={(e) => handleInputChange('placeholder', e.target.value)}
-                    placeholder="Type your message..."
-                  />
-                </div>
-              </CardContent>
-            </Card>
+              <TabsContent value="visual" className="space-y-4 mt-4">
+                {/* Use Custom CSS Toggle */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Use Custom CSS</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Override visual settings with custom CSS
+                        </p>
+                      </div>
+                      <Switch
+                        checked={customization.useCustomCSS}
+                        onCheckedChange={(checked) => handleInputChange('useCustomCSS', checked)}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
 
-            {/* Color Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Color Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="primaryColor">Primary Color</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="color"
-                      value={customization.primaryColor}
-                      onChange={(e) => handleInputChange('primaryColor', e.target.value)}
-                      className="w-12 h-12 p-1 rounded-full cursor-pointer"
-                    />
-                    <Input
-                      value={customization.primaryColor}
-                      onChange={(e) => handleInputChange('primaryColor', e.target.value)}
-                      placeholder="#3b82f6"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="backgroundColor">Background Color</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="color"
-                      value={customization.backgroundColor}
-                      onChange={(e) => handleInputChange('backgroundColor', e.target.value)}
-                      className="w-12 h-12 p-1 rounded-full cursor-pointer"
-                    />
-                    <Input
-                      value={customization.backgroundColor}
-                      onChange={(e) => handleInputChange('backgroundColor', e.target.value)}
-                      placeholder="#ffffff"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="userMessageColor">User Message Color</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="color"
-                      value={customization.userMessageColor}
-                      onChange={(e) => handleInputChange('userMessageColor', e.target.value)}
-                      className="w-12 h-12 p-1 rounded-full cursor-pointer"
-                    />
-                    <Input
-                      value={customization.userMessageColor}
-                      onChange={(e) => handleInputChange('userMessageColor', e.target.value)}
-                      placeholder="#3b82f6"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="botMessageColor">Bot Message Color</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="color"
-                      value={customization.botMessageColor}
-                      onChange={(e) => handleInputChange('botMessageColor', e.target.value)}
-                      className="w-12 h-12 p-1 rounded-full cursor-pointer"
-                    />
-                    <Input
-                      value={customization.botMessageColor}
-                      onChange={(e) => handleInputChange('botMessageColor', e.target.value)}
-                      placeholder="#f1f5f9"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                {/* Visual Editor Forms */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Header Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="headerTitle">Header Title</Label>
+                      <Input
+                        id="headerTitle"
+                        value={customization.headerTitle}
+                        onChange={(e) => handleInputChange('headerTitle', e.target.value)}
+                        placeholder="Chat Assistant"
+                        disabled={customization.useCustomCSS}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="headerSubtitle">Header Subtitle</Label>
+                      <Input
+                        id="headerSubtitle"
+                        value={customization.headerSubtitle}
+                        onChange={(e) => handleInputChange('headerSubtitle', e.target.value)}
+                        placeholder="Online"
+                        disabled={customization.useCustomCSS}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="headerBackground">Header Background Color</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={customization.headerBackground}
+                          onChange={(e) => handleInputChange('headerBackground', e.target.value)}
+                          className="w-12 h-12 p-1 rounded-full cursor-pointer"
+                          disabled={customization.useCustomCSS}
+                        />
+                        <Input
+                          value={customization.headerBackground}
+                          onChange={(e) => handleInputChange('headerBackground', e.target.value)}
+                          placeholder="#ffffff"
+                          disabled={customization.useCustomCSS}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            {/* Style Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Style Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="borderRadius">Border Radius (px)</Label>
-                  <Input
-                    id="borderRadius"
-                    type="number"
-                    value={customization.borderRadius}
-                    onChange={(e) => handleInputChange('borderRadius', e.target.value)}
-                    placeholder="8"
-                    min="0"
-                    max="50"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="fontFamily">Font Family</Label>
-                  <Input
-                    id="fontFamily"
-                    value={customization.fontFamily}
-                    onChange={(e) => handleInputChange('fontFamily', e.target.value)}
-                    placeholder="Inter, sans-serif"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Color Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="primaryColor">Primary Color</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={customization.primaryColor}
+                          onChange={(e) => handleInputChange('primaryColor', e.target.value)}
+                          className="w-12 h-12 p-1 rounded-full cursor-pointer"
+                          disabled={customization.useCustomCSS}
+                        />
+                        <Input
+                          value={customization.primaryColor}
+                          onChange={(e) => handleInputChange('primaryColor', e.target.value)}
+                          placeholder="#3b82f6"
+                          disabled={customization.useCustomCSS}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="userMessageColor">User Message Color</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={customization.userMessageColor}
+                          onChange={(e) => handleInputChange('userMessageColor', e.target.value)}
+                          className="w-12 h-12 p-1 rounded-full cursor-pointer"
+                          disabled={customization.useCustomCSS}
+                        />
+                        <Input
+                          value={customization.userMessageColor}
+                          onChange={(e) => handleInputChange('userMessageColor', e.target.value)}
+                          placeholder="#3b82f6"
+                          disabled={customization.useCustomCSS}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="botMessageColor">Bot Message Color</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={customization.botMessageColor}
+                          onChange={(e) => handleInputChange('botMessageColor', e.target.value)}
+                          className="w-12 h-12 p-1 rounded-full cursor-pointer"
+                          disabled={customization.useCustomCSS}
+                        />
+                        <Input
+                          value={customization.botMessageColor}
+                          onChange={(e) => handleInputChange('botMessageColor', e.target.value)}
+                          placeholder="#f1f5f9"
+                          disabled={customization.useCustomCSS}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="css" className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      Custom CSS
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleInsertTemplate}
+                      >
+                        Insert Template
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="customCSS">CSS Code</Label>
+                      <Textarea
+                        id="customCSS"
+                        value={customization.customCSS || ""}
+                        onChange={(e) => handleInputChange('customCSS', e.target.value)}
+                        placeholder="/* Write your custom CSS here */"
+                        className="font-mono text-sm min-h-[400px]"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use the provided class names to style different parts of the chat widget.
+                        Toggle "Use Custom CSS" in the Visual Editor tab to apply your styles.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Available CSS Classes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xs space-y-1 font-mono text-muted-foreground">
+                      <p>.embed-chat-container - Main container</p>
+                      <p>.embed-chat-header - Header section</p>
+                      <p>.embed-bot-icon - Bot icon</p>
+                      <p>.embed-user-message - User message bubbles</p>
+                      <p>.embed-bot-message - Bot message bubbles</p>
+                      <p>.embed-input - Input field</p>
+                      <p>.embed-send-button - Send button</p>
+                      <p>.embed-loading-dot - Loading animation dots</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Preview */}
@@ -337,17 +442,13 @@ export const EmbedCustomizer = ({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="border rounded-lg overflow-hidden h-96">
+                <div className="border rounded-lg overflow-hidden h-[420px]">
                   <iframe
                     ref={iframeRef}
                     src={previewUrl}
                     className="w-full h-full"
-                    style={{
-                      filter: 'none',
-                      backgroundColor: customization.backgroundColor
-                    }}
+                    style={{ filter: 'none' }}
                     onLoad={() => {
-                      // Send initial customization when iframe loads
                       if (iframeRef.current && iframeRef.current.contentWindow) {
                         iframeRef.current.contentWindow.postMessage({
                           type: 'CUSTOMIZATION_UPDATE',
@@ -363,26 +464,15 @@ export const EmbedCustomizer = ({
         </div>
 
         <div className="flex justify-between items-center">
-          {/* Reset Button */}
-          <Button
-            variant="outline"
-            onClick={handleReset}
-            className="flex items-center gap-2"
-          >
+          <Button variant="outline" onClick={handleReset} className="flex items-center gap-2">
             <RotateCcw className="h-4 w-4" />
             Reset to Default
           </Button>
-
-          {/* Save Button */}
-          <Button
-            onClick={handleSave}
-            className="flex items-center gap-2"
-          >
+          <Button onClick={handleSave} className="flex items-center gap-2">
             <Save className="h-4 w-4" />
             Save Customization
           </Button>
         </div>
-
       </DialogContent>
     </Dialog>
   );

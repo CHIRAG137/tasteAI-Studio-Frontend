@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import axios from "axios";
 import { Send, Bot, User, Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,24 +60,55 @@ export default function EmbedChat() {
     }
   }, [isPreview]);
 
+  // Apply custom CSS dynamically
+  useEffect(() => {
+    if (customization?.useCustomCSS && customization?.customCSS) {
+      // Remove previous custom style tag
+      const existingStyle = document.getElementById('embed-custom-css');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+
+      // Create and inject new style tag
+      const style = document.createElement('style');
+      style.id = 'embed-custom-css';
+      style.textContent = customization.customCSS;
+      document.head.appendChild(style);
+
+      return () => {
+        const styleToRemove = document.getElementById('embed-custom-css');
+        if (styleToRemove) {
+          styleToRemove.remove();
+        }
+      };
+    } else {
+      const existingStyle = document.getElementById('embed-custom-css');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+    }
+  }, [customization?.useCustomCSS, customization?.customCSS]);
+
   // Fetch bot data and customization
   useEffect(() => {
     if (botId && !isPreview) {
       const fetchData = async () => {
         try {
           // Fetch customization
-          const customizationResponse = await axios.get(
+          const customizationResponse = await fetch(
             `${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`
           );
-          if (customizationResponse.data.result) {
-            setCustomization(customizationResponse.data.result);
+          const customizationData = await customizationResponse.json();
+          if (customizationData.result) {
+            setCustomization(customizationData.result);
           }
 
           // Fetch bot data
-          const botResponse = await axios.get(
+          const botResponse = await fetch(
             `${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`
           );
-          setBotData(botResponse.data.result);
+          const botDataResult = await botResponse.json();
+          setBotData(botDataResult.result);
         } catch (error) {
           console.error('Error loading data:', error);
           setMessages([{
@@ -460,45 +490,90 @@ export default function EmbedChat() {
     );
   }
 
-  // Apply custom styles
-  const customStyles = customization ? {
-    '--custom-primary': customization.primaryColor,
-    '--custom-bg': customization.backgroundColor,
-    '--custom-header-bg': customization.headerBackground,
-    '--custom-user-msg': customization.userMessageColor,
-    '--custom-bot-msg': customization.botMessageColor,
-    '--custom-text': customization.textColor,
-    '--custom-radius': `${customization.borderRadius}px`,
-    fontFamily: customization.fontFamily
-  } as React.CSSProperties : {};
+  // Helper functions for conditional styling
+  const getContainerStyle = () => {
+    if (customization?.useCustomCSS) return {};
+    return {
+      backgroundColor: customization?.backgroundColor || undefined,
+      color: customization?.textColor || undefined,
+      fontFamily: customization?.fontFamily || undefined
+    };
+  };
+
+  const getHeaderStyle = () => {
+    if (customization?.useCustomCSS) return {};
+    return {
+      backgroundColor: customization?.headerBackground || undefined,
+      borderRadius: customization ? `${customization.borderRadius}px ${customization.borderRadius}px 0 0` : undefined
+    };
+  };
+
+  const getBotIconStyle = () => {
+    if (customization?.useCustomCSS) return {};
+    return {
+      backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
+      borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
+    };
+  };
+
+  const getUserMessageStyle = () => {
+    if (customization?.useCustomCSS) return {};
+    return {
+      backgroundColor: customization?.userMessageColor || undefined,
+      color: '#ffffff',
+      borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : '8px'
+    };
+  };
+
+  const getBotMessageStyle = () => {
+    if (customization?.useCustomCSS) return {};
+    return {
+      backgroundColor: customization?.botMessageColor || undefined,
+      color: customization?.textColor || undefined,
+      borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : '8px'
+    };
+  };
+
+  const getInputStyle = () => {
+    if (customization?.useCustomCSS) return {};
+    return {
+      borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined,
+      backgroundColor: customization?.backgroundColor || undefined,
+      color: customization?.textColor || undefined
+    };
+  };
+
+  const getSendButtonStyle = () => {
+    if (customization?.useCustomCSS) return {};
+    return {
+      backgroundColor: customization?.primaryColor || undefined,
+      borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
+    };
+  };
 
   return (
     <div
-      className="flex flex-col h-full border border-border/20 transition-all duration-200"
-      style={{
-        backgroundColor: customization?.backgroundColor || undefined,
-        color: customization?.textColor || undefined,
-        ...customStyles
-      }}
+      className={`flex flex-col h-full border border-border/20 transition-all duration-200 ${
+        customization?.useCustomCSS ? 'embed-chat-container' : ''
+      }`}
+      style={getContainerStyle()}
     >
       {/* Chat Header */}
       <div
-        className="flex items-center gap-3 p-4 border-b transition-all duration-200"
-        style={{
-          backgroundColor: customization?.headerBackground || undefined,
-          borderRadius: customization ? `${customization.borderRadius}px ${customization.borderRadius}px 0 0` : undefined
-        }}
+        className={`flex items-center gap-3 p-4 border-b transition-all duration-200 ${
+          customization?.useCustomCSS ? 'embed-chat-header' : ''
+        }`}
+        style={getHeaderStyle()}
       >
         <div
-          className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200"
-          style={{
-            backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
-            borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
-          }}
+          className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
+            customization?.useCustomCSS ? 'embed-bot-icon' : ''
+          }`}
+          style={getBotIconStyle()}
         >
           <Bot
             className="h-4 w-4 transition-colors duration-200"
-            style={{ color: customization?.primaryColor || undefined }}
+            style={customization?.useCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
           />
         </div>
         <div className="flex-1">
@@ -530,15 +605,14 @@ export default function EmbedChat() {
             <div key={msg.id} className={`flex gap-3 ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
               {msg.from === "bot" && (
                 <div
-                  className="flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200"
-                  style={{
-                    backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
-                    borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
-                  }}
+                  className={`flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200 ${
+                    customization?.useCustomCSS ? 'embed-bot-icon' : ''
+                  }`}
+                  style={getBotIconStyle()}
                 >
                   <Bot
                     className="h-3 w-3 transition-colors duration-200"
-                    style={{ color: customization?.primaryColor || undefined }}
+                    style={customization?.useCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
                   />
                 </div>
               )}
@@ -546,16 +620,12 @@ export default function EmbedChat() {
                 {msg.text && (
                   <div className={`max-w-[80%] ${msg.from === "user" ? "ml-auto" : ""}`}>
                     <div
-                      className="p-3 transition-all duration-200"
-                      style={{
-                        backgroundColor: msg.from === "user"
-                          ? customization?.userMessageColor || undefined
-                          : customization?.botMessageColor || undefined,
-                        color: msg.from === "user" && customization?.userMessageColor
-                          ? '#ffffff'
-                          : customization?.textColor || undefined,
-                        borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : '8px'
-                      }}
+                      className={`p-3 transition-all duration-200 ${
+                        customization?.useCustomCSS 
+                          ? (msg.from === "user" ? 'embed-user-message' : 'embed-bot-message')
+                          : ''
+                      }`}
+                      style={msg.from === "user" ? getUserMessageStyle() : getBotMessageStyle()}
                     >
                       <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                     </div>
@@ -608,15 +678,14 @@ export default function EmbedChat() {
 
               {msg.from === "user" && (
                 <div
-                  className="flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200"
-                  style={{
-                    backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
-                    borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
-                  }}
+                  className={`flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200 ${
+                    customization?.useCustomCSS ? 'embed-bot-icon' : ''
+                  }`}
+                  style={getBotIconStyle()}
                 >
                   <User
                     className="h-3 w-3 transition-colors duration-200"
-                    style={{ color: customization?.primaryColor || undefined }}
+                    style={customization?.useCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
                   />
                 </div>
               )}
@@ -626,43 +695,35 @@ export default function EmbedChat() {
           {isLoading && (
             <div className="flex gap-3 justify-start">
               <div
-                className="flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200"
-                style={{
-                  backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
-                  borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
-                }}
+                className={`flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200 ${
+                  customization?.useCustomCSS ? 'embed-bot-icon' : ''
+                }`}
+                style={getBotIconStyle()}
               >
                 <Bot
                   className="h-3 w-3 transition-colors duration-200"
-                  style={{ color: customization?.primaryColor || undefined }}
+                  style={customization?.useCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
                 />
               </div>
               <div
-                className="p-3 transition-all duration-200"
-                style={{
-                  backgroundColor: customization?.botMessageColor || undefined,
-                  borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : '8px'
-                }}
+                className={`p-3 transition-all duration-200 ${
+                  customization?.useCustomCSS ? 'embed-bot-message' : ''
+                }`}
+                style={getBotMessageStyle()}
               >
                 <div className="flex space-x-1">
-                  <div
-                    className="w-2 h-2 opacity-50 rounded-full animate-bounce"
-                    style={{ backgroundColor: customization?.textColor || undefined }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 opacity-50 rounded-full animate-bounce"
-                    style={{
-                      animationDelay: "0.1s",
-                      backgroundColor: customization?.textColor || undefined
-                    }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 opacity-50 rounded-full animate-bounce"
-                    style={{
-                      animationDelay: "0.2s",
-                      backgroundColor: customization?.textColor || undefined
-                    }}
-                  ></div>
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className={`w-2 h-2 opacity-50 rounded-full animate-bounce ${
+                        customization?.useCustomCSS ? 'embed-loading-dot' : ''
+                      }`}
+                      style={{
+                        animationDelay: `${i * 0.1}s`,
+                        ...(customization?.useCustomCSS ? {} : { backgroundColor: customization?.textColor || undefined })
+                      }}
+                    ></div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -673,11 +734,10 @@ export default function EmbedChat() {
 
       {/* Input Area */}
       <div
-        className="p-4 border-t transition-all duration-200"
-        style={{
-          backgroundColor: customization?.headerBackground || undefined,
-          borderRadius: customization ? `0 0 ${customization.borderRadius}px ${customization.borderRadius}px` : undefined
-        }}
+        className={`p-4 border-t transition-all duration-200 ${
+          customization?.useCustomCSS ? 'embed-chat-header' : ''
+        }`}
+        style={getHeaderStyle()}
       >
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -691,20 +751,19 @@ export default function EmbedChat() {
                   : (customization?.placeholder || "Type your message...")
               }
               disabled={isLoading || !canSendText}
-              className={`flex-1 transition-all duration-200 ${botData?.voiceEnabled ? 'pr-10' : ''}`}
-              style={{
-                borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined,
-                backgroundColor: customization?.backgroundColor || undefined,
-                color: customization?.textColor || undefined
-              }}
+              className={`flex-1 transition-all duration-200 ${
+                botData?.voiceEnabled ? 'pr-10' : ''
+              } ${customization?.useCustomCSS ? 'embed-input' : ''}`}
+              style={getInputStyle()}
             />
             {botData?.voiceEnabled && canSendText && (
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleVoiceInput}
-                className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${isListening ? "text-red-500 animate-pulse" : "text-muted-foreground hover:text-primary"
-                  }`}
+                className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${
+                  isListening ? "text-red-500 animate-pulse" : "text-muted-foreground hover:text-primary"
+                }`}
                 title={isListening ? "Stop recording" : "Start voice input"}
               >
                 {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
@@ -715,11 +774,10 @@ export default function EmbedChat() {
             onClick={() => handleSendMessage()}
             disabled={!input.trim() || isLoading || !canSendText}
             size="icon"
-            className="shrink-0 transition-all duration-200"
-            style={{
-              backgroundColor: customization?.primaryColor || undefined,
-              borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
-            }}
+            className={`shrink-0 transition-all duration-200 ${
+              customization?.useCustomCSS ? 'embed-send-button' : ''
+            }`}
+            style={getSendButtonStyle()}
           >
             <Send className="h-4 w-4" />
           </Button>
