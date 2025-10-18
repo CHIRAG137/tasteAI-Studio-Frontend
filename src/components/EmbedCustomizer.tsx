@@ -35,7 +35,6 @@ interface EmbedCustomizerProps {
   botId: string;
   botName: string;
   onSave: (customization: EmbedCustomization) => void;
-  initialCustomization?: EmbedCustomization;
 }
 
 const defaultCustomization: Omit<EmbedCustomization, 'botId'> = {
@@ -110,7 +109,6 @@ export const EmbedCustomizer = ({
   botId,
   botName,
   onSave,
-  initialCustomization
 }: EmbedCustomizerProps) => {
   const { toast } = useToast();
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -118,31 +116,40 @@ export const EmbedCustomizer = ({
     ...defaultCustomization,
     botId,
     headerTitle: botName || defaultCustomization.headerTitle,
-    ...initialCustomization
   });
   const [activeTab, setActiveTab] = useState<string>("visual");
 
   useEffect(() => {
-    if (botId) {
+    if (isOpen && botId) {
       const fetchCustomization = async () => {
         try {
-          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`);
+          const response = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`
+          );
           const data = await response.json();
-          if (data.customization) {
-            setCustomization({
-              ...defaultCustomization,
-              botId,
-              ...data.customization
-            });
-          } else {
-            setCustomization({
-              ...defaultCustomization,
-              botId,
-              headerTitle: botName || defaultCustomization.headerTitle
-            });
-          }
+
+          const apiCustomization = data.result || {};
+
+          setCustomization({
+            ...defaultCustomization,
+            botId,
+            headerTitle: apiCustomization.headerTitle || botName || defaultCustomization.headerTitle,
+            headerSubtitle: apiCustomization.headerSubtitle || defaultCustomization.headerSubtitle,
+            placeholder: apiCustomization.placeholder || defaultCustomization.placeholder,
+            primaryColor: apiCustomization.primaryColor || defaultCustomization.primaryColor,
+            backgroundColor: apiCustomization.backgroundColor || defaultCustomization.backgroundColor,
+            messageBackgroundColor: apiCustomization.messageBackgroundColor || defaultCustomization.messageBackgroundColor,
+            userMessageColor: apiCustomization.userMessageColor || defaultCustomization.userMessageColor,
+            botMessageColor: apiCustomization.botMessageColor || defaultCustomization.botMessageColor,
+            textColor: apiCustomization.textColor || defaultCustomization.textColor,
+            borderRadius: apiCustomization.borderRadius || defaultCustomization.borderRadius,
+            fontFamily: apiCustomization.fontFamily || defaultCustomization.fontFamily,
+            headerBackground: apiCustomization.headerBackground || defaultCustomization.headerBackground,
+            customCSS: apiCustomization.customCSS || defaultCustomization.customCSS,
+            useCustomCSS: apiCustomization.useCustomCSS ?? defaultCustomization.useCustomCSS
+          });
         } catch (error) {
-          console.error('Error loading customization:', error);
+          console.error("Error loading customization:", error);
           setCustomization({
             ...defaultCustomization,
             botId,
@@ -153,7 +160,7 @@ export const EmbedCustomizer = ({
 
       fetchCustomization();
     }
-  }, [botId, botName]);
+  }, [isOpen, botId, botName]);
 
   // Send customization updates to iframe in real-time
   useEffect(() => {
@@ -282,7 +289,7 @@ export const EmbedCustomizer = ({
                         value={customization.headerTitle}
                         onChange={(e) => handleInputChange('headerTitle', e.target.value)}
                         placeholder="Chat Assistant"
-                        disabled={customization.useCustomCSS}
+                      // Always enabled, even if useCustomCSS is true
                       />
                     </div>
                     <div>
@@ -292,7 +299,7 @@ export const EmbedCustomizer = ({
                         value={customization.headerSubtitle}
                         onChange={(e) => handleInputChange('headerSubtitle', e.target.value)}
                         placeholder="Online"
-                        disabled={customization.useCustomCSS}
+                      // Always enabled, even if useCustomCSS is true
                       />
                     </div>
                     <div>
@@ -374,6 +381,44 @@ export const EmbedCustomizer = ({
                           disabled={customization.useCustomCSS}
                         />
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Style Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Border Radius */}
+                    <div>
+                      <Label htmlFor="borderRadius">Border Radius</Label>
+                      <Input
+                        id="borderRadius"
+                        type="number"
+                        value={customization.borderRadius}
+                        onChange={(e) => handleInputChange('borderRadius', e.target.value)}
+                        placeholder="8"
+                        disabled={customization.useCustomCSS}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Set the border radius for chat bubbles and input fields.
+                      </p>
+                    </div>
+
+                    {/* Font Family */}
+                    <div>
+                      <Label htmlFor="fontFamily">Font Family</Label>
+                      <Input
+                        id="fontFamily"
+                        value={customization.fontFamily}
+                        onChange={(e) => handleInputChange('fontFamily', e.target.value)}
+                        placeholder="Inter, sans-serif"
+                        disabled={customization.useCustomCSS}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Set the font family used in the chat widget.
+                      </p>
                     </div>
                   </CardContent>
                 </Card>

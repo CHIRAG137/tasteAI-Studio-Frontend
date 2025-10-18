@@ -52,14 +52,13 @@ export default function Documentation() {
   useEffect(() => {
     if (botId) {
       fetchBot();
-      loadCustomization();
     }
   }, [botId]);
 
   const fetchBot = async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`);
-      const botData = response.data;
+      const botData = response.data.result;
       setBot({
         id: botData._id,
         name: botData.name,
@@ -72,17 +71,6 @@ export default function Documentation() {
         description: "Failed to load bot information",
         variant: "destructive"
       });
-    }
-  };
-
-  const loadCustomization = () => {
-    try {
-      const saved = localStorage.getItem(`embed-customization-${botId}`);
-      if (saved) {
-        setCustomization(JSON.parse(saved));
-      }
-    } catch (error) {
-      console.error("Error loading customization:", error);
     }
   };
 
@@ -588,47 +576,6 @@ export default function Documentation() {
         </CardContent>
       </Card>
 
-      {/* Customization Section */}
-      {customization && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Palette className="h-5 w-5 text-primary" />
-              Current Customization
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="font-medium">Header Title</p>
-                <p className="text-muted-foreground">{customization.headerTitle}</p>
-              </div>
-              <div>
-                <p className="font-medium">Primary Color</p>
-                <div className="flex items-center gap-2">
-                  <div 
-                    className="w-4 h-4 rounded border"
-                    style={{ backgroundColor: customization.primaryColor }}
-                  />
-                  <p className="text-muted-foreground">{customization.primaryColor}</p>
-                </div>
-              </div>
-              <div>
-                <p className="font-medium">Border Radius</p>
-                <p className="text-muted-foreground">{customization.borderRadius}px</p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => setIsCustomizerOpen(true)}
-              className="mt-4"
-            >
-              Edit Customization
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Customizer Modal */}
       <EmbedCustomizer
         isOpen={isCustomizerOpen}
@@ -636,7 +583,6 @@ export default function Documentation() {
         botId={botId!}
         botName={bot.name}
         onSave={handleCustomizationSave}
-        initialCustomization={customization || undefined}
       />
     </div>
   );
