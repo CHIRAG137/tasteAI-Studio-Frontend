@@ -118,7 +118,7 @@ export const EmbedCustomizer = ({
 
   const handleSave = async () => {
     try {
-      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`, customization, {headers: getAuthHeaders()});
+      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`, customization, { headers: getAuthHeaders() });
       onSave(customization);
       toast({
         title: "Customization Saved",
@@ -193,7 +193,7 @@ export const EmbedCustomizer = ({
                       type="color"
                       value={customization.headerBackground}
                       onChange={(e) => handleInputChange('headerBackground', e.target.value)}
-                      className="w-16 h-10 p-1"
+                      className="w-12 h-12 p-1 rounded-full cursor-pointer"
                     />
                     <Input
                       value={customization.headerBackground}
@@ -236,7 +236,7 @@ export const EmbedCustomizer = ({
                       type="color"
                       value={customization.primaryColor}
                       onChange={(e) => handleInputChange('primaryColor', e.target.value)}
-                      className="w-16 h-10 p-1"
+                      className="w-12 h-12 p-1 rounded-full cursor-pointer"
                     />
                     <Input
                       value={customization.primaryColor}
@@ -252,7 +252,7 @@ export const EmbedCustomizer = ({
                       type="color"
                       value={customization.backgroundColor}
                       onChange={(e) => handleInputChange('backgroundColor', e.target.value)}
-                      className="w-16 h-10 p-1"
+                      className="w-12 h-12 p-1 rounded-full cursor-pointer"
                     />
                     <Input
                       value={customization.backgroundColor}
@@ -268,7 +268,7 @@ export const EmbedCustomizer = ({
                       type="color"
                       value={customization.userMessageColor}
                       onChange={(e) => handleInputChange('userMessageColor', e.target.value)}
-                      className="w-16 h-10 p-1"
+                      className="w-12 h-12 p-1 rounded-full cursor-pointer"
                     />
                     <Input
                       value={customization.userMessageColor}
@@ -284,7 +284,7 @@ export const EmbedCustomizer = ({
                       type="color"
                       value={customization.botMessageColor}
                       onChange={(e) => handleInputChange('botMessageColor', e.target.value)}
-                      className="w-16 h-10 p-1"
+                      className="w-12 h-12 p-1 rounded-full cursor-pointer"
                     />
                     <Input
                       value={customization.botMessageColor}
