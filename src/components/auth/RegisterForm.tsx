@@ -76,7 +76,7 @@ export const RegisterForm = () => {
       if (!res.ok) throw new Error(data.error || "Google login failed");
 
       // store JWT
-      setAuthToken(data.token);
+      setAuthToken(data.result.token);
 
       toast({
         title: "Success",
