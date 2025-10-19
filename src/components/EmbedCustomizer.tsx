@@ -234,21 +234,32 @@ export const EmbedCustomizer = ({
 
   // Update button preview
   useEffect(() => {
-    if (buttonPreviewRef.current && mainTab === 'button') {
-      updateButtonPreview();
+    if (mainTab === 'button') {
+      // Small delay to ensure the ref is mounted
+      const timer = setTimeout(() => {
+        if (buttonPreviewRef.current) {
+          updateButtonPreview();
+        }
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [customization, mainTab]);
 
   const updateButtonPreview = () => {
-    if (!buttonPreviewRef.current) return;
+    if (!buttonPreviewRef.current) {
+      console.log('Button preview ref not available');
+      return;
+    }
 
     const container = buttonPreviewRef.current;
     container.innerHTML = '';
 
-    // Create style element for custom CSS
+    // Create style element for custom CSS and hover effects
     const styleEl = document.createElement('style');
     if (customization.useButtonCustomCSS && customization.buttonCustomCSS) {
-      styleEl.textContent = customization.buttonCustomCSS;
+      // Replace #chatbot-widget-button with #preview-button for preview
+      const previewCSS = customization.buttonCustomCSS.replace(/#chatbot-widget-button/g, '#preview-button');
+      styleEl.textContent = previewCSS;
     } else {
       styleEl.textContent = `
         #preview-button:hover {
@@ -269,6 +280,7 @@ export const EmbedCustomizer = ({
     `;
 
     if (customization.useButtonCustomCSS) {
+      // When using custom CSS, only apply minimal positioning
       button.style.cssText = `
         position: absolute;
         bottom: ${customization.buttonPosition.includes('bottom') ? customization.buttonBottom : 'auto'}px;
@@ -283,6 +295,7 @@ export const EmbedCustomizer = ({
         transition: transform 0.2s, box-shadow 0.2s;
       `;
     } else {
+      // Apply full visual editor styles
       button.style.cssText = `
         position: absolute;
         bottom: ${customization.buttonPosition.includes('bottom') ? customization.buttonBottom : 'auto'}px;
@@ -305,6 +318,7 @@ export const EmbedCustomizer = ({
     }
 
     container.appendChild(button);
+    console.log('Button preview updated');
   };
 
   const handleInputChange = (field: keyof EmbedCustomization, value: string | boolean) => {
