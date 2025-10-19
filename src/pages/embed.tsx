@@ -62,7 +62,7 @@ export default function EmbedChat() {
 
   // Apply custom CSS dynamically
   useEffect(() => {
-    if (customization?.useCustomCSS && customization?.customCSS) {
+    if (customization?.useChatCustomCSS && customization?.chatCustomCSS) {
       // Remove previous custom style tag
       const existingStyle = document.getElementById('embed-custom-css');
       if (existingStyle) {
@@ -72,7 +72,7 @@ export default function EmbedChat() {
       // Create and inject new style tag
       const style = document.createElement('style');
       style.id = 'embed-custom-css';
-      style.textContent = customization.customCSS;
+      style.textContent = customization.chatCustomCSS;
       document.head.appendChild(style);
 
       return () => {
@@ -87,7 +87,7 @@ export default function EmbedChat() {
         existingStyle.remove();
       }
     }
-  }, [customization?.useCustomCSS, customization?.customCSS]);
+  }, [customization?.useChatCustomCSS, customization?.chatCustomCSS]);
 
   // Fetch bot data and customization
   useEffect(() => {
@@ -492,7 +492,7 @@ export default function EmbedChat() {
 
   // Helper functions for conditional styling
   const getContainerStyle = () => {
-    if (customization?.useCustomCSS) return {};
+    if (customization?.useChatCustomCSS) return {};
     return {
       backgroundColor: customization?.backgroundColor || undefined,
       color: customization?.textColor || undefined,
@@ -501,7 +501,7 @@ export default function EmbedChat() {
   };
 
   const getHeaderStyle = () => {
-    if (customization?.useCustomCSS) return {};
+    if (customization?.useChatCustomCSS) return {};
     return {
       backgroundColor: customization?.headerBackground || undefined,
       borderRadius: customization ? `${customization.borderRadius}px ${customization.borderRadius}px 0 0` : undefined
@@ -509,7 +509,7 @@ export default function EmbedChat() {
   };
 
   const getBotIconStyle = () => {
-    if (customization?.useCustomCSS) return {};
+    if (customization?.useChatCustomCSS) return {};
     return {
       backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
       borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
@@ -517,7 +517,7 @@ export default function EmbedChat() {
   };
 
   const getUserMessageStyle = () => {
-    if (customization?.useCustomCSS) return {};
+    if (customization?.useChatCustomCSS) return {};
     return {
       backgroundColor: customization?.userMessageColor || undefined,
       color: '#ffffff',
@@ -526,7 +526,7 @@ export default function EmbedChat() {
   };
 
   const getBotMessageStyle = () => {
-    if (customization?.useCustomCSS) return {};
+    if (customization?.useChatCustomCSS) return {};
     return {
       backgroundColor: customization?.botMessageColor || undefined,
       color: customization?.textColor || undefined,
@@ -535,7 +535,7 @@ export default function EmbedChat() {
   };
 
   const getInputStyle = () => {
-    if (customization?.useCustomCSS) return {};
+    if (customization?.useChatCustomCSS) return {};
     return {
       borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined,
       backgroundColor: customization?.backgroundColor || undefined,
@@ -544,7 +544,7 @@ export default function EmbedChat() {
   };
 
   const getSendButtonStyle = () => {
-    if (customization?.useCustomCSS) return {};
+    if (customization?.useChatCustomCSS) return {};
     return {
       backgroundColor: customization?.primaryColor || undefined,
       borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
@@ -554,26 +554,26 @@ export default function EmbedChat() {
   return (
     <div
       className={`flex flex-col h-full border border-border/20 transition-all duration-200 ${
-        customization?.useCustomCSS ? 'embed-chat-container' : ''
+        customization?.useChatCustomCSS ? 'embed-chat-container' : ''
       }`}
       style={getContainerStyle()}
     >
       {/* Chat Header */}
       <div
         className={`flex items-center gap-3 p-4 border-b transition-all duration-200 ${
-          customization?.useCustomCSS ? 'embed-chat-header' : ''
+          customization?.useChatCustomCSS ? 'embed-chat-header' : ''
         }`}
         style={getHeaderStyle()}
       >
         <div
           className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
-            customization?.useCustomCSS ? 'embed-bot-icon' : ''
+            customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
           }`}
           style={getBotIconStyle()}
         >
           <Bot
             className="h-4 w-4 transition-colors duration-200"
-            style={customization?.useCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
+            style={customization?.useChatCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
           />
         </div>
         <div className="flex-1">
@@ -606,13 +606,13 @@ export default function EmbedChat() {
               {msg.from === "bot" && (
                 <div
                   className={`flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200 ${
-                    customization?.useCustomCSS ? 'embed-bot-icon' : ''
+                    customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
                   }`}
                   style={getBotIconStyle()}
                 >
                   <Bot
                     className="h-3 w-3 transition-colors duration-200"
-                    style={customization?.useCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
+                    style={customization?.useChatCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
                   />
                 </div>
               )}
@@ -621,7 +621,7 @@ export default function EmbedChat() {
                   <div className={`max-w-[80%] ${msg.from === "user" ? "ml-auto" : ""}`}>
                     <div
                       className={`p-3 transition-all duration-200 ${
-                        customization?.useCustomCSS 
+                        customization?.useChatCustomCSS 
                           ? (msg.from === "user" ? 'embed-user-message' : 'embed-bot-message')
                           : ''
                       }`}
@@ -679,13 +679,13 @@ export default function EmbedChat() {
               {msg.from === "user" && (
                 <div
                   className={`flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200 ${
-                    customization?.useCustomCSS ? 'embed-bot-icon' : ''
+                    customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
                   }`}
                   style={getBotIconStyle()}
                 >
                   <User
                     className="h-3 w-3 transition-colors duration-200"
-                    style={customization?.useCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
+                    style={customization?.useChatCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
                   />
                 </div>
               )}
@@ -696,18 +696,18 @@ export default function EmbedChat() {
             <div className="flex gap-3 justify-start">
               <div
                 className={`flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200 ${
-                  customization?.useCustomCSS ? 'embed-bot-icon' : ''
+                  customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
                 }`}
                 style={getBotIconStyle()}
               >
                 <Bot
                   className="h-3 w-3 transition-colors duration-200"
-                  style={customization?.useCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
+                  style={customization?.useChatCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
                 />
               </div>
               <div
                 className={`p-3 transition-all duration-200 ${
-                  customization?.useCustomCSS ? 'embed-bot-message' : ''
+                  customization?.useChatCustomCSS ? 'embed-bot-message' : ''
                 }`}
                 style={getBotMessageStyle()}
               >
@@ -716,11 +716,11 @@ export default function EmbedChat() {
                     <div
                       key={i}
                       className={`w-2 h-2 opacity-50 rounded-full animate-bounce ${
-                        customization?.useCustomCSS ? 'embed-loading-dot' : ''
+                        customization?.useChatCustomCSS ? 'embed-loading-dot' : ''
                       }`}
                       style={{
                         animationDelay: `${i * 0.1}s`,
-                        ...(customization?.useCustomCSS ? {} : { backgroundColor: customization?.textColor || undefined })
+                        ...(customization?.useChatCustomCSS ? {} : { backgroundColor: customization?.textColor || undefined })
                       }}
                     ></div>
                   ))}
@@ -735,7 +735,7 @@ export default function EmbedChat() {
       {/* Input Area */}
       <div
         className={`p-4 border-t transition-all duration-200 ${
-          customization?.useCustomCSS ? 'embed-chat-header' : ''
+          customization?.useChatCustomCSS ? 'embed-chat-header' : ''
         }`}
         style={getHeaderStyle()}
       >
@@ -753,7 +753,7 @@ export default function EmbedChat() {
               disabled={isLoading || !canSendText}
               className={`flex-1 transition-all duration-200 ${
                 botData?.voiceEnabled ? 'pr-10' : ''
-              } ${customization?.useCustomCSS ? 'embed-input' : ''}`}
+              } ${customization?.useChatCustomCSS ? 'embed-input' : ''}`}
               style={getInputStyle()}
             />
             {botData?.voiceEnabled && canSendText && (
@@ -775,7 +775,7 @@ export default function EmbedChat() {
             disabled={!input.trim() || isLoading || !canSendText}
             size="icon"
             className={`shrink-0 transition-all duration-200 ${
-              customization?.useCustomCSS ? 'embed-send-button' : ''
+              customization?.useChatCustomCSS ? 'embed-send-button' : ''
             }`}
             style={getSendButtonStyle()}
           >
