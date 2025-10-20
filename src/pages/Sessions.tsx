@@ -178,39 +178,50 @@ export default function Sessions() {
     setSummary("");
 
     try {
-      if (!navigator.userActivation.isActive) {
-        throw new Error("User activation required. Please click the button again.");
-      }
-
       const conversationText = selectedSession.messages
         .map(msg => `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`)
         .join("\n\n");
 
-      const options = {
-        sharedContext: `This is a chat conversation between a user and a chatbot named ${botName}`,
-        type: 'key-points',
-        format: 'markdown',
-        length: 'medium',
-        monitor(m: any) {
-          m.addEventListener('downloadprogress', (e: any) => {
-            console.log(`Downloaded ${e.loaded * 100}%`);
-          });
+      if (summarizerAvailable) {
+        // Use Chrome built-in API
+        const summarizer = await (self as any).Summarizer.create({
+          type: "key-points",
+          format: "markdown",
+          length: "medium",
+        });
+
+        const result = await summarizer.summarize(conversationText, {
+          context: "Provide a concise summary of this chat.",
+        });
+
+        setSummary(result);
+        summarizer.destroy();
+      } else {
+        // Fallback to Gemini API
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/summarize`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify({
+            messages: selectedSession.messages,
+            botName,
+          }),
+        });
+
+        const data = await res.json();
+        if (data.status === "success") {
+          setSummary(data.summary);
+        } else {
+          throw new Error(data.message || "Gemini summarization failed");
         }
-      };
+      }
 
-      const summarizer = await (self as any).Summarizer.create(options);
-
-      // Use summarize() instead of summarizeStreaming() - it returns a Promise
-      const result = await summarizer.summarize(conversationText, {
-        context: 'Provide a concise summary of the key points discussed in this conversation.',
-      });
-
-      setSummary(result);
       setShowSummary(true);
-      summarizer.destroy();
     } catch (error: any) {
-      console.error('Error summarizing session:', error);
-      setSummarizerError(error.message || 'Failed to generate summary. Please try again.');
+      console.error("Error summarizing session:", error);
+      setSummarizerError(error.message || "Failed to summarize conversation");
     } finally {
       setSummarizing(false);
     }
