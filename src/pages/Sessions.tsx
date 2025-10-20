@@ -468,43 +468,42 @@ export default function Sessions() {
                   </div>
 
                   {/* Summarizer Button */}
-                  {summarizerAvailable && (
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={summarizeSession}
-                        disabled={summarizing || selectedSession.messages.length === 0}
-                        size="sm"
-                        variant="secondary"
-                        className="flex-1"
-                      >
-                        {summarizing ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Generating Summary...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-4 h-4 mr-2" />
-                            Summarize Conversation
-                          </>
-                        )}
-                      </Button>
-                      {showSummary && (
-                        <Button
-                          onClick={() => setShowSummary(!showSummary)}
-                          size="sm"
-                          variant="outline"
-                        >
-                          {showSummary ? "Hide" : "Show"}
-                        </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={summarizeSession}
+                      disabled={summarizing || selectedSession.messages.length === 0}
+                      size="sm"
+                      variant="secondary"
+                      className="flex-1"
+                    >
+                      {summarizing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Generating Summary...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Summarize Conversation
+                        </>
                       )}
-                    </div>
-                  )}
+                    </Button>
+
+                    {showSummary && (
+                      <Button
+                        onClick={() => setShowSummary(!showSummary)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        {showSummary ? "Hide" : "Show"}
+                      </Button>
+                    )}
+                  </div>
 
                   {summarizerAvailable === false && (
                     <Alert>
                       <AlertDescription className="text-xs">
-                        AI summarization is not available in your browser. Please use Chrome 138+ on supported platforms.
+                        Using TasteAI fallback summarization (Gemini-based) — Chrome built-in summarizer not supported on this device.
                       </AlertDescription>
                     </Alert>
                   )}
