@@ -108,7 +108,7 @@ export const BotBuilder = () => {
           conversationalTone: bot.conversation_tone,
           conversationFlow: bot.conversationFlow
         }));
-        setSavedBots(bots);
+        setSavedBots(bots.reverse());
       } else {
         const errorText = await res.text();
         console.error("Failed to load bots:", errorText);
