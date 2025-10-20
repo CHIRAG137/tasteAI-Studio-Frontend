@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Bot, Globe, Mic, MicOff, MoreHorizontal, Play, Share, Code, Trash2, Edit, MessageSquare } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 interface BotCardProps {
   bot: {
@@ -24,8 +25,19 @@ interface BotCardProps {
 }
 
 export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, onSessions }: BotCardProps) => {
+  const isLoading = (bot as any).isLoading;
+  const progress = (bot as any).progress || 0;
+
   return (
-    <Card className="relative group hover:shadow-strong transition-all duration-300 border-border/50 hover:border-primary/20">
+    <Card className={`relative group transition-all duration-300 ${isLoading ? "opacity-80" : "hover:shadow-strong"}`}>
+      {isLoading && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl">
+          <Bot className="w-6 h-6 text-primary animate-pulse mb-2" />
+          <p className="text-sm font-medium text-primary mb-2">Creating bot...</p>
+          <Progress value={progress} className="w-2/3" />
+        </div>
+      )}
+
       {/* Three dots menu */}
       <div className="absolute top-4 right-4 z-10">
         <DropdownMenu>

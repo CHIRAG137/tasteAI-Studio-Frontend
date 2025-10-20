@@ -47,6 +47,9 @@ export const BotBuilder = () => {
   const [savedBots, setSavedBots] = useState<any[]>([]);
   const [selectedBotForTest, setSelectedBotForTest] = useState<any | null>(null);
   const [visibleBotCount, setVisibleBotCount] = useState(3);
+  const [isCreatingBot, setIsCreatingBot] = useState(false);
+  const [creatingBot, setCreatingBot] = useState<any | null>(null);
+  const [progress, setProgress] = useState(0);
 
   const handleShowMore = () => {
     setVisibleBotCount(prev => Math.min(prev + 3, savedBots.length));
@@ -134,43 +137,59 @@ export const BotBuilder = () => {
       return;
     }
 
+    if (isCreatingBot) return; // prevent duplicate clicks
+
     try {
+      setIsCreatingBot(true);
+      setProgress(5);
+
+      // Create temporary “bot is being created” card
+      const tempBot = {
+        id: "temp",
+        name: botConfig.name || "New Bot",
+        description: "Bot is being created. Please wait...",
+        websiteUrl: botConfig.websiteUrl,
+        voiceEnabled: botConfig.voiceEnabled,
+        languages: botConfig.languages,
+        primaryPurpose: botConfig.primaryPurpose,
+        conversationalTone: botConfig.conversationalTone,
+        isLoading: true,
+      };
+
+      setCreatingBot(tempBot);
+      setSavedBots(prev => [tempBot, ...prev]);
+
+      // Simulate progress bar while backend works
+      const progressInterval = setInterval(() => {
+        setProgress(prev => (prev < 90 ? prev + 5 : prev));
+      }, 1000);
+
       const formData = new FormData();
-      formData.append("name", botConfig.name);
-      formData.append("website_url", botConfig.websiteUrl);
-      formData.append("description", botConfig.description);
-      formData.append("is_voice_enabled", botConfig.voiceEnabled.toString());
-      formData.append("is_auto_translate", "false");
-      formData.append("supported_languages", JSON.stringify(botConfig.languages));
-      formData.append("primary_purpose", botConfig.primaryPurpose);
-      formData.append("specialisation_area", botConfig.specializationArea);
-      formData.append("conversation_tone", botConfig.conversationalTone);
-      formData.append("response_style", botConfig.responseStyle);
-      formData.append("target_audience", botConfig.targetAudience);
-      formData.append("key_topics", botConfig.keyTopics);
-      formData.append("keywords", botConfig.keywords);
-      formData.append("custom_instructions", botConfig.customInstructions);
-      formData.append("is_slack_enabled", botConfig.isSlackEnabled.toString());
-      formData.append("slack_channel_id", botConfig.slackChannelId);
+      Object.entries({
+        name: botConfig.name,
+        website_url: botConfig.websiteUrl,
+        description: botConfig.description,
+        is_voice_enabled: botConfig.voiceEnabled.toString(),
+        is_auto_translate: "false",
+        supported_languages: JSON.stringify(botConfig.languages),
+        primary_purpose: botConfig.primaryPurpose,
+        specialisation_area: botConfig.specializationArea,
+        conversation_tone: botConfig.conversationalTone,
+        response_style: botConfig.responseStyle,
+        target_audience: botConfig.targetAudience,
+        key_topics: botConfig.keyTopics,
+        keywords: botConfig.keywords,
+        custom_instructions: botConfig.customInstructions,
+        is_slack_enabled: botConfig.isSlackEnabled.toString(),
+        slack_channel_id: botConfig.slackChannelId,
+        conversationFlow: JSON.stringify(botConfig.conversationFlow || { nodes: [], edges: [] }),
+      }).forEach(([key, value]) => formData.append(key, value as string));
 
-      // Add conversation flow
-      formData.append("conversationFlow", JSON.stringify(botConfig.conversationFlow || { nodes: [], edges: [] }));
-
-      // Add scraped markdown data if available
-      if (botConfig.scrapedMarkdown && botConfig.scrapedMarkdown.length > 0) {
-        // Send as JSON array
+      if (botConfig.scrapedMarkdown?.length)
         formData.append("scraped_content", JSON.stringify(botConfig.scrapedMarkdown));
-      }
-
-      // Add scraped URLs if available
-      if (botConfig.scrapedUrls && botConfig.scrapedUrls.length > 0) {
-        // Send as JSON array
+      if (botConfig.scrapedUrls?.length)
         formData.append("scraped_urls", JSON.stringify(botConfig.scrapedUrls));
-      }
-
-      if (botConfig.file) {
-        formData.append("file", botConfig.file);
-      }
+      if (botConfig.file) formData.append("file", botConfig.file);
 
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/create`, {
         method: "POST",
@@ -178,42 +197,21 @@ export const BotBuilder = () => {
         body: formData,
       });
 
-      const result = await response.json();
+      clearInterval(progressInterval);
+      setProgress(100);
 
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to create bot");
-      }
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to create bot");
 
       toast({
         title: "Bot Created Successfully!",
         description: result.message || `${botConfig.name} has been created successfully.`,
       });
 
-      // Reset bot config including scraped markdown
-      setBotConfig({
-        name: "",
-        websiteUrl: "",
-        description: "",
-        file: null,
-        voiceEnabled: false,
-        languages: ["English"],
-        primaryPurpose: "",
-        specializationArea: "",
-        conversationalTone: "",
-        responseStyle: "",
-        targetAudience: "",
-        keyTopics: "",
-        keywords: "",
-        customInstructions: "",
-        isSlackEnabled: false,
-        slackChannelId: "",
-        conversationFlow: { nodes: [], edges: [] },
-        scrapedMarkdown: [],
-        scrapedUrls: [],
-      });
-
-      // Reload all bots after creating new one
+      // Replace temp bot with real one
       await fetchBots();
+
+      setCreatingBot(null);
     } catch (error) {
       console.error("Error creating bot:", error);
       toast({
@@ -221,6 +219,9 @@ export const BotBuilder = () => {
         description: error instanceof Error ? error.message : "Failed to create bot. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsCreatingBot(false);
+      setProgress(0);
     }
   };
 
@@ -374,7 +375,7 @@ export const BotBuilder = () => {
                 {savedBots.slice(0, visibleBotCount).map(bot => (
                   <BotCard
                     key={bot.id}
-                    bot={bot}
+                    bot={bot.id === "temp" ? { ...bot, progress } : bot}
                     onTest={handleTest}
                     onShare={handleShare}
                     onIntegrate={handleIntegrate}
