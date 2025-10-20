@@ -191,7 +191,7 @@ export default function Sessions() {
         });
 
         const result = await summarizer.summarize(conversationText, {
-          context: "Provide a concise summary of this chat.",
+          context: "Provide a concise summary of this chat in just 4 points max.",
         });
 
         setSummary(result);
