@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, Bot, User, X, Mic, MicOff } from "lucide-react";
+import { Send, Bot, User, X, Mic, MicOff, Video, Loader2 } from "lucide-react";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -18,6 +18,9 @@ interface Message {
   showBranchOptions?: boolean;
   branchOptions?: string[];
   selectedBranch?: string;
+  videoUrl?: string;
+  videoLoading?: boolean;
+  videoError?: boolean;
 }
 
 interface ChatBotProps {
@@ -55,6 +58,99 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
   useEffect(scrollToBottom, [messages]);
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // Function to create video and poll for result
+  const createVideoForAnswer = async (text: string, messageId: string) => {
+    try {
+      // Step 1: Create video
+      const createRes = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/did/create-video`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        }
+      );
+
+      const createData = await createRes.json();
+
+      if (!createRes.ok || !createData?.result?.id) {
+        throw new Error("Failed to create video");
+      }
+
+      const talkId = createData.result.id;
+
+      // Step 2: Poll for video completion
+      const maxAttempts = 30; // 30 attempts = ~1 minute
+      let attempts = 0;
+
+      const pollVideo = async (): Promise<string | null> => {
+        attempts++;
+        const statusRes = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/did/video-status/${talkId}`
+        );
+        const statusData = await statusRes.json();
+
+        const status = statusData?.result?.status;
+        const videoUrl = statusData?.result?.result_url;
+
+        if (status === "done" && videoUrl) {
+          // Update message with video URL
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === messageId
+                ? { ...msg, videoUrl, videoLoading: false, videoError: false }
+                : msg
+            )
+          );
+          return videoUrl;
+        } else if (status === "error" || status === "rejected") {
+          throw new Error("Video generation failed");
+        } else {
+          if (attempts >= maxAttempts) {
+            throw new Error("Video generation timeout");
+          }
+          // Wait 2 seconds then poll again
+          await new Promise((r) => setTimeout(r, 2000));
+          return pollVideo();
+        }
+      };
+
+      // Start polling asynchronously
+      pollVideo().catch((err) => {
+        console.error("Video polling error:", err);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId
+              ? { ...msg, videoLoading: false, videoError: true }
+              : msg
+          )
+        );
+        toast({
+          title: "Video Generation Failed",
+          description: err.message || "Could not generate video",
+          variant: "destructive",
+        });
+      });
+
+      return talkId;
+    } catch (err: any) {
+      console.error("Video creation error:", err);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId
+            ? { ...msg, videoLoading: false, videoError: true }
+            : msg
+        )
+      );
+      toast({
+        title: "Video Generation Failed",
+        description: err.message || "Could not create video explanation",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
 
   // Start flow
   useEffect(() => {
@@ -175,15 +271,24 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         throw new Error(data.error || "Failed to get answer");
       }
 
-      // Add bot response
+      const answerText = data.result.answer || "I couldn't find an answer to that question.";
+
+      // Add bot response with video loading state
+      const botMessageId = Date.now().toString() + Math.random();
       const botMessage: Message = {
-        id: Date.now().toString() + Math.random(),
-        content: data.result.answer || "I couldn't find an answer to that question.",
+        id: botMessageId,
+        content: answerText,
         sender: "bot",
         timestamp: new Date(),
+        videoLoading: true,
+        videoError: false,
       };
 
       setMessages((prev) => [...prev, botMessage]);
+
+      // Create video asynchronously (don't block the UI)
+      createVideoForAnswer(answerText, botMessageId);
+
     } catch (err: any) {
       console.error(err);
       toast({
@@ -405,6 +510,44 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       <div className={`rounded-lg px-3 py-2 ${msg.sender === "user" ? "bg-blue-600 text-white ml-auto" : "bg-gray-100 dark:bg-gray-800"}`}>
                         <p className="text-sm whitespace-pre-wrap">{typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}</p>
                         <span className="text-xs opacity-70 mt-1 block">{msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                      </div>
+                    )}
+
+                    {/* Video Display Section */}
+                    {msg.sender === "bot" && (msg.videoUrl || msg.videoLoading) && (
+                      <div className="rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                        {msg.videoLoading && !msg.videoUrl && (
+                          <div className="flex items-center justify-center p-8 gap-3">
+                            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                            <span className="text-sm text-gray-600 dark:text-gray-400">Generating video explanation...</span>
+                          </div>
+                        )}
+
+                        {msg.videoUrl && (
+                          <div className="relative">
+                            <video
+                              src={msg.videoUrl}
+                              controls
+                              className="w-full max-h-64"
+                              preload="metadata"
+                            >
+                              Your browser does not support the video tag.
+                            </video>
+                            <div className="absolute top-2 right-2">
+                              <Badge variant="secondary" className="bg-blue-600 text-white text-xs">
+                                <Video className="h-3 w-3 mr-1" />
+                                AI Avatar
+                              </Badge>
+                            </div>
+                          </div>
+                        )}
+
+                        {msg.videoError && !msg.videoUrl && (
+                          <div className="flex items-center justify-center p-6 gap-2 text-red-500">
+                            <X className="h-4 w-4" />
+                            <span className="text-sm">Video generation failed</span>
+                          </div>
+                        )}
                       </div>
                     )}
 
