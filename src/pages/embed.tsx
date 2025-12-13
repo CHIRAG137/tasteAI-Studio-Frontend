@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { EmbedCustomization } from "@/components/EmbedCustomizer";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
+import { VoiceWaveform } from "@/components/VoiceWaveform";
 
 interface Message {
   id: string;
@@ -44,6 +45,8 @@ export default function EmbedChat() {
     isListening, 
     isProcessing,
     showSilenceWarning,
+    silenceCountdown,
+    audioLevels,
     toggleListening 
   } = useSpeechToText({
     onResult: (text) => {
@@ -894,15 +897,14 @@ export default function EmbedChat() {
         }`}
         style={getHeaderStyle()}
       >
-        {/* Silence Warning */}
-        {showSilenceWarning && isListening && (
-          <Alert className="mb-3 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
-            <AlertCircle className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-800 dark:text-yellow-200">
-              Please speak into the microphone... Recording will stop in 5 seconds if no speech is detected.
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Voice Waveform */}
+        <VoiceWaveform
+          audioLevels={audioLevels}
+          isListening={isListening}
+          showSilenceWarning={showSilenceWarning}
+          silenceCountdown={silenceCountdown}
+          className="mb-3"
+        />
 
         {/* Processing indicator */}
         {isProcessing && (

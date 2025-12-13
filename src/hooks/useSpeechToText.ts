@@ -18,6 +18,8 @@ export const useSpeechToText = ({
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSilenceWarning, setShowSilenceWarning] = useState(false);
+  const [audioLevels, setAudioLevels] = useState<number[]>([]);
+  const [silenceCountdown, setSilenceCountdown] = useState<number | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -27,6 +29,9 @@ export const useSpeechToText = ({
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const silenceCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioLevelIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const silenceStartTimeRef = useRef<number | null>(null);
 
   // Cleanup function
   const cleanup = useCallback(() => {
@@ -42,6 +47,14 @@ export const useSpeechToText = ({
       clearInterval(silenceCheckIntervalRef.current);
       silenceCheckIntervalRef.current = null;
     }
+    if (audioLevelIntervalRef.current) {
+      clearInterval(audioLevelIntervalRef.current);
+      audioLevelIntervalRef.current = null;
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -51,6 +64,9 @@ export const useSpeechToText = ({
       audioContextRef.current = null;
     }
     setShowSilenceWarning(false);
+    setAudioLevels([]);
+    setSilenceCountdown(null);
+    silenceStartTimeRef.current = null;
   }, []);
 
   // Send audio to backend for transcription
@@ -115,6 +131,31 @@ export const useSpeechToText = ({
     });
   }, [cleanup, sendAudioToBackend]);
 
+  // Update audio levels for visualization
+  const updateAudioLevels = useCallback(() => {
+    if (!analyserRef.current) return;
+
+    const bufferLength = analyserRef.current.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    analyserRef.current.getByteFrequencyData(dataArray);
+
+    // Get 8 frequency bands for visualization
+    const bands = 8;
+    const bandSize = Math.floor(bufferLength / bands);
+    const levels: number[] = [];
+
+    for (let i = 0; i < bands; i++) {
+      let sum = 0;
+      for (let j = 0; j < bandSize; j++) {
+        sum += dataArray[i * bandSize + j];
+      }
+      // Normalize to 0-100
+      levels.push(Math.min(100, (sum / bandSize / 255) * 100 * 2));
+    }
+
+    setAudioLevels(levels);
+  }, []);
+
   // Detect silence using audio analysis
   const checkForSilence = useCallback(() => {
     if (!analyserRef.current) return;
@@ -125,35 +166,59 @@ export const useSpeechToText = ({
 
     // Calculate average volume
     const average = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
-    const threshold = 10; // Silence threshold (adjust as needed)
+    const threshold = 10; // Silence threshold
 
     if (average < threshold) {
       // User is silent
-      if (!silenceTimerRef.current && !showSilenceWarning) {
-        // Start silence timer
-        silenceTimerRef.current = setTimeout(() => {
-          setShowSilenceWarning(true);
-          onError('Please speak into the microphone...');
-          
-          // Start stop timer
+      if (!silenceStartTimeRef.current) {
+        silenceStartTimeRef.current = Date.now();
+      }
+
+      const silenceDuration = (Date.now() - silenceStartTimeRef.current) / 1000;
+
+      if (silenceDuration >= silenceTimeout && !showSilenceWarning) {
+        setShowSilenceWarning(true);
+        
+        // Start countdown
+        const remainingTime = stopTimeout;
+        setSilenceCountdown(remainingTime);
+        
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+        }
+        
+        countdownIntervalRef.current = setInterval(() => {
+          setSilenceCountdown(prev => {
+            if (prev === null || prev <= 1) {
+              return null;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+
+        // Start stop timer
+        if (!stopTimerRef.current) {
           stopTimerRef.current = setTimeout(() => {
             stopRecording();
           }, stopTimeout * 1000);
-        }, silenceTimeout * 1000);
+        }
       }
     } else {
-      // User is speaking - reset timers
-      if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current);
-        silenceTimerRef.current = null;
-      }
+      // User is speaking - reset everything
+      silenceStartTimeRef.current = null;
+      
       if (stopTimerRef.current) {
         clearTimeout(stopTimerRef.current);
         stopTimerRef.current = null;
       }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
       setShowSilenceWarning(false);
+      setSilenceCountdown(null);
     }
-  }, [silenceTimeout, stopTimeout, showSilenceWarning, stopRecording, onError]);
+  }, [silenceTimeout, stopTimeout, showSilenceWarning, stopRecording]);
 
   // Start recording
   const startRecording = useCallback(async () => {
@@ -165,7 +230,8 @@ export const useSpeechToText = ({
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       const source = audioContextRef.current.createMediaStreamSource(stream);
       analyserRef.current = audioContextRef.current.createAnalyser();
-      analyserRef.current.fftSize = 2048;
+      analyserRef.current.fftSize = 256;
+      analyserRef.current.smoothingTimeConstant = 0.8;
       source.connect(analyserRef.current);
 
       // Setup media recorder
@@ -187,13 +253,16 @@ export const useSpeechToText = ({
 
       // Start checking for silence every 500ms
       silenceCheckIntervalRef.current = setInterval(checkForSilence, 500);
+      
+      // Update audio levels every 50ms for smooth visualization
+      audioLevelIntervalRef.current = setInterval(updateAudioLevels, 50);
 
     } catch (error: any) {
       console.error('Microphone access error:', error);
       onError(error.message || 'Failed to access microphone');
       cleanup();
     }
-  }, [checkForSilence, onError, cleanup]);
+  }, [checkForSilence, updateAudioLevels, onError, cleanup]);
 
   // Toggle recording
   const toggleListening = useCallback(async () => {
@@ -215,6 +284,8 @@ export const useSpeechToText = ({
     isListening,
     isProcessing,
     showSilenceWarning,
+    silenceCountdown,
+    audioLevels,
     toggleListening,
     stopRecording,
   };
