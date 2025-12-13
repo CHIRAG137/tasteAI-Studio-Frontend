@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bot, User, Send, Mic, MicOff, Video, Loader2, X } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Bot, User, Send, Mic, MicOff, Video, Loader2, X, AlertCircle } from "lucide-react";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -38,10 +39,26 @@ export const PublicBotChatPage = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { isListening, toggleListening } = useSpeechToText({
-    onResult: (text) => setInputMessage(prev => prev + (prev ? " " : "") + text),
-    onError: (err) => toast({ title: "Speech Error", description: err, variant: "destructive" }),
+  const { 
+    isListening, 
+    isProcessing,
+    showSilenceWarning,
+    toggleListening 
+  } = useSpeechToText({
+    onResult: (text) => {
+      setInputMessage(prev => {
+        const newText = prev ? prev + " " + text : text;
+        return newText.trim();
+      });
+    },
+    onError: (err) => {
+      if (!err.includes('speak into the microphone')) {
+        toast({ title: "Speech Error", description: err, variant: "destructive" });
+      }
+    },
     language: "en-US",
+    silenceTimeout: 10,
+    stopTimeout: 5,
   });
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -632,6 +649,26 @@ export const PublicBotChatPage = () => {
           </ScrollArea>
 
           <div className="border-t p-4 bg-background">
+            {/* Silence Warning */}
+            {showSilenceWarning && isListening && (
+              <Alert className="mb-3 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+                  Please speak into the microphone... Recording will stop in 5 seconds if no speech is detected.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Processing indicator */}
+            {isProcessing && (
+              <Alert className="mb-3 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
+                <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                <AlertDescription className="text-blue-800 dark:text-blue-200">
+                  Processing your speech...
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <Input
@@ -639,8 +676,16 @@ export const PublicBotChatPage = () => {
                   value={inputMessage}
                   onChange={e => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder={flowFinished ? "Ask me anything..." : (canSendText ? "Type your message..." : "Select an option above...")}
-                  disabled={isLoading || !canSendText}
+                  placeholder={
+                    isListening 
+                      ? "Listening... Speak now" 
+                      : isProcessing 
+                        ? "Processing speech..." 
+                        : flowFinished 
+                          ? "Ask me anything..." 
+                          : (canSendText ? "Type your message..." : "Select an option above...")
+                  }
+                  disabled={isLoading || !canSendText || isProcessing}
                   className="pr-12"
                 />
                 {bot.is_voice_enabled && canSendText && (
@@ -648,16 +693,35 @@ export const PublicBotChatPage = () => {
                     variant="ghost"
                     size="icon"
                     onClick={handleVoiceInput}
-                    className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${isListening ? "text-red-500 animate-pulse" : "text-gray-500 hover:text-blue-600"}`}
-                    title={isListening ? "Stop recording" : "Start voice input"}
+                    disabled={isProcessing}
+                    className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${
+                      isListening 
+                        ? "text-red-500 animate-pulse" 
+                        : isProcessing 
+                          ? "text-gray-400" 
+                          : "text-gray-500 hover:text-blue-600"
+                    }`}
+                    title={
+                      isProcessing 
+                        ? "Processing..." 
+                        : isListening 
+                          ? "Stop recording" 
+                          : "Start voice input"
+                    }
                   >
-                    {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    {isProcessing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isListening ? (
+                      <MicOff className="h-4 w-4" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
+                    )}
                   </Button>
                 )}
               </div>
               <Button
                 onClick={() => handleSendMessage()}
-                disabled={!inputMessage.trim() || isLoading || !canSendText}
+                disabled={!inputMessage.trim() || isLoading || !canSendText || isListening || isProcessing}
                 size="icon"
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
               >

@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Send, Bot, User, Mic, MicOff, Video, Loader2, X } from "lucide-react";
+import { Send, Bot, User, Mic, MicOff, Video, Loader2, X, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { EmbedCustomization } from "@/components/EmbedCustomizer";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
@@ -39,10 +40,26 @@ export default function EmbedChat() {
   const [flowFinished, setFlowFinished] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { isListening, toggleListening } = useSpeechToText({
-    onResult: (text) => setInput(prev => prev + (prev ? " " : "") + text),
-    onError: (error) => console.error("Speech recognition error:", error),
-    language: "en-US"
+  const { 
+    isListening, 
+    isProcessing,
+    showSilenceWarning,
+    toggleListening 
+  } = useSpeechToText({
+    onResult: (text) => {
+      setInput(prev => {
+        const newText = prev ? prev + " " + text : text;
+        return newText.trim();
+      });
+    },
+    onError: (err) => {
+      if (!err.includes('speak into the microphone')) {
+        toast({ title: "Speech Error", description: err, variant: "destructive" });
+      }
+    },
+    language: "en-US",
+    silenceTimeout: 10,
+    stopTimeout: 5,
   });
 
   const scrollToBottom = () => {
@@ -877,6 +894,26 @@ export default function EmbedChat() {
         }`}
         style={getHeaderStyle()}
       >
+        {/* Silence Warning */}
+        {showSilenceWarning && isListening && (
+          <Alert className="mb-3 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+            <AlertCircle className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+              Please speak into the microphone... Recording will stop in 5 seconds if no speech is detected.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Processing indicator */}
+        {isProcessing && (
+          <Alert className="mb-3 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
+            <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+            <AlertDescription className="text-blue-800 dark:text-blue-200">
+              Processing your speech...
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Input
@@ -884,11 +921,15 @@ export default function EmbedChat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder={
-                flowFinished
-                  ? "Ask me anything..."
-                  : (customization?.placeholder || "Type your message...")
+                isListening 
+                  ? "Listening... Speak now" 
+                  : isProcessing 
+                    ? "Processing speech..." 
+                    : flowFinished
+                      ? "Ask me anything..."
+                      : (customization?.placeholder || "Type your message...")
               }
-              disabled={isLoading || !canSendText}
+              disabled={isLoading || !canSendText || isProcessing}
               className={`flex-1 transition-all duration-200 ${
                 botData?.voiceEnabled ? 'pr-10' : ''
               } ${customization?.useChatCustomCSS ? 'embed-input' : ''}`}
@@ -899,18 +940,35 @@ export default function EmbedChat() {
                 variant="ghost"
                 size="icon"
                 onClick={handleVoiceInput}
+                disabled={isProcessing}
                 className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${
-                  isListening ? "text-red-500 animate-pulse" : "text-muted-foreground hover:text-primary"
+                  isListening 
+                    ? "text-red-500 animate-pulse" 
+                    : isProcessing 
+                      ? "text-gray-400" 
+                      : "text-muted-foreground hover:text-primary"
                 }`}
-                title={isListening ? "Stop recording" : "Start voice input"}
+                title={
+                  isProcessing 
+                    ? "Processing..." 
+                    : isListening 
+                      ? "Stop recording" 
+                      : "Start voice input"
+                }
               >
-                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                {isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isListening ? (
+                  <MicOff className="h-4 w-4" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
               </Button>
             )}
           </div>
           <Button
             onClick={() => handleSendMessage()}
-            disabled={!input.trim() || isLoading || !canSendText}
+            disabled={!input.trim() || isLoading || !canSendText || isListening || isProcessing}
             size="icon"
             className={`shrink-0 transition-all duration-200 ${
               customization?.useChatCustomCSS ? 'embed-send-button' : ''
