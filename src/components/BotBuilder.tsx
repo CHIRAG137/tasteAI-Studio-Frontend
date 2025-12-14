@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
-import { Bot, Sparkles, User, Globe, Mic, Languages, Brain, MessageSquare } from "lucide-react";
+import { Bot, Sparkles, User, Globe, Mic, Languages, Brain, MessageSquare, Video } from "lucide-react";
 import { BasicInfoSection } from "./BotBuilder/BasicInfoSection";
 import { WebsiteSection } from "./BotBuilder/WebsiteSection";
 import { VoiceSection } from "./BotBuilder/VoiceSection";
@@ -10,6 +10,7 @@ import { LanguageSection } from "./BotBuilder/LanguageSection";
 import { PersonaSection } from "./BotBuilder/PersonaSection";
 import { SlackSection } from "./BotBuilder/SlackSection";
 import { ConversationFlowSection } from "./BotBuilder/ConversationFlowSection";
+import { VideoBotSection } from "./BotBuilder/VideoBotSection";
 import { Node, Edge } from '@xyflow/react';
 import { useToast } from "@/hooks/use-toast";
 import { BotCard } from "@/components/BotCard";
@@ -319,9 +320,14 @@ export const BotBuilder = () => {
                 <CollapsibleSection title="Website & Content" icon={<Globe className="w-5 h-5 text-primary" />}>
                   <WebsiteSection botConfig={botConfig} updateConfig={updateConfig} />
                 </CollapsibleSection>
-                <CollapsibleSection title="Voice Configuration" icon={<Mic className="w-5 h-5 text-primary" />}>
-                  <VoiceSection botConfig={botConfig} updateConfig={updateConfig} />
+                <CollapsibleSection title="Video Bot" icon={<Video className="w-5 h-5 text-primary" />}>
+                  <VideoBotSection botConfig={botConfig} updateConfig={updateConfig} />
                 </CollapsibleSection>
+                {!botConfig.isVideoBot && (
+                  <CollapsibleSection title="Voice Configuration" icon={<Mic className="w-5 h-5 text-primary" />}>
+                    <VoiceSection botConfig={botConfig} updateConfig={updateConfig} />
+                  </CollapsibleSection>
+                )}
                 <CollapsibleSection title="Language Support" icon={<Languages className="w-5 h-5 text-primary" />}>
                   <LanguageSection botConfig={botConfig} updateConfig={updateConfig} />
                 </CollapsibleSection>
