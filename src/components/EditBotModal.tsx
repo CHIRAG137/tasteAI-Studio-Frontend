@@ -35,6 +35,7 @@ interface BotConfig {
     nodes: any[];
     edges: any[];
   };
+  isVideoBot: boolean
 }
 
 interface EditBotModalProps {
@@ -65,6 +66,7 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
     slackCommand: "",
     slackChannelId: "",
     conversationFlow: { nodes: [], edges: [] },
+    isVideoBot: false,
   });
 
   // Populate form with bot data when modal opens
@@ -89,6 +91,7 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
         slackCommand: bot.slackCommand || "",
         slackChannelId: bot.slackChannelId || "",
         conversationFlow: bot.conversationFlow || { nodes: [], edges: [] },
+        isVideoBot: bot.isVideoBot
       });
     }
   }, [bot, isOpen]);
@@ -120,6 +123,7 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
       formData.append("slack_command", botConfig.slackCommand);
       formData.append("slack_channel_id", botConfig.slackChannelId);
       formData.append("conversationFlow", JSON.stringify(botConfig.conversationFlow));
+      formData.append("is_video_bot", botConfig.isVideoBot.toString());
 
       if (botConfig.file) {
         formData.append("file", botConfig.file);

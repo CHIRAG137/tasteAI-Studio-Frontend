@@ -37,7 +37,8 @@ interface BotConfig {
   slackChannelId: string;
   conversationFlow?: { nodes: Node[]; edges: Edge[] };
   scrapedMarkdown?: string[];
-  scrapedUrls?: string[]
+  scrapedUrls?: string[];
+  isVideoBot: boolean
 }
 
 export const BotBuilder = () => {
@@ -91,6 +92,7 @@ export const BotBuilder = () => {
       ],
       edges: []
     },
+    isVideoBot: false
   });
 
   const fetchBots = async () => {
@@ -183,6 +185,7 @@ export const BotBuilder = () => {
         is_slack_enabled: botConfig.isSlackEnabled.toString(),
         slack_channel_id: botConfig.slackChannelId,
         conversationFlow: JSON.stringify(botConfig.conversationFlow || { nodes: [], edges: [] }),
+        is_video_bot: botConfig.isVideoBot.toString(),
       }).forEach(([key, value]) => formData.append(key, value as string));
 
       if (botConfig.scrapedMarkdown?.length)
