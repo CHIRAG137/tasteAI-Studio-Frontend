@@ -112,7 +112,8 @@ export const BotBuilder = () => {
           languages: Array.isArray(bot.supported_languages) ? bot.supported_languages : ["English"],
           primaryPurpose: bot.primary_purpose,
           conversationalTone: bot.conversation_tone,
-          conversationFlow: bot.conversationFlow
+          conversationFlow: bot.conversationFlow,
+          isVideoBot: bot.is_video_bot
         }));
         setSavedBots(bots.reverse());
       } else {
@@ -156,6 +157,7 @@ export const BotBuilder = () => {
         languages: botConfig.languages,
         primaryPurpose: botConfig.primaryPurpose,
         conversationalTone: botConfig.conversationalTone,
+        isVideoBot: botConfig.isVideoBot,
         isLoading: true,
       };
 
