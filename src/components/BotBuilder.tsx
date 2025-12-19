@@ -39,7 +39,9 @@ interface BotConfig {
   conversationFlow?: { nodes: Node[]; edges: Edge[] };
   scrapedMarkdown?: string[];
   scrapedUrls?: string[];
-  isVideoBot: boolean
+  isVideoBot: boolean;
+  videoBotImageData?: string;
+  videoBotImageType?: string;
 }
 
 export const BotBuilder = () => {
@@ -93,7 +95,9 @@ export const BotBuilder = () => {
       ],
       edges: []
     },
-    isVideoBot: false
+    isVideoBot: false,
+    videoBotImageData: undefined,
+    videoBotImageType: undefined
   });
 
   const fetchBots = async () => {
@@ -113,7 +117,9 @@ export const BotBuilder = () => {
           primaryPurpose: bot.primary_purpose,
           conversationalTone: bot.conversation_tone,
           conversationFlow: bot.conversationFlow,
-          isVideoBot: bot.is_video_bot
+          isVideoBot: bot.is_video_bot,
+          videoBotImageData: bot.video_bot_image_data,
+          videoBotImageType: bot.video_bot_image_type
         }));
         setSavedBots(bots.reverse());
       } else {
@@ -189,6 +195,8 @@ export const BotBuilder = () => {
         slack_channel_id: botConfig.slackChannelId,
         conversationFlow: JSON.stringify(botConfig.conversationFlow || { nodes: [], edges: [] }),
         is_video_bot: botConfig.isVideoBot.toString(),
+        video_bot_image_data: botConfig.videoBotImageData || "",
+        video_bot_image_type: botConfig.videoBotImageType || "",
       }).forEach(([key, value]) => formData.append(key, value as string));
 
       if (botConfig.scrapedMarkdown?.length)

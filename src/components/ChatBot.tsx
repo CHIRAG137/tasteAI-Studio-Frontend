@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Send, Bot, User, X, Mic, MicOff, Loader2, Image as ImageIcon, Upload, RefreshCw } from "lucide-react";
+import { Send, Bot, User, X, Mic, MicOff, Loader2, Video } from "lucide-react";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -27,7 +27,6 @@ interface Message {
   branchOptions?: string[];
   selectedBranch?: string;
   audioUrl?: string;
-  imageUrl?: string;
 }
 
 interface ChatBotProps {
@@ -38,6 +37,8 @@ interface ChatBotProps {
     websiteUrl: string;
     voiceEnabled: boolean;
     isVideoBot?: boolean;
+    videoBotImageData?: string;
+    videoBotImageType?: string;
     languages: string[];
     primaryPurpose: string;
     conversationalTone: string;
@@ -53,17 +54,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const [currentPausedFor, setCurrentPausedFor] = useState<any>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [flowFinished, setFlowFinished] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Image generation state
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imagePrompt, setImagePrompt] = useState("");
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
 
   const {
     isListening,
@@ -74,10 +68,15 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     toggleListening
   } = useSpeechToText({
     onResult: (text) => {
-      setInputMessage(prev => {
-        const newText = prev ? prev + " " + text : text;
-        return newText.trim();
-      });
+      if (bot.isVideoBot) {
+        // For video bot, automatically send the question when speech is recognized
+        handleVideoBotQuestion(text);
+      } else {
+        setInputMessage(prev => {
+          const newText = prev ? prev + " " + text : text;
+          return newText.trim();
+        });
+      }
     },
     onError: (err) => {
       if (!err.includes('speak into the microphone')) {
@@ -98,18 +97,19 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   useEffect(scrollToBottom, [messages]);
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (!bot.isVideoBot) {
+      inputRef.current?.focus();
+    }
+  }, [bot.isVideoBot]);
 
   // Helper to add bot message
-  const addBotMessage = (content: string, audioUrl?: string, imageUrl?: string) => {
+  const addBotMessage = (content: string, audioUrl?: string) => {
     const botMessage: Message = {
       id: Date.now().toString() + Math.random(),
       content,
       sender: "bot",
       timestamp: new Date(),
       audioUrl,
-      imageUrl,
     };
     setMessages((prev) => [...prev, botMessage]);
 
@@ -124,132 +124,50 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     return botMessage;
   };
 
-  // Handle image file selection
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target?.files?.[0];
-    if (!file) return;
+  // Handle video bot question using speech
+  const handleVideoBotQuestion = async (question: string) => {
+    if (!question.trim() || isLoading) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Invalid File",
-        description: "Please select an image file",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast({
-        title: "File Too Large",
-        description: "Image must be less than 10MB",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setSelectedImage(file);
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: question,
+      sender: "user",
+      timestamp: new Date(),
     };
-    reader.readAsDataURL(file);
-  };
-
-  // Generate image using Gemini API
-  const handleGenerateImage = async () => {
-    if (!selectedImage || !imagePrompt.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please select an image and provide a prompt",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsGeneratingImage(true);
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
 
     try {
-      // Add user message showing the prompt
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        content: `Generate image: ${imagePrompt}`,
-        sender: "user",
-        timestamp: new Date(),
-        imageUrl: imagePreview!,
-      };
-      setMessages((prev) => [...prev, userMessage]);
-
-      // Create form data
-      const formData = new FormData();
-      formData.append('image', selectedImage);
-      formData.append('prompt', imagePrompt);
-
-      // Call the API
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/human/generate-image`,
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
-          method: 'POST',
-          body: formData,
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question,
+            botId: bot.id,
+          }),
         }
       );
 
-      const data = await response.json();
+      const data = await res.json();
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Failed to generate image');
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to get answer");
       }
 
-      // Extract the base64 image data from the response
-      const imageData = data.data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      const mimeType = data.data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType || 'image/png';
-
-      if (!imageData) {
-        throw new Error('No image data in response');
-      }
-
-      // Convert base64 to data URL for display
-      const generatedImage = `data:${mimeType};base64,${imageData}`;
-      
-      // Set the generated image for display
-      setGeneratedImageUrl(generatedImage);
-
-      // Add bot response with the generated image
-      addBotMessage(
-        "I've generated your image based on the prompt!",
-        undefined,
-        generatedImage
-      );
-
+      const answerText = data.result.answer || "I couldn't find an answer to that question.";
+      addBotMessage(answerText);
+    } catch (err: any) {
+      console.error(err);
       toast({
-        title: "Success",
-        description: "Image generated successfully!",
-      });
-
-    } catch (error: any) {
-      console.error('Image generation error:', error);
-      toast({
-        title: "Generation Failed",
-        description: error.message || "Failed to generate image",
+        title: "Error",
+        description: err.message || "Something went wrong",
         variant: "destructive"
       });
-      addBotMessage("Sorry, I couldn't generate the image. Please try again.");
+      addBotMessage("I'm having trouble answering that. Please try again.");
     } finally {
-      setIsGeneratingImage(false);
-    }
-  };
-
-  // Clear selected image
-  const handleClearImage = () => {
-    setSelectedImage(null);
-    setImagePreview(null);
-    setImagePrompt("");
-    setGeneratedImageUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      setIsLoading(false);
     }
   };
 
@@ -526,8 +444,18 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   };
 
   const handleVoiceInput = () => {
-    if (bot.voiceEnabled) {
+    toggleListening();
+  };
+
+  const handleMicToggle = () => {
+    if (isMuted) {
+      setIsMuted(false);
       toggleListening();
+    } else {
+      setIsMuted(true);
+      if (isListening) {
+        toggleListening();
+      }
     }
   };
 
@@ -538,6 +466,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     (isAwaitingInput &&
       currentPausedFor?.type !== "branch" &&
       !currentPausedFor?.showConfirmationButtons);
+
+  // Get video bot avatar URL
+  const videoBotAvatarUrl = bot.videoBotImageData && bot.videoBotImageType
+    ? `data:${bot.videoBotImageType};base64,${bot.videoBotImageData}`
+    : null;
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
@@ -561,11 +494,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   </Badge>
                   {bot.isVideoBot && (
                     <Badge variant="secondary" className="text-xs">
-                      <ImageIcon className="h-3 w-3 mr-1" />
-                      Image Generation
+                      <Video className="h-3 w-3 mr-1" />
+                      Video Bot
                     </Badge>
                   )}
-                  {flowFinished && (
+                  {flowFinished && !bot.isVideoBot && (
                     <Badge variant="secondary" className="text-xs">
                       Q&A Mode
                     </Badge>
@@ -584,142 +517,125 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           </div>
         </DialogHeader>
 
-      {/* Image Generation Bot View */}
+      {/* Video Bot View */}
       {bot.isVideoBot ? (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Generated Image Display Area */}
-          <div className="flex-1 relative bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 overflow-hidden">
-            {generatedImageUrl ? (
-              <div className="relative w-full h-full">
-                <img
-                  src={generatedImageUrl}
-                  alt="Generated"
-                  className="w-full h-full object-contain"
-                />
-                {/* Floating Controls on Image */}
-                <div className="absolute top-4 right-4 flex gap-2">
+          {/* Video Bot Avatar Display */}
+          <div className="flex-1 relative bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 overflow-hidden flex items-center justify-center">
+            {videoBotAvatarUrl ? (
+              <div className="relative w-full h-full flex items-center justify-center p-8">
+                <div className="relative">
+                  <img
+                    src={videoBotAvatarUrl}
+                    alt="Video Bot Avatar"
+                    className="max-w-full max-h-[50vh] object-contain rounded-2xl shadow-2xl"
+                  />
+                  {/* Speaking indicator */}
+                  {isLoading && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Thinking...</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Mic Control Button - Floating */}
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
                   <Button
-                    onClick={handleVoiceInput}
-                    size="icon"
-                    className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white transition-all hover:scale-110"
-                    title={isListening ? "Stop listening" : "Start voice input"}
+                    onClick={handleMicToggle}
+                    size="lg"
+                    className={`h-16 w-16 rounded-full shadow-xl transition-all hover:scale-110 ${
+                      !isMuted 
+                        ? isListening 
+                          ? "bg-red-500 hover:bg-red-600 animate-pulse" 
+                          : "bg-green-500 hover:bg-green-600"
+                        : "bg-gray-400 hover:bg-gray-500"
+                    }`}
+                    disabled={isLoading || isProcessing}
+                    title={isMuted ? "Click to unmute and start speaking" : isListening ? "Listening..." : "Click to speak"}
                   >
                     {isProcessing ? (
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    ) : isListening ? (
-                      <MicOff className="h-6 w-6" />
+                      <Loader2 className="h-8 w-8 animate-spin text-white" />
+                    ) : isMuted ? (
+                      <MicOff className="h-8 w-8 text-white" />
                     ) : (
-                      <Mic className="h-6 w-6" />
+                      <Mic className="h-8 w-8 text-white" />
                     )}
                   </Button>
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    size="icon"
-                    className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white transition-all hover:scale-110"
-                    title="Upload new image"
-                  >
-                    <Upload className="h-6 w-6" />
-                  </Button>
-                  <Button
-                    onClick={handleClearImage}
-                    size="icon"
-                    className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white transition-all hover:scale-110"
-                    title="Clear and start new"
-                  >
-                    <RefreshCw className="h-6 w-6" />
-                  </Button>
-                </div>
-
-                {/* Generation Badge */}
-                <div className="absolute bottom-4 left-4">
-                  <Badge className="bg-green-500 text-white">
-                    <ImageIcon className="h-3 w-3 mr-1" />
-                    Image Generated
-                  </Badge>
+                  <p className="text-center text-sm text-muted-foreground mt-2">
+                    {isProcessing 
+                      ? "Processing..." 
+                      : isMuted 
+                        ? "Click to unmute" 
+                        : isListening 
+                          ? "Speak now..." 
+                          : "Click to speak"
+                    }
+                  </p>
                 </div>
               </div>
             ) : (
-              <div className="w-full h-full flex items-center justify-center p-8">
-                <div className="text-center max-w-md">
-                  <ImageIcon className="h-20 w-20 mx-auto mb-4 text-purple-400" />
-                  <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    AI Image Generation
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-6">
-                    Upload an image and provide a prompt to generate amazing visuals
-                  </p>
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Image to Start
-                  </Button>
-                </div>
+              <div className="text-center p-8">
+                <Video className="h-20 w-20 mx-auto mb-4 text-purple-400" />
+                <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Video Bot
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  No avatar configured for this video bot
+                </p>
+                
+                {/* Mic Control for no avatar */}
+                <Button
+                  onClick={handleMicToggle}
+                  size="lg"
+                  className={`h-16 w-16 rounded-full shadow-xl transition-all hover:scale-110 ${
+                    !isMuted 
+                      ? isListening 
+                        ? "bg-red-500 hover:bg-red-600 animate-pulse" 
+                        : "bg-green-500 hover:bg-green-600"
+                      : "bg-gray-400 hover:bg-gray-500"
+                  }`}
+                  disabled={isLoading || isProcessing}
+                >
+                  {isProcessing ? (
+                    <Loader2 className="h-8 w-8 animate-spin text-white" />
+                  ) : isMuted ? (
+                    <MicOff className="h-8 w-8 text-white" />
+                  ) : (
+                    <Mic className="h-8 w-8 text-white" />
+                  )}
+                </Button>
+                <p className="text-center text-sm text-muted-foreground mt-2">
+                  {isProcessing 
+                    ? "Processing..." 
+                    : isMuted 
+                      ? "Click to unmute and speak" 
+                      : isListening 
+                        ? "Listening..." 
+                        : "Click to speak"
+                  }
+                </p>
+              </div>
+            )}
+
+            {/* Voice Waveform for Video Bot */}
+            {isListening && (
+              <div className="absolute top-4 left-4 right-4">
+                <VoiceWaveform
+                  isListening={isListening}
+                  audioLevels={audioLevels}
+                  showSilenceWarning={showSilenceWarning}
+                  silenceCountdown={silenceCountdown}
+                />
               </div>
             )}
           </div>
 
-          {/* Image Upload Preview & Generation Panel */}
-          {imagePreview && !generatedImageUrl && (
-            <div className="p-4 bg-white dark:bg-gray-800 border-t">
-              <div className="flex gap-4">
-                <div className="relative w-32 h-32 flex-shrink-0">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full h-full object-cover rounded-lg border-2 border-purple-300"
-                  />
-                  <Button
-                    onClick={handleClearImage}
-                    size="icon"
-                    variant="destructive"
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex-1 flex flex-col gap-2">
-                  <div className="relative">
-                    <Input
-                      value={imagePrompt}
-                      onChange={(e) => setImagePrompt(e.target.value)}
-                      placeholder="Describe what you want to generate... (e.g., 'Make it look like a watercolor painting')"
-                      className="pr-10 border-2 border-purple-300 focus:border-purple-500 bg-white dark:bg-gray-800"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && imagePrompt.trim()) {
-                          handleGenerateImage();
-                        }
-                      }}
-                    />
-                  </div>
-                  <Button
-                    onClick={handleGenerateImage}
-                    disabled={!imagePrompt.trim() || isGeneratingImage}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
-                  >
-                    {isGeneratingImage ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating with Gemini AI...
-                      </>
-                    ) : (
-                      <>
-                        <ImageIcon className="h-4 w-4 mr-2" />
-                        Generate Image
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Chat Messages Overlay */}
+          {/* Chat Messages Overlay for Video Bot */}
           <ScrollArea className="h-40 p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-t">
             {messages.length === 0 && (
               <div className="text-center text-gray-400 py-8">
-                Messages will appear here
+                {isMuted ? "Click the microphone to start speaking" : "Speak to ask a question"}
               </div>
             )}
             {messages.slice(-4).map(msg => (
@@ -743,20 +659,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   }`}
                 >
-                  {msg.imageUrl && msg.sender === "user" && (
-                    <img
-                      src={msg.imageUrl}
-                      alt="User uploaded"
-                      className="max-w-full h-auto rounded mb-1 max-h-32 object-cover"
-                    />
-                  )}
-                  {msg.imageUrl && msg.sender === "bot" && (
-                    <img
-                      src={msg.imageUrl}
-                      alt="Generated"
-                      className="max-w-full h-auto rounded mb-1 max-h-48 object-cover"
-                    />
-                  )}
                   <div>
                     {typeof msg.content === "string"
                       ? msg.content
@@ -786,14 +688,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             )}
             <div ref={messagesEndRef} />
           </ScrollArea>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageSelect}
-            className="hidden"
-          />
         </div>
       ) : (
         /* Regular Chat View */
@@ -899,27 +793,25 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         </ScrollArea>
       )}
 
-      {/* Input Area */}
-      <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
-        {/* Voice Waveform */}
-        {!bot.isVideoBot && (
+      {/* Input Area - Only for non-video bots */}
+      {!bot.isVideoBot && (
+        <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+          {/* Voice Waveform */}
           <VoiceWaveform
             isListening={isListening}
             audioLevels={audioLevels}
             showSilenceWarning={showSilenceWarning}
             silenceCountdown={silenceCountdown}
           />
-        )}
 
-        {/* Processing indicator */}
-        {isProcessing && !bot.isVideoBot && (
-          <Alert className="mb-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <AlertDescription>Processing your speech...</AlertDescription>
-          </Alert>
-        )}
+          {/* Processing indicator */}
+          {isProcessing && (
+            <Alert className="mb-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <AlertDescription>Processing your speech...</AlertDescription>
+            </Alert>
+          )}
 
-        {!bot.isVideoBot && (
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Input
@@ -932,7 +824,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     ? "Listening... Speak now"
                     : isProcessing
                     ? "Processing speech..."
-                    : flowFinished || bot.isVideoBot
+                    : flowFinished
                     ? "Ask me anything..."
                     : (canSendText
                         ? "Type your message..."
@@ -969,9 +861,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               <Send className="h-4 w-4" />
             </Button>
           </div>
-        )}
 
-        {!bot.isVideoBot && (
           <div className="mt-2 text-xs text-gray-500 text-center">
             Supported languages:{" "}
             {bot.languages.map((lang, i) => (
@@ -980,8 +870,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               </span>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Hidden audio element for playing TTS */}
       <audio ref={audioRef} className="hidden" />
