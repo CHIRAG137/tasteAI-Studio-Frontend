@@ -474,7 +474,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl h-[90vh] p-0 gap-0 flex flex-col">
+      <DialogContent className="max-w-2xl h-[600px] p-0 gap-0 flex flex-col bg-background/95 backdrop-blur-sm border shadow-2xl rounded-xl overflow-hidden">
         <DialogHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0 space-y-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
