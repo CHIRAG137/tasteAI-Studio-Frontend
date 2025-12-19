@@ -5,10 +5,13 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Send, Bot, User, X, Mic, MicOff, Video, Loader2, 
-  AlertCircle, VideoOff, RotateCcw, CheckCircle, XCircle 
-} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Send, Bot, User, X, Mic, MicOff, Loader2, Image as ImageIcon, Upload, RefreshCw } from "lucide-react";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -24,30 +27,7 @@ interface Message {
   branchOptions?: string[];
   selectedBranch?: string;
   audioUrl?: string;
-}
-
-interface FlashCard {
-  id: string;
-  question: string;
-  answer: string;
-  isFlipped: boolean;
-  fromQuiz?: boolean;
-}
-
-interface QuizAnswer {
-  id: string;
-  text: string;
-}
-
-interface QuizQuestion {
-  id: string;
-  text: string;
-  answers: QuizAnswer[];
-}
-
-interface Quiz {
-  id: string;
-  questions: QuizQuestion[];
+  imageUrl?: string;
 }
 
 interface ChatBotProps {
@@ -61,8 +41,6 @@ interface ChatBotProps {
     languages: string[];
     primaryPurpose: string;
     conversationalTone: string;
-    tavusPersonaId?: string; // Tavus persona/replica ID
-    tavusApiKey?: string; // Optional if stored on backend
   };
   onClose: () => void;
 }
@@ -78,30 +56,22 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  
-  // Tavus Conversation state
-  const [isTavusConnected, setIsTavusConnected] = useState(false);
-  const [isTavusInitializing, setIsTavusInitializing] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const videoContainerRef = useRef<HTMLDivElement>(null);
-  const videoElementRef = useRef<HTMLVideoElement | null>(null);
-  const audioStreamRef = useRef<MediaStream | null>(null);
-  const dailyRoomRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Flash cards and quiz state
-  const [flashCards, setFlashCards] = useState<FlashCard[]>([]);
-  const [currentQuiz, setCurrentQuiz] = useState<Quiz | null>(null);
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
-  const [quizSubmitted, setQuizSubmitted] = useState(false);
-  const [quizResults, setQuizResults] = useState<any>(null);
+  // Image generation state
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
 
-  const { 
-    isListening, 
+  const {
+    isListening,
     isProcessing,
     showSilenceWarning,
     silenceCountdown,
     audioLevels,
-    toggleListening 
+    toggleListening
   } = useSpeechToText({
     onResult: (text) => {
       setInputMessage(prev => {
@@ -111,10 +81,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     },
     onError: (err) => {
       if (!err.includes('speak into the microphone')) {
-        toast({ 
-          title: "Speech Error", 
-          description: err, 
-          variant: "destructive" 
+        toast({
+          title: "Speech Error",
+          description: err,
+          variant: "destructive"
         });
       }
     },
@@ -125,19 +95,22 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
-  useEffect(scrollToBottom, [messages, flashCards, currentQuiz]);
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(scrollToBottom, [messages]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   // Helper to add bot message
-  const addBotMessage = (content: string, audioUrl?: string) => {
+  const addBotMessage = (content: string, audioUrl?: string, imageUrl?: string) => {
     const botMessage: Message = {
       id: Date.now().toString() + Math.random(),
       content,
       sender: "bot",
       timestamp: new Date(),
       audioUrl,
+      imageUrl,
     };
-
     setMessages((prev) => [...prev, botMessage]);
 
     // Play audio if available
@@ -151,275 +124,138 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     return botMessage;
   };
 
-  // Initialize Tavus Conversational Video
-  const initializeTavusConnection = async () => {
-    if (!bot.isVideoBot || isTavusConnected || isTavusInitializing) return;
-    
-    setIsTavusInitializing(true);
-    
-    try {
-      // Step 1: Create Tavus conversation via backend
-      const createRes = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/tavus/create-conversation`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            botId: bot.id,
-            personaId: bot.tavusPersonaId,
-            conversationName: `${bot.name} - ${Date.now()}`,
-          }),
-        }
-      );
-      
-      const createData = await createRes.json();
-      
-      console.log('Tavus conversation created:', createData);
-      
-      if (!createRes.ok || !createData.success) {
-        throw new Error(createData.error || "Failed to create Tavus conversation");
-      }
+  // Handle image file selection
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target?.files?.[0];
+    if (!file) return;
 
-      const { conversationId, conversationUrl, dailyRoomUrl } = createData;
-      
-      setConversationId(conversationId);
-
-      // Step 2: Initialize Daily.co video call (Tavus uses Daily.co for WebRTC)
-      // Dynamically import Daily
-      const DailyIframe = (await import('@daily-co/daily-js')).default;
-      
-      // Create Daily call frame
-      const callFrame = DailyIframe.createFrame(videoContainerRef.current!, {
-        showLeaveButton: false,
-        showFullscreenButton: false,
-        iframeStyle: {
-          width: '100%',
-          height: '100%',
-          border: '0',
-          borderRadius: '8px',
-        },
-      });
-
-      dailyRoomRef.current = callFrame;
-
-      // Set up Daily event listeners
-      callFrame.on('joined-meeting', async () => {
-        console.log('Joined Daily meeting');
-        setIsTavusConnected(true);
-        setIsTavusInitializing(false);
-        
-        // Send initial greeting
-        setTimeout(() => {
-          addBotMessage("Hello! I'm your AI study assistant. I can help you learn through interactive conversations, flash cards, and quizzes. What would you like to learn about today?");
-        }, 1000);
-      });
-
-      callFrame.on('participant-joined', (event: any) => {
-        console.log('Participant joined:', event.participant);
-      });
-
-      callFrame.on('participant-left', (event: any) => {
-        console.log('Participant left:', event.participant);
-      });
-
-      callFrame.on('error', (error: any) => {
-        console.error('Daily error:', error);
-        toast({
-          title: "Connection Error",
-          description: "Lost connection to video assistant",
-          variant: "destructive"
-        });
-      });
-
-      callFrame.on('left-meeting', () => {
-        console.log('Left Daily meeting');
-        setIsTavusConnected(false);
-      });
-
-      // Join the Daily room
-      await callFrame.join({ 
-        url: dailyRoomUrl,
-        userName: 'Student',
-      });
-
-    } catch (err: any) {
-      console.error('Tavus initialization error:', err);
-      setIsTavusInitializing(false);
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
       toast({
-        title: "Video Connection Failed",
-        description: err.message || "Could not connect to video bot",
+        title: "Invalid File",
+        description: "Please select an image file",
         variant: "destructive"
       });
+      return;
     }
-  };
 
-  // Clean up Tavus connection
-  const disconnectTavus = async () => {
-    if (conversationId) {
-      try {
-        await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/tavus/end-conversation`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ conversationId }),
-          }
-        );
-      } catch (err) {
-        console.error('Error ending Tavus conversation:', err);
-      }
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Image must be less than 10MB",
+        variant: "destructive"
+      });
+      return;
     }
-    
-    if (dailyRoomRef.current) {
-      await dailyRoomRef.current.leave();
-      await dailyRoomRef.current.destroy();
-      dailyRoomRef.current = null;
-    }
-    
-    if (audioStreamRef.current) {
-      audioStreamRef.current.getTracks().forEach(track => track.stop());
-      audioStreamRef.current = null;
-    }
-    
-    setIsTavusConnected(false);
-    setConversationId(null);
-  };
 
-  // Initialize video bot on mount if needed
-  useEffect(() => {
-    if (bot.isVideoBot) {
-      initializeTavusConnection();
-    }
-    
-    return () => {
-      if (bot.isVideoBot) {
-        disconnectTavus();
-      }
+    setSelectedImage(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
     };
-  }, [bot.isVideoBot]);
-
-  // Send message to Tavus conversation
-  const sendToTavusBot = async (text: string) => {
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/tavus/send-message`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            conversationId,
-            message: text,
-            botId: bot.id,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to send message to video bot");
-      }
-
-      return data;
-    } catch (err: any) {
-      console.error("Tavus message error:", err);
-      throw err;
-    }
+    reader.readAsDataURL(file);
   };
 
-  // Handle flash card flip
-  const handleFlipFlashCard = async (cardId: string) => {
-    try {
-      if (!conversationId) return;
-
-      const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/tavus/flashcard/flip`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversationId, cardId }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (data.success && data.flashCard) {
-        setFlashCards(prev => 
-          prev.map(card => 
-            card.id === cardId ? { ...card, isFlipped: data.flashCard.isFlipped } : card
-          )
-        );
-      }
-    } catch (err) {
-      console.error('Error flipping flash card:', err);
-    }
-  };
-
-  // Handle quiz answer selection
-  const handleQuizAnswerSelect = (questionId: string, answerId: string) => {
-    setQuizAnswers(prev => ({
-      ...prev,
-      [questionId]: answerId
-    }));
-  };
-
-  // Submit quiz
-  const handleSubmitQuiz = async () => {
-    if (!currentQuiz || !conversationId) return;
-
-    setIsLoading(true);
-    
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/tavus/quiz/submit`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            conversationId,
-            quizId: currentQuiz.id,
-            answers: quizAnswers,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (data.success) {
-        setQuizResults(data);
-        setQuizSubmitted(true);
-
-        // Add bot feedback message
-        addBotMessage(data.feedback);
-
-        // Add new flash cards if any
-        if (data.newFlashCards && data.newFlashCards.length > 0) {
-          setFlashCards(prev => [...prev, ...data.newFlashCards]);
-        }
-
-        // Clear quiz after a delay
-        setTimeout(() => {
-          setCurrentQuiz(null);
-          setQuizAnswers({});
-          setQuizSubmitted(false);
-          setQuizResults(null);
-        }, 5000);
-      }
-    } catch (err: any) {
-      console.error('Error submitting quiz:', err);
+  // Generate image using Gemini API
+  const handleGenerateImage = async () => {
+    if (!selectedImage || !imagePrompt.trim()) {
       toast({
-        title: "Quiz Submission Failed",
-        description: err.message || "Could not submit quiz",
+        title: "Missing Information",
+        description: "Please select an image and provide a prompt",
         variant: "destructive"
       });
+      return;
+    }
+
+    setIsGeneratingImage(true);
+
+    try {
+      // Add user message showing the prompt
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: `Generate image: ${imagePrompt}`,
+        sender: "user",
+        timestamp: new Date(),
+        imageUrl: imagePreview!,
+      };
+      setMessages((prev) => [...prev, userMessage]);
+
+      // Create form data
+      const formData = new FormData();
+      formData.append('image', selectedImage);
+      formData.append('prompt', imagePrompt);
+
+      // Call the API
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/human/generate-image`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to generate image');
+      }
+
+      // Extract the base64 image data from the response
+      const imageData = data.data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      const mimeType = data.data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType || 'image/png';
+
+      if (!imageData) {
+        throw new Error('No image data in response');
+      }
+
+      // Convert base64 to data URL for display
+      const generatedImage = `data:${mimeType};base64,${imageData}`;
+      
+      // Set the generated image for display
+      setGeneratedImageUrl(generatedImage);
+
+      // Add bot response with the generated image
+      addBotMessage(
+        "I've generated your image based on the prompt!",
+        undefined,
+        generatedImage
+      );
+
+      toast({
+        title: "Success",
+        description: "Image generated successfully!",
+      });
+
+    } catch (error: any) {
+      console.error('Image generation error:', error);
+      toast({
+        title: "Generation Failed",
+        description: error.message || "Failed to generate image",
+        variant: "destructive"
+      });
+      addBotMessage("Sorry, I couldn't generate the image. Please try again.");
     } finally {
-      setIsLoading(false);
+      setIsGeneratingImage(false);
+    }
+  };
+
+  // Clear selected image
+  const handleClearImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setImagePrompt("");
+    setGeneratedImageUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
   // Start flow (for non-video bots)
   useEffect(() => {
-    if (bot.isVideoBot) return; // Skip flow for video bots
+    if (bot.isVideoBot) return;
 
     const initFlow = async () => {
       try {
@@ -432,7 +268,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         if (data.sessionId) setSessionId(data.sessionId);
 
         const botMessages: Message[] = [];
-
         (data.messages || []).forEach((msg: any) => {
           if (msg.type === "redirect") {
             const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
@@ -468,7 +303,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         if (data.finished) {
           setFlowFinished(true);
           setCurrentPausedFor(null);
-
           botMessages.push({
             id: Date.now().toString() + Math.random(),
             content: "Feel free to ask me any questions!",
@@ -493,13 +327,13 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         });
       }
     };
+
     initFlow();
   }, [bot.id, bot.isVideoBot]);
 
   // Handle Q&A mode
   const handleAskQuestion = async () => {
     const question = inputMessage.trim();
-
     if (!question || isLoading) return;
 
     const userMessage: Message = {
@@ -508,51 +342,31 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       sender: "user",
       timestamp: new Date(),
     };
-
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
     setIsLoading(true);
 
     try {
-      // For Tavus video bot, send through conversation API
-      if (bot.isVideoBot && isTavusConnected && conversationId) {
-        const response = await sendToTavusBot(question);
-        
-        addBotMessage(response.response || "Processing your request...", response.audioUrl);
-
-        // Handle flash card updates from backend
-        if (response.flashCards && response.flashCards.length > 0) {
-          setFlashCards(prev => [...prev, ...response.flashCards]);
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question,
+            botId: bot.id,
+          }),
         }
+      );
 
-        // Handle quiz updates from backend
-        if (response.quiz) {
-          setCurrentQuiz(response.quiz);
-        }
-      } else {
-        // Regular bot flow
-        const res = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              question,
-              botId: bot.id,
-            }),
-          }
-        );
+      const data = await res.json();
 
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to get answer");
-        }
-
-        const answerText = data.result.answer || "I couldn't find an answer to that question.";
-        addBotMessage(answerText);
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to get answer");
       }
 
+      const answerText = data.result.answer || "I couldn't find an answer to that question.";
+      addBotMessage(answerText);
     } catch (err: any) {
       console.error(err);
       toast({
@@ -581,7 +395,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     }
 
     const messageToSend = overrideInput || inputMessage.trim();
-
     if (!messageToSend || isLoading || !sessionId) return;
 
     setCurrentPausedFor(null);
@@ -592,7 +405,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       sender: "user",
       timestamp: new Date(),
     };
-
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
     setIsLoading(true);
@@ -622,7 +434,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       }
 
       const botMessages: Message[] = [];
-
       (data.messages || []).forEach((msg: any) => {
         if (msg.type === "redirect") {
           const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
@@ -664,7 +475,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       if (data.finished) {
         setFlowFinished(true);
         setCurrentPausedFor(null);
-
         botMessages.push({
           id: Date.now().toString() + Math.random(),
           content: "Thank you! The conversation flow has ended. Feel free to ask me any questions!",
@@ -722,440 +532,460 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   };
 
   const isAwaitingInput = currentPausedFor !== null;
-  const canSendText = flowFinished || bot.isVideoBot || (isAwaitingInput &&
-    currentPausedFor?.type !== "branch" &&
-    !currentPausedFor?.showConfirmationButtons);
+  const canSendText =
+    flowFinished ||
+    bot.isVideoBot ||
+    (isAwaitingInput &&
+      currentPausedFor?.type !== "branch" &&
+      !currentPausedFor?.showConfirmationButtons);
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-6xl h-[700px] flex flex-col shadow-lg">
-        <CardHeader className="flex-shrink-0 border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-4xl h-[90vh] p-0 gap-0 flex flex-col">
+        <DialogHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0 space-y-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10 bg-white/20">
-                <AvatarFallback className="bg-white/20 text-white">
-                  <Bot className="h-5 w-5" />
+              <Avatar className="h-10 w-10 border-2 border-white">
+                <AvatarFallback className="bg-white text-blue-600">
+                  <Bot className="h-6 w-6" />
                 </AvatarFallback>
               </Avatar>
               <div>
-                <CardTitle className="text-lg">{bot.name}</CardTitle>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="secondary" className="text-xs bg-white/20 text-white hover:bg-white/30">
+                <DialogTitle className="text-lg text-white">{bot.name}</DialogTitle>
+                <div className="flex gap-2 mt-1 flex-wrap">
+                  <Badge variant="secondary" className="text-xs">
                     {bot.primaryPurpose}
                   </Badge>
-                  <Badge variant="secondary" className="text-xs bg-white/20 text-white hover:bg-white/30">
+                  <Badge variant="secondary" className="text-xs">
                     {bot.conversationalTone}
                   </Badge>
                   {bot.isVideoBot && (
-                    <Badge variant="secondary" className="text-xs bg-green-500/80 text-white">
-                      <Video className="h-3 w-3 mr-1" />
-                      Tavus AI Avatar
+                    <Badge variant="secondary" className="text-xs">
+                      <ImageIcon className="h-3 w-3 mr-1" />
+                      Image Generation
                     </Badge>
                   )}
                   {flowFinished && (
-                    <Badge variant="secondary" className="text-xs bg-green-500/80 text-white">
+                    <Badge variant="secondary" className="text-xs">
                       Q&A Mode
                     </Badge>
                   )}
                 </div>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={onClose} 
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
               className="text-white hover:bg-white/20"
             >
               <X className="h-5 w-5" />
             </Button>
           </div>
-        </CardHeader>
+        </DialogHeader>
 
-        <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-          <div className="flex-1 flex overflow-hidden">
-            {/* Tavus Video Bot View */}
-            {bot.isVideoBot ? (
-              <div className="flex-1 flex">
-                {/* Main Video and Chat Area */}
-                <div className="flex-1 flex flex-col">
-                  {/* Tavus Video Container */}
-                  <div className="relative bg-black flex-1">
-                    <div 
-                      ref={videoContainerRef}
-                      className="w-full h-full"
-                    >
-                      {!isTavusConnected && !isTavusInitializing && (
-                        <div className="absolute inset-0 flex items-center justify-center text-center text-white">
-                          <div>
-                            <VideoOff className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                            <p className="text-lg">Video connection unavailable</p>
-                            <Button 
-                              variant="outline" 
-                              className="mt-4 text-white border-white hover:bg-white/20"
-                              onClick={initializeTavusConnection}
-                            >
-                              Retry Connection
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                      {isTavusInitializing && (
-                        <div className="absolute inset-0 flex items-center justify-center text-center text-white">
-                          <div>
-                            <Loader2 className="h-16 w-16 mx-auto mb-4 animate-spin" />
-                            <p className="text-lg">Connecting to Tavus AI assistant...</p>
-                            <p className="text-sm opacity-70 mt-2">Setting up real-time conversation</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Connection Status Badge */}
-                    {isTavusConnected && (
-                      <div className="absolute top-4 right-4 z-10">
-                        <Badge variant="secondary" className="bg-green-500 text-white">
-                          <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse" />
-                          Live Conversation
-                        </Badge>
-                      </div>
+      {/* Image Generation Bot View */}
+      {bot.isVideoBot ? (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Generated Image Display Area */}
+          <div className="flex-1 relative bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 overflow-hidden">
+            {generatedImageUrl ? (
+              <div className="relative w-full h-full">
+                <img
+                  src={generatedImageUrl}
+                  alt="Generated"
+                  className="w-full h-full object-contain"
+                />
+                {/* Floating Controls on Image */}
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <Button
+                    onClick={handleVoiceInput}
+                    size="icon"
+                    className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white transition-all hover:scale-110"
+                    title={isListening ? "Stop listening" : "Start voice input"}
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    ) : isListening ? (
+                      <MicOff className="h-6 w-6" />
+                    ) : (
+                      <Mic className="h-6 w-6" />
                     )}
-
-                    {/* Tavus Branding */}
-                    {isTavusConnected && (
-                      <div className="absolute bottom-4 left-4 z-10">
-                        <Badge variant="secondary" className="bg-black/50 text-white text-xs">
-                          Powered by Tavus
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Chat Messages Overlay */}
-                  <div className="bg-background/95 backdrop-blur border-t max-h-48 overflow-y-auto">
-                    <ScrollArea className="p-3">
-                      <div className="space-y-2">
-                        {messages.slice(-3).map(msg => (
-                          <div 
-                            key={msg.id} 
-                            className={`flex gap-2 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-                          >
-                            <div 
-                              className={`rounded-lg px-3 py-1.5 max-w-[80%] ${
-                                msg.sender === "user" 
-                                  ? "bg-blue-600 text-white" 
-                                  : "bg-gray-100 dark:bg-gray-800"
-                              }`}
-                            >
-                              <p className="text-sm">{typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
+                  </Button>
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    size="icon"
+                    className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white transition-all hover:scale-110"
+                    title="Upload new image"
+                  >
+                    <Upload className="h-6 w-6" />
+                  </Button>
+                  <Button
+                    onClick={handleClearImage}
+                    size="icon"
+                    className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white transition-all hover:scale-110"
+                    title="Clear and start new"
+                  >
+                    <RefreshCw className="h-6 w-6" />
+                  </Button>
                 </div>
 
-                {/* Right Sidebar - Flash Cards and Quiz */}
-                <div className="w-80 border-l bg-gray-50 dark:bg-gray-900 flex flex-col">
-                  <ScrollArea className="flex-1 p-4">
-                    {/* Flash Cards Section */}
-                    {flashCards.length > 0 && (
-                      <div className="mb-6">
-                        <h3 className="font-semibold mb-3 flex items-center gap-2">
-                          <Badge variant="outline">Flash Cards</Badge>
-                          <span className="text-xs text-gray-500">{flashCards.length}</span>
-                        </h3>
-                        <div className="space-y-2">
-                          {flashCards.map(card => (
-                            <Card 
-                              key={card.id} 
-                              className={`cursor-pointer transition-all hover:shadow-md ${card.fromQuiz ? 'border-orange-300' : ''}`}
-                              onClick={() => handleFlipFlashCard(card.id)}
-                            >
-                              <CardContent className="p-3">
-                                <div className="flex items-center justify-between mb-2">
-                                  <Badge variant="secondary" className="text-xs">
-                                    {card.isFlipped ? 'Answer' : 'Question'}
-                                  </Badge>
-                                  <RotateCcw className="h-3 w-3 text-gray-400" />
-                                </div>
-                                <p className="text-sm">
-                                  {card.isFlipped ? card.answer : card.question}
-                                </p>
-                                {card.fromQuiz && (
-                                  <Badge variant="outline" className="mt-2 text-xs">
-                                    From Quiz
-                                  </Badge>
-                                )}
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Quiz Section */}
-                    {currentQuiz && (
-                      <div>
-                        <h3 className="font-semibold mb-3 flex items-center gap-2">
-                          <Badge variant="outline">Quiz</Badge>
-                          <span className="text-xs text-gray-500">
-                            {currentQuiz.questions.length} questions
-                          </span>
-                        </h3>
-                        <div className="space-y-4">
-                          {currentQuiz.questions.map((question, qIdx) => (
-                            <Card key={question.id}>
-                              <CardContent className="p-3">
-                                <p className="font-medium text-sm mb-3">
-                                  {qIdx + 1}. {question.text}
-                                </p>
-                                <div className="space-y-2">
-                                  {question.answers.map(answer => (
-                                    <Button
-                                      key={answer.id}
-                                      variant={quizAnswers[question.id] === answer.id ? "default" : "outline"}
-                                      size="sm"
-                                      className="w-full justify-start text-left"
-                                      onClick={() => handleQuizAnswerSelect(question.id, answer.id)}
-                                      disabled={quizSubmitted}
-                                    >
-                                      {answer.text}
-                                      {quizSubmitted && quizResults && (
-                                        <>
-                                          {quizResults.results.find((r: any) => r.questionId === question.id)?.isCorrect && 
-                                           quizAnswers[question.id] === answer.id && (
-                                            <CheckCircle className="ml-auto h-4 w-4 text-green-500" />
-                                          )}
-                                          {!quizResults.results.find((r: any) => r.questionId === question.id)?.isCorrect && 
-                                           quizAnswers[question.id] === answer.id && (
-                                            <XCircle className="ml-auto h-4 w-4 text-red-500" />
-                                          )}
-                                        </>
-                                      )}
-                                    </Button>
-                                  ))}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                        {!quizSubmitted && (
-                          <Button 
-                            className="w-full mt-4"
-                            onClick={handleSubmitQuiz}
-                            disabled={Object.keys(quizAnswers).length !== currentQuiz.questions.length || isLoading}
-                          >
-                            {isLoading ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Submitting...
-                              </>
-                            ) : (
-                              'Submit Quiz'
-                            )}
-                          </Button>
-                        )}
-                        {quizSubmitted && quizResults && (
-                          <Alert className="mt-4">
-                            <AlertDescription>
-                              Score: {quizResults.correctCount}/{quizResults.totalCount}
-                              {quizResults.correctCount === quizResults.totalCount ? ' 🎉' : ''}
-                            </AlertDescription>
-                          </Alert>
-                        )}
-                      </div>
-                    )}
-
-                    {flashCards.length === 0 && !currentQuiz && (
-                      <div className="text-center text-gray-500 text-sm mt-8">
-                        <p>Flash cards and quizzes will appear here as you learn.</p>
-                      </div>
-                    )}
-                  </ScrollArea>
+                {/* Generation Badge */}
+                <div className="absolute bottom-4 left-4">
+                  <Badge className="bg-green-500 text-white">
+                    <ImageIcon className="h-3 w-3 mr-1" />
+                    Image Generated
+                  </Badge>
                 </div>
               </div>
             ) : (
-              /* Regular Chat View */
-              <ScrollArea className="flex-1 p-4 overflow-y-auto">
-                <div className="space-y-4">
-                  {messages.map(msg => (
-                    <div key={msg.id} className={`flex gap-3 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-                      {msg.sender === "bot" && (
-                        <Avatar className="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 flex-shrink-0">
-                          <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                            <Bot className="h-4 w-4" />
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                      <div className="flex flex-col gap-2 max-w-[80%]">
-                        {msg.content && (
-                          <div className={`rounded-lg px-3 py-2 ${msg.sender === "user" ? "bg-blue-600 text-white ml-auto" : "bg-gray-100 dark:bg-gray-800"}`}>
-                            <p className="text-sm whitespace-pre-wrap">
-                              {typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}
-                            </p>
-                            <span className="text-xs opacity-70 mt-1 block">
-                              {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          </div>
-                        )}
-
-                        {msg.showConfirmationButtons && isAwaitingInput && msg.sender === "bot" && !flowFinished && (
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline" onClick={() => handleConfirmationClick("yes")}>
-                              Yes
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleConfirmationClick("no")}>
-                              No
-                            </Button>
-                          </div>
-                        )}
-
-                        {msg.showBranchOptions && msg.sender === "bot" && msg.branchOptions && (
-                          <div className="flex flex-wrap gap-2">
-                            {msg.branchOptions.map((opt, idx) => (
-                              <Button
-                                key={idx}
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleBranchOptionClick(opt, msg.id)}
-                                disabled={!!msg.selectedBranch}
-                                className={msg.selectedBranch === opt ? "bg-blue-500 text-white border-blue-600" : ""}
-                              >
-                                {opt}
-                              </Button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      {msg.sender === "user" && (
-                        <Avatar className="h-8 w-8 bg-gray-300 dark:bg-gray-700 flex-shrink-0">
-                          <AvatarFallback className="bg-gray-300 dark:bg-gray-700">
-                            <User className="h-4 w-4" />
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                    </div>
-                  ))}
-
-                  {isLoading && (
-                    <div className="flex gap-3 justify-start">
-                      <Avatar className="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 flex-shrink-0">
-                        <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                          <Bot className="h-4 w-4" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2">
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                          <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: "0.2s" }}></div>
-                          <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: "0.4s" }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+              <div className="w-full h-full flex items-center justify-center p-8">
+                <div className="text-center max-w-md">
+                  <ImageIcon className="h-20 w-20 mx-auto mb-4 text-purple-400" />
+                  <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    AI Image Generation
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    Upload an image and provide a prompt to generate amazing visuals
+                  </p>
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Image to Start
+                  </Button>
                 </div>
-                <div ref={messagesEndRef} />
-              </ScrollArea>
+              </div>
             )}
           </div>
 
-          {/* Input Area */}
-          <div className="border-t p-4 bg-background">
-            {/* Voice Waveform */}
-            {!bot.isVideoBot && (
-              <VoiceWaveform
-                audioLevels={audioLevels}
-                isListening={isListening}
-                showSilenceWarning={showSilenceWarning}
-                silenceCountdown={silenceCountdown}
-                className="mb-3"
-              />
-            )}
-
-            {/* Processing indicator */}
-            {isProcessing && (
-              <Alert className="mb-3 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
-                <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
-                <AlertDescription className="text-blue-800 dark:text-blue-200">
-                  Processing your speech...
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
-                <Input
-                  ref={inputRef}
-                  value={inputMessage}
-                  onChange={e => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder={
-                    isListening 
-                      ? "Listening... Speak now" 
-                      : isProcessing 
-                        ? "Processing speech..." 
-                        : flowFinished || bot.isVideoBot
-                          ? "Ask me anything..." 
-                          : (canSendText ? "Type your message..." : "Select an option above...")
-                  }
-                  disabled={isLoading || !canSendText || isProcessing}
-                  className="pr-12"
-                />
-                {bot.voiceEnabled && canSendText && !bot.isVideoBot && (
+          {/* Image Upload Preview & Generation Panel */}
+          {imagePreview && !generatedImageUrl && (
+            <div className="p-4 bg-white dark:bg-gray-800 border-t">
+              <div className="flex gap-4">
+                <div className="relative w-32 h-32 flex-shrink-0">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-full object-cover rounded-lg border-2 border-purple-300"
+                  />
                   <Button
-                    variant="ghost"
+                    onClick={handleClearImage}
                     size="icon"
-                    onClick={handleVoiceInput}
-                    disabled={isProcessing}
-                    className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${
-                      isListening 
-                        ? "text-red-500 animate-pulse" 
-                        : isProcessing 
-                          ? "text-gray-400" 
-                          : "text-gray-500 hover:text-blue-600"
-                    }`}
-                    title={
-                      isProcessing 
-                        ? "Processing..." 
-                        : isListening 
-                          ? "Stop recording" 
-                          : "Start voice input"
-                    }
+                    variant="destructive"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
                   >
-                    {isProcessing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : isListening ? (
-                      <MicOff className="h-4 w-4" />
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex-1 flex flex-col gap-2">
+                  <div className="relative">
+                    <Input
+                      value={imagePrompt}
+                      onChange={(e) => setImagePrompt(e.target.value)}
+                      placeholder="Describe what you want to generate... (e.g., 'Make it look like a watercolor painting')"
+                      className="pr-10 border-2 border-purple-300 focus:border-purple-500 bg-white dark:bg-gray-800"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && imagePrompt.trim()) {
+                          handleGenerateImage();
+                        }
+                      }}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleGenerateImage}
+                    disabled={!imagePrompt.trim() || isGeneratingImage}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                  >
+                    {isGeneratingImage ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generating with Gemini AI...
+                      </>
                     ) : (
-                      <Mic className="h-4 w-4" />
+                      <>
+                        <ImageIcon className="h-4 w-4 mr-2" />
+                        Generate Image
+                      </>
                     )}
                   </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Chat Messages Overlay */}
+          <ScrollArea className="h-40 p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-t">
+            {messages.length === 0 && (
+              <div className="text-center text-gray-400 py-8">
+                Messages will appear here
+              </div>
+            )}
+            {messages.slice(-4).map(msg => (
+              <div
+                key={msg.id}
+                className={`flex gap-2 mb-3 ${
+                  msg.sender === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                {msg.sender === "bot" && (
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs">
+                      <Bot className="h-4 w-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+                <div
+                  className={`max-w-[80%] rounded-lg p-2 text-sm ${
+                    msg.sender === "user"
+                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  }`}
+                >
+                  {msg.imageUrl && msg.sender === "user" && (
+                    <img
+                      src={msg.imageUrl}
+                      alt="User uploaded"
+                      className="max-w-full h-auto rounded mb-1 max-h-32 object-cover"
+                    />
+                  )}
+                  {msg.imageUrl && msg.sender === "bot" && (
+                    <img
+                      src={msg.imageUrl}
+                      alt="Generated"
+                      className="max-w-full h-auto rounded mb-1 max-h-48 object-cover"
+                    />
+                  )}
+                  <div>
+                    {typeof msg.content === "string"
+                      ? msg.content
+                      : JSON.stringify(msg.content)}
+                  </div>
+                </div>
+                {msg.sender === "user" && (
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback className="bg-gray-300 text-xs">
+                      <User className="h-4 w-4" />
+                    </AvatarFallback>
+                  </Avatar>
                 )}
               </div>
-              <Button
-                onClick={() => handleSendMessage()}
-                disabled={!inputMessage.trim() || isLoading || !canSendText || isListening || isProcessing}
-                size="icon"
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-              <span>Supported languages:</span>
-              {bot.languages.map((lang, i) => (
-                <span key={lang}>
-                  {lang}{i < bot.languages.length - 1 ? ", " : ""}
+            ))}
+            {isLoading && (
+              <div className="flex gap-2 mb-3">
+                <Avatar className="h-6 w-6">
+                  <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs">
+                    <Bot className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </ScrollArea>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+        </div>
+      ) : (
+        /* Regular Chat View */
+        <ScrollArea className="flex-1 p-4">
+          {messages.map(msg => (
+            <div
+              key={msg.id}
+              className={`flex gap-3 mb-4 ${
+                msg.sender === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              {msg.sender === "bot" && (
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                    <Bot className="h-5 w-5" />
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              <div className={`flex flex-col gap-1 ${msg.sender === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
+                {msg.content && (
+                  <div
+                    className={`rounded-lg p-3 ${
+                      msg.sender === "user"
+                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    }`}
+                  >
+                    {typeof msg.content === "string"
+                      ? msg.content
+                      : JSON.stringify(msg.content)}
+                  </div>
+                )}
+                <span className="text-xs text-gray-500">
+                  {msg.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  })}
                 </span>
-              ))}
+
+                {msg.showConfirmationButtons &&
+                  isAwaitingInput &&
+                  msg.sender === "bot" &&
+                  !flowFinished && (
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleConfirmationClick("yes")}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleConfirmationClick("no")}
+                      >
+                        No
+                      </Button>
+                    </div>
+                  )}
+
+                {msg.showBranchOptions &&
+                  msg.sender === "bot" &&
+                  msg.branchOptions && (
+                    <div className="flex flex-col gap-2 mt-2">
+                      {msg.branchOptions.map((opt, idx) => (
+                        <Button
+                          key={idx}
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleBranchOptionClick(opt, msg.id)}
+                          disabled={!!msg.selectedBranch}
+                          className={msg.selectedBranch === opt ? "bg-blue-500 text-white border-blue-600" : ""}
+                        >
+                          {opt}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+              </div>
+              {msg.sender === "user" && (
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-gray-300">
+                    <User className="h-5 w-5" />
+                  </AvatarFallback>
+                </Avatar>
+              )}
             </div>
+          ))}
+          {isLoading && (
+            <div className="flex gap-3 mb-4">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                  <Bot className="h-5 w-5" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </ScrollArea>
+      )}
+
+      {/* Input Area */}
+      <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+        {/* Voice Waveform */}
+        {!bot.isVideoBot && (
+          <VoiceWaveform
+            isListening={isListening}
+            audioLevels={audioLevels}
+            showSilenceWarning={showSilenceWarning}
+            silenceCountdown={silenceCountdown}
+          />
+        )}
+
+        {/* Processing indicator */}
+        {isProcessing && !bot.isVideoBot && (
+          <Alert className="mb-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <AlertDescription>Processing your speech...</AlertDescription>
+          </Alert>
+        )}
+
+        {!bot.isVideoBot && (
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Input
+                ref={inputRef}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={
+                  isListening
+                    ? "Listening... Speak now"
+                    : isProcessing
+                    ? "Processing speech..."
+                    : flowFinished || bot.isVideoBot
+                    ? "Ask me anything..."
+                    : (canSendText
+                        ? "Type your message..."
+                        : "Select an option above...")
+                }
+                disabled={isLoading || !canSendText || isProcessing}
+                className="pr-12"
+              />
+              {bot.voiceEnabled && canSendText && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleVoiceInput}
+                  className="absolute right-1 top-1/2 -translate-y-1/2"
+                  disabled={isLoading || isProcessing}
+                >
+                  {isProcessing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isListening ? (
+                    <MicOff className="h-4 w-4 text-red-500" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+            </div>
+            <Button
+              onClick={() => handleSendMessage()}
+              disabled={!inputMessage.trim() || isLoading || !canSendText || isListening || isProcessing}
+              size="icon"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        )}
+
+        {!bot.isVideoBot && (
+          <div className="mt-2 text-xs text-gray-500 text-center">
+            Supported languages:{" "}
+            {bot.languages.map((lang, i) => (
+              <span key={lang}>
+                {lang}{i < bot.languages.length - 1 ? ", " : ""}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Hidden audio element for playing TTS */}
       <audio ref={audioRef} className="hidden" />
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
