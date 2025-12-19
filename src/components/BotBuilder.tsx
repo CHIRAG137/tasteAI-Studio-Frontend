@@ -40,8 +40,8 @@ interface BotConfig {
   scrapedMarkdown?: string[];
   scrapedUrls?: string[];
   isVideoBot: boolean;
-  videoBotImageData?: string;
-  videoBotImageType?: string;
+  videoBotImageUrl?: string;
+  videoBotImagePublicId?: string;
 }
 
 export const BotBuilder = () => {
@@ -96,8 +96,8 @@ export const BotBuilder = () => {
       edges: []
     },
     isVideoBot: false,
-    videoBotImageData: undefined,
-    videoBotImageType: undefined
+    videoBotImageUrl: "",
+    videoBotImagePublicId: "",
   });
 
   const fetchBots = async () => {
@@ -118,8 +118,8 @@ export const BotBuilder = () => {
           conversationalTone: bot.conversation_tone,
           conversationFlow: bot.conversationFlow,
           isVideoBot: bot.is_video_bot,
-          videoBotImageData: bot.video_bot_image_data,
-          videoBotImageType: bot.video_bot_image_type
+          videoBotImageUrl: bot.video_bot_image_url,
+          videoBotImagePublicId: bot.video_bot_image_public_id
         }));
         setSavedBots(bots.reverse());
       } else {
@@ -195,8 +195,8 @@ export const BotBuilder = () => {
         slack_channel_id: botConfig.slackChannelId,
         conversationFlow: JSON.stringify(botConfig.conversationFlow || { nodes: [], edges: [] }),
         is_video_bot: botConfig.isVideoBot.toString(),
-        video_bot_image_data: botConfig.videoBotImageData || "",
-        video_bot_image_type: botConfig.videoBotImageType || "",
+        video_bot_image_url: botConfig.videoBotImageUrl || "",
+        video_bot_image_public_id: botConfig.videoBotImagePublicId || "",
       }).forEach(([key, value]) => formData.append(key, value as string));
 
       if (botConfig.scrapedMarkdown?.length)
