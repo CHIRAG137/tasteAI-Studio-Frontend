@@ -204,6 +204,7 @@ export const VideoBotSection = ({ botConfig, updateConfig }: VideoBotSectionProp
                   />
                   <div className="absolute top-2 right-2 flex gap-2">
                     <Button
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
                       size="icon"
                       variant="secondary"
@@ -213,6 +214,7 @@ export const VideoBotSection = ({ botConfig, updateConfig }: VideoBotSectionProp
                       <Upload className="h-4 w-4" />
                     </Button>
                     <Button
+                      type="button"
                       onClick={handleClearImage}
                       size="icon"
                       variant="destructive"
@@ -241,6 +243,7 @@ export const VideoBotSection = ({ botConfig, updateConfig }: VideoBotSectionProp
                         className="w-full h-full object-cover rounded-lg border-2 border-primary/30"
                       />
                       <Button
+                        type="button"
                         onClick={handleClearImage}
                         size="icon"
                         variant="destructive"
@@ -262,6 +265,7 @@ export const VideoBotSection = ({ botConfig, updateConfig }: VideoBotSectionProp
                         }}
                       />
                       <Button
+                        type="button"
                         onClick={handleGenerateImage}
                         disabled={!imagePrompt.trim() || isGeneratingImage}
                         className="bg-gradient-primary hover:opacity-90"
@@ -287,6 +291,7 @@ export const VideoBotSection = ({ botConfig, updateConfig }: VideoBotSectionProp
                       Upload a reference image to generate your video bot avatar
                     </p>
                     <Button
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
                       variant="outline"
                     >
