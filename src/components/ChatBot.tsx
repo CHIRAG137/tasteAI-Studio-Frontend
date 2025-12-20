@@ -540,26 +540,24 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             {showVideoAvatar && (
               <div className="w-1/2 relative bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 overflow-hidden flex items-center justify-center border-r">
                 {videoBotAvatarUrl ? (
-                  <div className="relative w-full h-full flex flex-col items-center justify-center p-6">
-                    <div className="relative flex-1 flex items-center justify-center w-full">
-                      <img
-                        src={videoBotAvatarUrl}
-                        alt="Video Bot Avatar"
-                        className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
-                      />
-                    </div>
-                    
-                    {/* Call Control Buttons - Fixed at bottom */}
-                    <div className="relative z-20 flex flex-col items-center gap-3 mt-4">
-                      {/* Speaking indicator */}
-                      {isLoading && (
-                        <div className="bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-sm">Thinking...</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex gap-3">
+                  <div className="relative w-full h-full p-6 flex items-center justify-center">
+                    <img
+                      src={videoBotAvatarUrl}
+                      alt="Video Bot Avatar"
+                      className="relative z-0 max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+                    />
+
+                    {/* Speaking indicator */}
+                    {isLoading && (
+                      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Thinking...</span>
+                      </div>
+                    )}
+
+                    {/* Call Control Buttons Overlay (on top of image) */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-none">
+                      <div className="flex gap-3 pointer-events-auto">
                         {/* Mute/Unmute Button */}
                         <Button
                           onClick={handleMicToggle}
@@ -593,16 +591,14 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                         </Button>
                       </div>
 
-                      {/* Status Text */}
-                      <p className="text-center text-sm text-muted-foreground">
+                      <p className="text-center text-xs text-muted-foreground bg-background/70 backdrop-blur px-3 py-1 rounded-full">
                         {isProcessing
                           ? "Processing..."
                           : isMuted
                             ? "Microphone muted"
                             : isListening
                               ? "Listening..."
-                              : "Microphone active"
-                        }
+                              : "Microphone active"}
                       </p>
                     </div>
                   </div>
