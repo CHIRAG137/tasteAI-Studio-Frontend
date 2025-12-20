@@ -55,9 +55,100 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const [flowFinished, setFlowFinished] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Function to convert text to speech and play it
+  const playTextToSpeech = async (text: string) => {
+    try {
+      setIsSpeaking(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate speech");
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      if (audioRef.current) {
+        audioRef.current.src = audioUrl;
+        audioRef.current.onended = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+        };
+        audioRef.current.onerror = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+        };
+        await audioRef.current.play();
+      }
+    } catch (error) {
+      console.error("TTS error:", error);
+      setIsSpeaking(false);
+    }
+  };
+
+  // Handle voice question for video bot (auto-submit)
+  const handleVoiceQuestion = async (question: string) => {
+    if (!question.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: question,
+      sender: "user",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question,
+            botId: bot.id,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to get answer");
+      }
+
+      const answerText = data.result.answer || "I couldn't find an answer to that question.";
+      addBotMessage(answerText);
+
+      // Convert answer to speech and play it
+      if (bot.isVideoBot) {
+        await playTextToSpeech(answerText);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: err.message || "Something went wrong",
+        variant: "destructive"
+      });
+      addBotMessage("I'm having trouble answering that. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const {
     isListening,
@@ -69,11 +160,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   } = useSpeechToText({
     onResult: (text) => {
       if (bot.isVideoBot) {
-        // For video bot, add the speech to text input instead of auto-sending
-        setInputMessage(prev => {
-          const newText = prev ? prev + " " + text : text;
-          return newText.trim();
-        });
+        // For video bot, auto-submit the speech-to-text result
+        handleVoiceQuestion(text);
       } else {
         setInputMessage(prev => {
           const newText = prev ? prev + " " + text : text;
@@ -125,7 +213,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     return botMessage;
   };
 
-  // Handle video bot question
+  // Handle video bot question (typed input)
   const handleVideoBotQuestion = async () => {
     const question = inputMessage.trim();
     if (!question || isLoading) return;
@@ -161,6 +249,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
+
+      // Convert answer to speech and play it for video bot
+      await playTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
       toast({
@@ -547,11 +638,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       className="relative z-0 max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
                     />
 
-                    {/* Speaking indicator */}
-                    {isLoading && (
+                    {/* Speaking/Loading indicator */}
+                    {(isLoading || isSpeaking) && (
                       <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm">Thinking...</span>
+                        <span className="text-sm">{isSpeaking ? "Speaking..." : "Thinking..."}</span>
                       </div>
                     )}
 
@@ -568,7 +659,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                                 : "bg-green-500 hover:bg-green-600"
                               : "bg-gray-400 hover:bg-gray-500"
                             }`}
-                          disabled={isLoading || isProcessing}
+                          disabled={isLoading || isProcessing || isSpeaking}
                           title={isMuted ? "Click to unmute and start speaking" : isListening ? "Listening..." : "Click to speak"}
                         >
                           {isProcessing ? (
@@ -592,13 +683,15 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       </div>
 
                       <p className="text-center text-xs text-muted-foreground bg-background/70 backdrop-blur px-3 py-1 rounded-full">
-                        {isProcessing
-                          ? "Processing..."
-                          : isMuted
-                            ? "Microphone muted"
-                            : isListening
-                              ? "Listening..."
-                              : "Microphone active"}
+                        {isSpeaking
+                          ? "Bot speaking..."
+                          : isProcessing
+                            ? "Processing..."
+                            : isMuted
+                              ? "Microphone muted"
+                              : isListening
+                                ? "Listening..."
+                                : "Microphone active"}
                       </p>
                     </div>
                   </div>
@@ -623,7 +716,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                               : "bg-green-500 hover:bg-green-600"
                             : "bg-gray-400 hover:bg-gray-500"
                           }`}
-                        disabled={isLoading || isProcessing}
+                        disabled={isLoading || isProcessing || isSpeaking}
                       >
                         {isProcessing ? (
                           <Loader2 className="h-6 w-6 animate-spin text-white" />
@@ -645,13 +738,15 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     </div>
 
                     <p className="text-center text-xs text-muted-foreground mt-4">
-                      {isProcessing
-                        ? "Processing..."
-                        : isMuted
-                          ? "Click to unmute and speak"
-                          : isListening
-                            ? "Listening..."
-                            : "Click to speak"
+                      {isSpeaking
+                        ? "Bot speaking..."
+                        : isProcessing
+                          ? "Processing..."
+                          : isMuted
+                            ? "Click to unmute and speak"
+                            : isListening
+                              ? "Listening..."
+                              : "Click to speak"
                       }
                     </p>
                   </div>
