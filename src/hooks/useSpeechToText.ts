@@ -92,7 +92,7 @@ export const useSpeechToText = ({
       const data = await response.json();
       
       if (data.result?.text) {
-        onResult(data.result.text);
+        onResult(data.result.text.text);
       } else {
         throw new Error('No transcription text received');
       }
