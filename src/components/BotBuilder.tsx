@@ -42,6 +42,7 @@ interface BotConfig {
   isVideoBot: boolean;
   videoBotImageUrl?: string;
   videoBotImagePublicId?: string;
+  voiceId?: string;
 }
 
 export const BotBuilder = () => {
@@ -98,6 +99,7 @@ export const BotBuilder = () => {
     isVideoBot: false,
     videoBotImageUrl: "",
     videoBotImagePublicId: "",
+    voiceId: "",
   });
 
   const fetchBots = async () => {
@@ -119,7 +121,8 @@ export const BotBuilder = () => {
           conversationFlow: bot.conversationFlow,
           isVideoBot: bot.is_video_bot,
           videoBotImageUrl: bot.video_bot_image_url,
-          videoBotImagePublicId: bot.video_bot_image_public_id
+          videoBotImagePublicId: bot.video_bot_image_public_id,
+          voiceId: bot.voice_id
         }));
         setSavedBots(bots.reverse());
       } else {
@@ -164,6 +167,7 @@ export const BotBuilder = () => {
         primaryPurpose: botConfig.primaryPurpose,
         conversationalTone: botConfig.conversationalTone,
         isVideoBot: botConfig.isVideoBot,
+        voiceId: botConfig.voiceId,
         isLoading: true,
       };
 
@@ -197,6 +201,7 @@ export const BotBuilder = () => {
         is_video_bot: botConfig.isVideoBot.toString(),
         video_bot_image_url: botConfig.videoBotImageUrl || "",
         video_bot_image_public_id: botConfig.videoBotImagePublicId || "",
+        voice_id: botConfig.voiceId || "",
       }).forEach(([key, value]) => formData.append(key, value as string));
 
       if (botConfig.scrapedMarkdown?.length)

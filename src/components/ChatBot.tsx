@@ -41,6 +41,7 @@ interface ChatBotProps {
     languages: string[];
     primaryPurpose: string;
     conversationalTone: string;
+    voiceId: string;
   };
   onClose: () => void;
 }
@@ -69,7 +70,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
+          body: JSON.stringify({ text, voiceId: bot.voiceId }),
         }
       );
 
@@ -79,7 +80,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
-      
+
       if (audioRef.current) {
         audioRef.current.src = audioUrl;
         audioRef.current.onended = () => {
@@ -654,10 +655,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                           onClick={handleMicToggle}
                           size="lg"
                           className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${!isMuted
-                              ? isListening
-                                ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                                : "bg-green-500 hover:bg-green-600"
-                              : "bg-gray-400 hover:bg-gray-500"
+                            ? isListening
+                              ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                              : "bg-green-500 hover:bg-green-600"
+                            : "bg-gray-400 hover:bg-gray-500"
                             }`}
                           disabled={isLoading || isProcessing || isSpeaking}
                           title={isMuted ? "Click to unmute and start speaking" : isListening ? "Listening..." : "Click to speak"}
@@ -711,10 +712,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                         onClick={handleMicToggle}
                         size="lg"
                         className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${!isMuted
-                            ? isListening
-                              ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                              : "bg-green-500 hover:bg-green-600"
-                            : "bg-gray-400 hover:bg-gray-500"
+                          ? isListening
+                            ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                            : "bg-green-500 hover:bg-green-600"
+                          : "bg-gray-400 hover:bg-gray-500"
                           }`}
                         disabled={isLoading || isProcessing || isSpeaking}
                       >
@@ -792,8 +793,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     <div className={`flex flex-col gap-1 ${msg.sender === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
                       <div
                         className={`rounded-lg p-3 ${msg.sender === "user"
-                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                            : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           }`}
                       >
                         {typeof msg.content === "string"
@@ -943,8 +944,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     {msg.content && (
                       <div
                         className={`rounded-lg p-3 ${msg.sender === "user"
-                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                            : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           }`}
                       >
                         {typeof msg.content === "string"

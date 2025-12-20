@@ -16,6 +16,7 @@ interface BotCardProps {
     primaryPurpose: string;
     conversationalTone: string;
     isVideoBot: boolean;
+    voiceId: string;
   };
   onTest: (id: string) => void;
   onShare: (id: string) => void;
