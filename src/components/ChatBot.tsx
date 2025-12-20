@@ -541,22 +541,25 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               <div className="w-1/2 relative bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 overflow-hidden flex items-center justify-center border-r">
                 {videoBotAvatarUrl ? (
                   <div className="relative w-full h-full flex flex-col items-center justify-center p-6">
-                    <div className="relative flex-1 flex items-center justify-center">
+                    <div className="relative flex-1 flex items-center justify-center w-full">
                       <img
                         src={videoBotAvatarUrl}
                         alt="Video Bot Avatar"
                         className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
                       />
+                    </div>
+                    
+                    {/* Call Control Buttons - Fixed at bottom */}
+                    <div className="relative z-20 flex flex-col items-center gap-3 mt-4">
                       {/* Speaking indicator */}
                       {isLoading && (
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
+                        <div className="bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           <span className="text-sm">Thinking...</span>
                         </div>
                       )}
-
-                      {/* Call Control Buttons Overlay on Image */}
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3">
+                      
+                      <div className="flex gap-3">
                         {/* Mute/Unmute Button */}
                         <Button
                           onClick={handleMicToggle}
@@ -589,19 +592,19 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                           <PhoneOff className="h-6 w-6 text-white" />
                         </Button>
                       </div>
-                    </div>
 
-                    {/* Status Text */}
-                    <p className="text-center text-sm text-muted-foreground mt-2">
-                      {isProcessing
-                        ? "Processing..."
-                        : isMuted
-                          ? "Microphone muted"
-                          : isListening
-                            ? "Listening..."
-                            : "Microphone active"
-                      }
-                    </p>
+                      {/* Status Text */}
+                      <p className="text-center text-sm text-muted-foreground">
+                        {isProcessing
+                          ? "Processing..."
+                          : isMuted
+                            ? "Microphone muted"
+                            : isListening
+                              ? "Listening..."
+                              : "Microphone active"
+                        }
+                      </p>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center p-8">
