@@ -388,6 +388,7 @@ export const VideoBotSection = ({
 
                           {voice.preview_url && (
                             <Button
+                              type="button"
                               size="icon"
                               variant={isPlaying ? "secondary" : "ghost"}
                               className="shrink-0"
