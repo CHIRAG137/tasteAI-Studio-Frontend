@@ -630,18 +630,18 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           <div className="flex-1 flex overflow-hidden">
             {/* Left Side - Video Bot Avatar (Conditional) */}
             {showVideoAvatar && (
-              <div className="w-1/2 relative bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 overflow-hidden flex items-center justify-center border-r">
+              <div className="w-1/2 relative overflow-hidden flex items-center justify-center">
                 {videoBotAvatarUrl ? (
-                  <div className="relative w-full h-full p-6 flex items-center justify-center">
+                  <div className="relative w-full h-full flex items-center justify-center">
                     <img
                       src={videoBotAvatarUrl}
                       alt="Video Bot Avatar"
-                      className="relative z-0 max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+                      className="relative z-0 w-full h-full object-cover"
                     />
 
                     {/* Speaking/Loading indicator */}
                     {(isLoading || isSpeaking) && (
-                      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
+                      <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-20 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         <span className="text-sm">{isSpeaking ? "Speaking..." : "Thinking..."}</span>
                       </div>
@@ -683,7 +683,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                         </Button>
                       </div>
 
-                      <p className="text-center text-xs text-muted-foreground bg-background/70 backdrop-blur px-3 py-1 rounded-full">
+                      <p className="text-center text-xs text-white bg-black/50 backdrop-blur px-3 py-1 rounded-full">
                         {isSpeaking
                           ? "Bot speaking..."
                           : isProcessing
@@ -697,7 +697,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center p-8">
+                  <div className="text-center p-8 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 w-full h-full flex flex-col items-center justify-center">
                     <Video className="h-20 w-20 mx-auto mb-4 text-purple-400" />
                     <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                       Video Bot
@@ -750,18 +750,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                               : "Click to speak"
                       }
                     </p>
-                  </div>
-                )}
-
-                {/* Voice Waveform for Video Bot */}
-                {isListening && (
-                  <div className="absolute top-4 left-4 right-4">
-                    <VoiceWaveform
-                      isListening={isListening}
-                      audioLevels={audioLevels}
-                      showSilenceWarning={showSilenceWarning}
-                      silenceCountdown={silenceCountdown}
-                    />
                   </div>
                 )}
               </div>

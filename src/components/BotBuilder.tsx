@@ -142,11 +142,45 @@ export const BotBuilder = () => {
     setBotConfig(prev => ({ ...prev, [field]: value }));
   };
 
+  const validateBotConfig = (): string | null => {
+    // Basic validations
+    if (!botConfig.name.trim()) {
+      return "Bot name is required.";
+    }
+
+    if (!botConfig.description.trim()) {
+      return "Bot description is required.";
+    }
+
+    // Video bot validations
+    if (botConfig.isVideoBot) {
+      if (!botConfig.videoBotImageUrl || !botConfig.videoBotImagePublicId) {
+        return "Video bot image is required. Please upload and save a cropped image.";
+      }
+
+      if (!botConfig.voiceId) {
+        return "Voice ID is required for Video Bot. Please select a voice.";
+      }
+    }
+
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!isAuthenticated()) {
       navigate("/login");
+      return;
+    }
+
+    const validationError = validateBotConfig();
+    if (validationError) {
+      toast({
+        title: "Missing Required Information",
+        description: validationError,
+        variant: "destructive",
+      });
       return;
     }
 

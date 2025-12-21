@@ -9,6 +9,10 @@ import {
   X,
   Loader2,
   Image as ImageIcon,
+  Move,
+  ZoomIn,
+  ZoomOut,
+  Crop,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -28,6 +32,9 @@ export const VideoBotSection = ({
 }: VideoBotSectionProps) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const hiddenImageRef = useRef<HTMLImageElement>(null);
   const VOICES_PAGE_SIZE = 6;
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -40,11 +47,18 @@ export const VideoBotSection = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [visibleVoiceCount, setVisibleVoiceCount] = useState(VOICES_PAGE_SIZE);
 
+  // Image cropping state
+  const [showCropTool, setShowCropTool] = useState(false);
+  const [cropCircle, setCropCircle] = useState({ x: 0, y: 0, radius: 100 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [generatedImageForCrop, setGeneratedImageForCrop] = useState<string | null>(null);
+  const [isSavingCrop, setIsSavingCrop] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
   useEffect(() => {
-    // Only fetch voices when the VideoBot section is opened
     if (!botConfig.isVideoBot) return;
-    
-    // Skip if voices are already loaded
     if (voices.length > 0) return;
 
     const fetchVoices = async () => {
@@ -65,6 +79,10 @@ export const VideoBotSection = ({
         );
 
         setVoices(premadeVoices);
+        
+        if (premadeVoices.length > 0 && !botConfig.voiceId) {
+          updateConfig("voiceId", premadeVoices[0].voice_id);
+        }
       } catch (err) {
         console.error("Voice fetch failed:", err);
         toast({
@@ -80,11 +98,61 @@ export const VideoBotSection = ({
     fetchVoices();
   }, [botConfig.isVideoBot]);
 
+  useEffect(() => {
+    if (botConfig.isVideoBot && !imagePrompt && !generatedImageUrl) {
+      setImagePrompt("Transform this into a professional business avatar wearing formal business attire (suit or blazer) on a clean white background, professional studio lighting, corporate headshot style");
+    }
+  }, [botConfig.isVideoBot]);
+
   const generatedImageUrl = botConfig.videoBotImageUrl || null;
 
-  // ---------------------------
-  // Image Selection
-  // ---------------------------
+  // Draw crop circle on canvas
+  useEffect(() => {
+    if (!showCropTool || !canvasRef.current || !imageRef.current || !imageLoaded) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const img = imageRef.current;
+    
+    // Set canvas size to match displayed image
+    const rect = img.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw semi-transparent overlay
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Cut out circle (destination-out for transparency)
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(cropCircle.x, cropCircle.y, cropCircle.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw circle border
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = "#3b82f6";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cropCircle.x, cropCircle.y, cropCircle.radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Draw center crosshair
+    ctx.strokeStyle = "#3b82f6";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cropCircle.x - 10, cropCircle.y);
+    ctx.lineTo(cropCircle.x + 10, cropCircle.y);
+    ctx.moveTo(cropCircle.x, cropCircle.y - 10);
+    ctx.lineTo(cropCircle.x, cropCircle.y + 10);
+    ctx.stroke();
+  }, [showCropTool, cropCircle, imageLoaded]);
+
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -110,13 +178,133 @@ export const VideoBotSection = ({
     setSelectedImage(file);
 
     const reader = new FileReader();
-    reader.onloadend = () => setImagePreview(reader.result as string);
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
     reader.readAsDataURL(file);
   };
 
-  // ---------------------------
-  // Generate Avatar (Cloudinary)
-  // ---------------------------
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Check if click is inside circle
+    const distance = Math.sqrt(
+      Math.pow(x - cropCircle.x, 2) + Math.pow(y - cropCircle.y, 2)
+    );
+
+    if (distance <= cropCircle.radius) {
+      setIsDragging(true);
+      setDragStart({ x: x - cropCircle.x, y: y - cropCircle.y });
+    }
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    let newX = x - dragStart.x;
+    let newY = y - dragStart.y;
+
+    // Keep circle within canvas bounds
+    newX = Math.max(cropCircle.radius, Math.min(canvas.width - cropCircle.radius, newX));
+    newY = Math.max(cropCircle.radius, Math.min(canvas.height - cropCircle.radius, newY));
+
+    setCropCircle((prev) => ({ ...prev, x: newX, y: newY }));
+  };
+
+  const handleCanvasMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleZoomIn = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const maxRadius = Math.min(canvas.width, canvas.height) / 2;
+    setCropCircle((prev) => ({
+      ...prev,
+      radius: Math.min(prev.radius + 20, maxRadius),
+    }));
+  };
+
+  const handleZoomOut = () => {
+    setCropCircle((prev) => ({
+      ...prev,
+      radius: Math.max(prev.radius - 20, 50),
+    }));
+  };
+
+  const cropImageToCircle = async (): Promise<Blob | null> => {
+    if (!hiddenImageRef.current || !canvasRef.current) return null;
+
+    const img = hiddenImageRef.current;
+    const displayCanvas = canvasRef.current;
+    
+    // Calculate scale factor between displayed image and actual image
+    const scaleX = imageDimensions.width / displayCanvas.width;
+    const scaleY = imageDimensions.height / displayCanvas.height;
+
+    // Limit output size to max 1024x1024 for reasonable file size
+    const MAX_SIZE = 1024;
+    const diameter = cropCircle.radius * 2;
+    let outputWidth = diameter * scaleX;
+    let outputHeight = diameter * scaleY;
+    
+    // Scale down if too large
+    if (outputWidth > MAX_SIZE || outputHeight > MAX_SIZE) {
+      const scale = MAX_SIZE / Math.max(outputWidth, outputHeight);
+      outputWidth *= scale;
+      outputHeight *= scale;
+    }
+
+    // Create a new canvas for the cropped image
+    const cropCanvas = document.createElement("canvas");
+    cropCanvas.width = outputWidth;
+    cropCanvas.height = outputHeight;
+    
+    const ctx = cropCanvas.getContext("2d");
+    if (!ctx) return null;
+
+    // Create circular clipping path
+    ctx.beginPath();
+    ctx.arc(cropCanvas.width / 2, cropCanvas.height / 2, cropCanvas.width / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+
+    // Draw the cropped portion from the hidden image
+    ctx.drawImage(
+      img,
+      (cropCircle.x - cropCircle.radius) * scaleX,
+      (cropCircle.y - cropCircle.radius) * scaleY,
+      diameter * scaleX,
+      diameter * scaleY,
+      0,
+      0,
+      cropCanvas.width,
+      cropCanvas.height
+    );
+
+    // Convert canvas to blob with quality compression
+    return new Promise((resolve) => {
+      cropCanvas.toBlob(
+        (blob) => {
+          resolve(blob);
+        },
+        "image/jpeg", // Use JPEG instead of PNG for smaller file size
+        0.9 // Quality 90%
+      );
+    });
+  };
+
   const handleGenerateImage = async () => {
     if (!selectedImage || !imagePrompt.trim()) {
       toast({
@@ -148,18 +336,54 @@ export const VideoBotSection = ({
         throw new Error(data.message || "Failed to generate image");
       }
 
-      // ✅ Cloudinary response
-      updateConfig("videoBotImageUrl", data.video_bot_image_url);
-      updateConfig("videoBotImagePublicId", data.video_bot_image_public_id);
+      // Convert base64 to data URL
+      const { video_bot_image_base64, video_bot_image_mime_type } = data;
+      const imageDataUrl = `data:${video_bot_image_mime_type};base64,${video_bot_image_base64}`;
+
+      // Store the generated image data URL for cropping
+      setGeneratedImageForCrop(imageDataUrl);
+      setImageLoaded(false);
+      
+      // Load image for cropping
+      const img = new Image();
+      
+      img.onload = () => {
+        setImageDimensions({ width: img.width, height: img.height });
+        setImageLoaded(true);
+        
+        // Set initial circle at center with radius 1/4 of smallest dimension
+        const minDim = Math.min(img.width, img.height);
+        const displayWidth = 400; // Max display width
+        const scale = displayWidth / img.width;
+        const displayHeight = img.height * scale;
+        
+        setCropCircle({
+          x: displayWidth / 2,
+          y: displayHeight / 2,
+          radius: Math.min(displayWidth, displayHeight) / 4,
+        });
+        
+        setShowCropTool(true);
+      };
+      
+      img.onerror = () => {
+        console.error("Failed to load generated image");
+        toast({
+          title: "Image Load Error",
+          description: "Failed to load the generated image. Please try again.",
+          variant: "destructive",
+        });
+      };
+      
+      img.src = imageDataUrl;
 
       toast({
-        title: "Success",
-        description: "Video bot avatar generated successfully!",
+        title: "Image Generated",
+        description: "Now select the area you want to use for the avatar",
       });
 
       setSelectedImage(null);
       setImagePreview(null);
-      setImagePrompt("");
     } catch (error: any) {
       console.error(error);
       toast({
@@ -172,13 +396,79 @@ export const VideoBotSection = ({
     }
   };
 
-  // ---------------------------
-  // Clear Avatar
-  // ---------------------------
+  const handleConfirmCrop = async () => {
+    if (!generatedImageForCrop) return;
+
+    setIsSavingCrop(true);
+
+    try {
+      const croppedBlob = await cropImageToCircle();
+      if (!croppedBlob) {
+        throw new Error("Failed to crop image");
+      }
+
+      console.log("Cropped blob size:", croppedBlob.size, "bytes");
+
+      // Check blob size (should be under 10MB)
+      if (croppedBlob.size > 10 * 1024 * 1024) {
+        throw new Error("Cropped image is too large. Please select a smaller area.");
+      }
+
+      // Upload cropped image to Cloudinary via new endpoint
+      const formData = new FormData();
+      formData.append("video_bot_image", croppedBlob, "avatar.jpg");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/human/upload-cropped-image`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to save cropped image");
+      }
+
+      updateConfig("videoBotImageUrl", data.video_bot_image_url);
+      updateConfig("videoBotImagePublicId", data.video_bot_image_public_id);
+
+      toast({
+        title: "Success",
+        description: "Video bot avatar saved successfully!",
+      });
+
+      setShowCropTool(false);
+      setGeneratedImageForCrop(null);
+      setImagePrompt("");
+      setImageLoaded(false);
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        title: "Save Failed",
+        description: error.message || "Failed to save cropped image",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingCrop(false);
+    }
+  };
+
+  const handleCancelCrop = () => {
+    setShowCropTool(false);
+    setGeneratedImageForCrop(null);
+    setImageLoaded(false);
+  };
+
   const handleClearImage = () => {
     setSelectedImage(null);
     setImagePreview(null);
     setImagePrompt("");
+    setShowCropTool(false);
+    setGeneratedImageForCrop(null);
+    setImageLoaded(false);
 
     updateConfig("videoBotImageUrl", undefined);
     updateConfig("videoBotImagePublicId", undefined);
@@ -218,7 +508,6 @@ export const VideoBotSection = ({
 
   return (
     <div className="space-y-4">
-      {/* Toggle */}
       <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
         <div className="flex items-center gap-3">
           <Video className="w-5 h-5 text-primary" />
@@ -245,12 +534,96 @@ export const VideoBotSection = ({
           <div className="flex items-center gap-2">
             <ImageIcon className="w-5 h-5 text-primary" />
             <Label className="text-base font-medium">
-              Video Bot Avatar
+              Video Bot Avatar <span className="text-red-500">*</span>
             </Label>
           </div>
 
-          {/* Generated Avatar */}
-          {generatedImageUrl ? (
+          {showCropTool && generatedImageForCrop ? (
+            <div className="space-y-4">
+              <div className="text-center mb-2">
+                <p className="text-sm font-medium text-primary">Select Avatar Area</p>
+                <p className="text-xs text-muted-foreground">Choose the circular area to use as your video bot avatar</p>
+              </div>
+              
+              <div className="relative max-w-md mx-auto">
+                {/* Hidden image for cropping */}
+                <img
+                  ref={hiddenImageRef}
+                  src={generatedImageForCrop}
+                  alt="Hidden"
+                  style={{ display: 'none' }}
+                  onLoad={() => setImageLoaded(true)}
+                />
+                
+                {/* Visible image for display */}
+                <img
+                  ref={imageRef}
+                  src={generatedImageForCrop}
+                  alt="Generated"
+                  className="w-full max-w-md rounded-lg"
+                  style={{ maxHeight: "400px", objectFit: "contain" }}
+                />
+                <canvas
+                  ref={canvasRef}
+                  className="absolute top-0 left-0 cursor-move"
+                  onMouseDown={handleCanvasMouseDown}
+                  onMouseMove={handleCanvasMouseMove}
+                  onMouseUp={handleCanvasMouseUp}
+                  onMouseLeave={handleCanvasMouseUp}
+                />
+              </div>
+
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleZoomOut}
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Drag circle to position • Use buttons to resize
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleZoomIn}
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="flex gap-2 justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelCrop}
+                  disabled={isSavingCrop}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmCrop}
+                  disabled={isSavingCrop || !imageLoaded}
+                >
+                  {isSavingCrop ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Crop className="h-4 w-4 mr-2" />
+                      Save Avatar
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : generatedImageUrl ? (
             <div className="relative max-w-md mx-auto">
               <img
                 src={generatedImageUrl}
@@ -294,6 +667,7 @@ export const VideoBotSection = ({
                     <Button
                       onClick={handleGenerateImage}
                       disabled={isGeneratingImage}
+                      className="w-full"
                     >
                       {isGeneratingImage ? (
                         <>
@@ -310,8 +684,9 @@ export const VideoBotSection = ({
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg">
+                <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg border-red-300 bg-red-50/30">
                   <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-sm text-red-600 mb-2">⚠ Avatar is required for video bot</p>
                   <Button
                     type="button"
                     variant="outline"
@@ -335,11 +710,14 @@ export const VideoBotSection = ({
 
           <div className="space-y-3 pt-4 border-t">
             <Label className="text-base font-medium">
-              Bot Voice
+              Bot Voice <span className="text-red-500">*</span>
             </Label>
 
+            {!botConfig.voiceId && voices.length > 0 && (
+              <p className="text-sm text-red-600">⚠ Please select a voice for the video bot</p>
+            )}
+
             <div className="space-y-4">
-              {/* Voices Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {voicesLoading && (
                   <div className="col-span-full flex items-center justify-center py-6">
@@ -361,12 +739,11 @@ export const VideoBotSection = ({
                         role="button"
                         aria-pressed={isSelected}
                         onClick={() => updateConfig("voiceId", voice.voice_id)}
-                        className={`group p-4 rounded-xl border transition-all cursor-pointer
-              ${isSelected
+                        className={`group p-4 rounded-xl border transition-all cursor-pointer ${
+                          isSelected
                             ? "border-primary bg-primary/5 shadow-sm"
                             : "hover:border-muted-foreground/50 hover:bg-muted/30"
-                          }
-            `}
+                        }`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-1">
@@ -412,7 +789,6 @@ export const VideoBotSection = ({
                   })}
               </div>
 
-              {/* Pagination Controls */}
               {!voicesLoading && voices.length > VOICES_PAGE_SIZE && (
                 <div className="flex items-center justify-center gap-3 pt-2">
                   {canShowMore && (
@@ -441,7 +817,6 @@ export const VideoBotSection = ({
                 </div>
               )}
             </div>
-
           </div>
         </div>
       )}
