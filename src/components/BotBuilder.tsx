@@ -18,6 +18,7 @@ import { ChatBot } from "@/components/ChatBot";
 import { useNavigate } from "react-router-dom";
 import { getAuthHeaders, isAuthenticated } from "@/utils/auth";
 import { Navbar } from "@/components/Navbar";
+import { BotCardSkeleton } from "./BotCardSkeleton";
 
 interface BotConfig {
   name: string;
@@ -55,6 +56,7 @@ export const BotBuilder = () => {
   const [isCreatingBot, setIsCreatingBot] = useState(false);
   const [creatingBot, setCreatingBot] = useState<any | null>(null);
   const [progress, setProgress] = useState(0);
+  const [isFetchingBots, setIsFetchingBots] = useState(true);
 
   const handleShowMore = () => {
     setVisibleBotCount(prev => Math.min(prev + 3, savedBots.length));
@@ -104,9 +106,12 @@ export const BotBuilder = () => {
 
   const fetchBots = async () => {
     try {
+      setIsFetchingBots(true);
+
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots`, {
         headers: getAuthHeaders(),
       });
+
       if (res.ok) {
         const data = await res.json();
         const bots = data.result.bots.map((bot: any) => ({
@@ -118,19 +123,18 @@ export const BotBuilder = () => {
           languages: Array.isArray(bot.supported_languages) ? bot.supported_languages : ["English"],
           primaryPurpose: bot.primary_purpose,
           conversationalTone: bot.conversation_tone,
-          conversationFlow: bot.conversationFlow,
           isVideoBot: bot.is_video_bot,
           videoBotImageUrl: bot.video_bot_image_url,
           videoBotImagePublicId: bot.video_bot_image_public_id,
-          voiceId: bot.voice_id
+          voiceId: bot.voice_id,
         }));
+
         setSavedBots(bots.reverse());
-      } else {
-        const errorText = await res.text();
-        console.error("Failed to load bots:", errorText);
       }
     } catch (err) {
       console.error("Error fetching bots:", err);
+    } finally {
+      setIsFetchingBots(false);
     }
   };
 
@@ -418,19 +422,21 @@ export const BotBuilder = () => {
           </Card>
         </div>
 
-        {savedBots.length > 0 && (
-          <div id="your-bots" className="w-full px-4 py-12 scroll-mt-20">
-            <div className="max-w-7xl mx-auto space-y-8">
-              <div className="text-center space-y-2">
-                <h2 className="text-3xl font-bold text-foreground">Your Bots</h2>
-                <p className="text-lg text-muted-foreground">
-                  Manage and interact with your created AI assistants
-                </p>
-              </div>
+        <div id="your-bots" className="w-full px-4 py-12 scroll-mt-20">
+          <div className="max-w-7xl mx-auto space-y-8">
+            <div className="text-center space-y-2">
+              <h2 className="text-3xl font-bold text-foreground">Your Bots</h2>
+              <p className="text-lg text-muted-foreground">
+                Manage and interact with your created AI assistants
+              </p>
+            </div>
 
-              {/* Show only a limited number of bots */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {savedBots.slice(0, visibleBotCount).map(bot => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {isFetchingBots
+                ? Array.from({ length: 6 }).map((_, i) => (
+                  <BotCardSkeleton key={i} />
+                ))
+                : savedBots.slice(0, visibleBotCount).map(bot => (
                   <BotCard
                     key={bot.id}
                     bot={bot.id === "temp" ? { ...bot, progress } : bot}
@@ -442,9 +448,9 @@ export const BotBuilder = () => {
                     onSessions={handleSessions}
                   />
                 ))}
-              </div>
+            </div>
 
-              {/* Show More / Show Less buttons */}
+            {!isFetchingBots && (
               <div className="flex justify-center gap-4 pt-6">
                 {visibleBotCount < savedBots.length && (
                   <Button onClick={handleShowMore} variant="outline">
@@ -457,9 +463,9 @@ export const BotBuilder = () => {
                   </Button>
                 )}
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {selectedBotForTest && (
