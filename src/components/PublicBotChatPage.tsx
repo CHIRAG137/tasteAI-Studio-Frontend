@@ -1,12 +1,13 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Bot, User, Send, Mic, MicOff, Video, Loader2, X } from "lucide-react";
+import { Bot, User, Send, Mic, MicOff, Video, Loader2, X, AlertCircle } from "lucide-react";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
 import { VoiceWaveform } from "@/components/VoiceWaveform";
@@ -105,7 +106,9 @@ export const PublicBotChatPage = () => {
 
         const botMessages: Message[] = [];
 
+        // Add all messages to display
         (data.messages || []).forEach((msg: any) => {
+          // Handle redirect nodes - don't display, just redirect
           if (msg.type === "redirect") {
             const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
             if (url) {
@@ -114,10 +117,11 @@ export const PublicBotChatPage = () => {
             return;
           }
 
+          // For branch nodes with awaitingInput, only show buttons without text
           if (msg.type === "branch" && msg.awaitingInput) {
             botMessages.push({
               id: Date.now().toString() + Math.random(),
-              content: "",
+              content: "", // No text content for branch nodes
               sender: "bot",
               timestamp: new Date(),
               showBranchOptions: true,
@@ -137,6 +141,7 @@ export const PublicBotChatPage = () => {
           });
         });
 
+        // Check if flow finished immediately
         if (data.finished) {
           setFlowFinished(true);
           setCurrentPausedFor(null);
@@ -148,6 +153,7 @@ export const PublicBotChatPage = () => {
             timestamp: new Date(),
           });
         } else {
+          // Set current paused state only if flow not finished
           if (data.awaitingInput) {
             setCurrentPausedFor(data.awaitingInput);
           } else {
@@ -172,6 +178,7 @@ export const PublicBotChatPage = () => {
   // Function to create video and poll for result
   const createVideoForAnswer = async (text: string, messageId: string) => {
     try {
+      // Step 1: Create video
       const createRes = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/did/create-video`,
         {
@@ -189,6 +196,7 @@ export const PublicBotChatPage = () => {
 
       const talkId = createData.result.id;
 
+      // Step 2: Poll for video completion
       const maxAttempts = 30;
       let attempts = 0;
 
@@ -263,6 +271,7 @@ export const PublicBotChatPage = () => {
 
     if (!question || isLoading) return;
 
+    // Create user message for display
     const userMessage: Message = {
       id: Date.now().toString(),
       content: question,
@@ -295,6 +304,7 @@ export const PublicBotChatPage = () => {
 
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
 
+      // Add bot response with video loading state
       const botMessageId = Date.now().toString() + Math.random();
       const botMessage: Message = {
         id: botMessageId,
@@ -307,6 +317,7 @@ export const PublicBotChatPage = () => {
 
       setMessages((prev) => [...prev, botMessage]);
 
+      // Create video asynchronously
       createVideoForAnswer(answerText, botMessageId);
 
     } catch (err: any) {
@@ -331,6 +342,7 @@ export const PublicBotChatPage = () => {
   };
 
   const handleSendMessage = async (overrideInput?: string, isBranchOption?: boolean) => {
+    // If flow is finished, use Q&A mode instead
     if (flowFinished) {
       handleAskQuestion();
       return;
@@ -340,8 +352,10 @@ export const PublicBotChatPage = () => {
 
     if (!messageToSend || isLoading || !sessionId) return;
 
+    // Clear current paused state immediately to hide buttons
     setCurrentPausedFor(null);
 
+    // Create user message for display
     const userMessage: Message = {
       id: Date.now().toString(),
       content: messageToSend,
@@ -354,6 +368,7 @@ export const PublicBotChatPage = () => {
     setIsLoading(true);
 
     try {
+      // Prepare request body based on the type of input
       let requestBody: any = {};
 
       if (currentPausedFor?.type === "branch" || isBranchOption) {
@@ -379,7 +394,9 @@ export const PublicBotChatPage = () => {
 
       const botMessages: Message[] = [];
 
+      // Add all messages to display - these are NEW messages only
       (data.messages || []).forEach((msg: any) => {
+        // Handle redirect nodes - don't display, just redirect
         if (msg.type === "redirect") {
           const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
           if (url) {
@@ -388,10 +405,11 @@ export const PublicBotChatPage = () => {
           return;
         }
 
+        // For branch nodes with awaitingInput, only show buttons without text
         if (msg.type === "branch" && msg.awaitingInput) {
           botMessages.push({
             id: Date.now().toString() + Math.random(),
-            content: "",
+            content: "", // No text content for branch nodes
             sender: "bot",
             timestamp: new Date(),
             showBranchOptions: true,
@@ -411,12 +429,14 @@ export const PublicBotChatPage = () => {
         });
       });
 
+      // Set current paused state
       if (data.awaitingInput) {
         setCurrentPausedFor(data.awaitingInput);
       } else {
         setCurrentPausedFor(null);
       }
 
+      // Check if flow finished
       if (data.finished) {
         setFlowFinished(true);
         setCurrentPausedFor(null);
@@ -429,6 +449,7 @@ export const PublicBotChatPage = () => {
         });
       }
 
+      // Append new bot messages to existing messages
       setMessages((prev) => [...prev, ...botMessages]);
     } catch (err: any) {
       console.error(err);
@@ -456,6 +477,7 @@ export const PublicBotChatPage = () => {
   };
 
   const handleBranchOptionClick = (option: string, messageId: string) => {
+    // Mark the branch as selected in the message
     setMessages((prev) =>
       prev.map((msg) =>
         msg.id === messageId ? { ...msg, selectedBranch: option } : msg
@@ -482,236 +504,239 @@ export const PublicBotChatPage = () => {
   if (!bot) return <p className="text-center mt-10 text-red-500">Bot not found</p>;
 
   return (
-    <div className="min-h-screen bg-background p-4 flex justify-center items-center">
-      <div className="w-full max-w-2xl h-[600px] flex flex-col shadow-2xl rounded-xl overflow-hidden border bg-background/95 backdrop-blur-sm">
-        {/* Header - Similar to ChatBot.tsx */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10 border-2 border-white">
-                <AvatarFallback className="bg-white text-blue-600">
-                  <Bot className="h-6 w-6" />
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h2 className="text-lg font-semibold text-white">{bot.name}</h2>
-                <div className="flex gap-2 mt-1 flex-wrap">
-                  <Badge variant="secondary" className="text-xs">
-                    {bot.primary_purpose}
+    <div className="min-h-screen bg-background p-4 flex justify-center">
+      <Card className="w-full max-w-2xl h-[600px] flex flex-col shadow-lg">
+        <CardHeader className="flex-shrink-0 border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10 bg-white/20">
+              <AvatarFallback className="bg-white/20 text-white">
+                <Bot className="h-5 w-5" />
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <CardTitle className="text-lg">{bot.name}</CardTitle>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="secondary" className="text-xs bg-white/20 text-white hover:bg-white/30">
+                  {bot.primary_purpose}
+                </Badge>
+                <Badge variant="secondary" className="text-xs bg-white/20 text-white hover:bg-white/30">
+                  {bot.conversation_tone}
+                </Badge>
+                {flowFinished && (
+                  <Badge variant="secondary" className="text-xs bg-green-500/80 text-white">
+                    Q&A Mode
                   </Badge>
-                  <Badge variant="secondary" className="text-xs">
-                    {bot.conversation_tone}
-                  </Badge>
-                  {flowFinished && (
-                    <Badge variant="secondary" className="text-xs">
-                      Q&A Mode
-                    </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="flex-1 flex flex-col p-0">
+          <ScrollArea className="flex-1 p-4 overflow-y-auto max-h-[calc(600px-180px)]">
+            <div className="space-y-4">
+              {messages.map(msg => (
+                <div key={msg.id} className={`flex gap-3 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
+                  {msg.sender === "bot" && (
+                    <Avatar className="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 flex-shrink-0">
+                      <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                        <Bot className="h-4 w-4" />
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div className="flex flex-col gap-2 max-w-[80%]">
+                    {msg.content && (
+                      <div className={`rounded-lg px-3 py-2 ${msg.sender === "user" ? "bg-blue-600 text-white ml-auto" : "bg-gray-100 dark:bg-gray-800"}`}>
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        <span className="text-xs opacity-70 mt-1 block">
+                          {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Video Display Section */}
+                    {msg.sender === "bot" && (msg.videoUrl || msg.videoLoading) && (
+                      <div className="rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                        {msg.videoLoading && !msg.videoUrl && (
+                          <div className="flex items-center justify-center p-8 gap-3">
+                            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                            <span className="text-sm text-gray-600 dark:text-gray-400">Generating video explanation...</span>
+                          </div>
+                        )}
+
+                        {msg.videoUrl && (
+                          <div className="relative">
+                            <video
+                              src={msg.videoUrl}
+                              controls
+                              className="w-full max-h-64"
+                              preload="metadata"
+                            >
+                              Your browser does not support the video tag.
+                            </video>
+                            <div className="absolute top-2 right-2">
+                              <Badge variant="secondary" className="bg-blue-600 text-white text-xs">
+                                <Video className="h-3 w-3 mr-1" />
+                                AI Avatar
+                              </Badge>
+                            </div>
+                          </div>
+                        )}
+
+                        {msg.videoError && !msg.videoUrl && (
+                          <div className="flex items-center justify-center p-6 gap-2 text-red-500">
+                            <X className="h-4 w-4" />
+                            <span className="text-sm">Video generation failed</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {msg.showConfirmationButtons && isAwaitingInput && msg.sender === "bot" && !flowFinished && (
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleConfirmationClick("yes")}>
+                          Yes
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleConfirmationClick("no")}>
+                          No
+                        </Button>
+                      </div>
+                    )}
+
+                    {msg.showBranchOptions && msg.sender === "bot" && msg.branchOptions && (
+                      <div className="flex flex-wrap gap-2">
+                        {msg.branchOptions.map((opt, idx) => (
+                          <Button
+                            key={idx}
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleBranchOptionClick(opt, msg.id)}
+                            disabled={!!msg.selectedBranch}
+                            className={msg.selectedBranch === opt ? "bg-blue-500 text-white border-blue-600" : ""}
+                          >
+                            {opt}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {msg.sender === "user" && (
+                    <Avatar className="h-8 w-8 bg-gray-300 dark:bg-gray-700 flex-shrink-0">
+                      <AvatarFallback className="bg-gray-300 dark:bg-gray-700">
+                        <User className="h-4 w-4" />
+                      </AvatarFallback>
+                    </Avatar>
                   )}
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
+              ))}
 
-        {/* Messages Area */}
-        <ScrollArea className="flex-1 p-4">
-          {messages.map(msg => (
-            <div
-              key={msg.id}
-              className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-            >
-              {msg.sender === "bot" && (
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                    <Bot className="h-5 w-5" />
-                  </AvatarFallback>
-                </Avatar>
+              {isLoading && (
+                <div className="flex gap-3 justify-start">
+                  <Avatar className="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 flex-shrink-0">
+                    <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                      <Bot className="h-4 w-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: "0.2s" }}></div>
+                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: "0.4s" }}></div>
+                    </div>
+                  </div>
+                </div>
               )}
-              <div className={`flex flex-col gap-1 ${msg.sender === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
-                {msg.content && (
-                  <div
-                    className={`rounded-lg p-3 ${msg.sender === "user"
-                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            </div>
+            <div ref={messagesEndRef} />
+          </ScrollArea>
+
+          <div className="border-t p-4 bg-background">
+            {/* Voice Waveform */}
+            <VoiceWaveform
+              audioLevels={audioLevels}
+              isListening={isListening}
+              showSilenceWarning={showSilenceWarning}
+              silenceCountdown={silenceCountdown}
+              className="mb-3"
+            />
+
+            {/* Processing indicator */}
+            {isProcessing && (
+              <Alert className="mb-3 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
+                <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                <AlertDescription className="text-blue-800 dark:text-blue-200">
+                  Processing your speech...
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <Input
+                  ref={inputRef}
+                  value={inputMessage}
+                  onChange={e => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder={
+                    isListening 
+                      ? "Listening... Speak now" 
+                      : isProcessing 
+                        ? "Processing speech..." 
+                        : flowFinished 
+                          ? "Ask me anything..." 
+                          : (canSendText ? "Type your message..." : "Select an option above...")
+                  }
+                  disabled={isLoading || !canSendText || isProcessing}
+                  className="pr-12"
+                />
+                {bot.is_voice_enabled && canSendText && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleVoiceInput}
+                    disabled={isProcessing}
+                    className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${
+                      isListening 
+                        ? "text-red-500 animate-pulse" 
+                        : isProcessing 
+                          ? "text-gray-400" 
+                          : "text-gray-500 hover:text-blue-600"
                     }`}
+                    title={
+                      isProcessing 
+                        ? "Processing..." 
+                        : isListening 
+                          ? "Stop recording" 
+                          : "Start voice input"
+                    }
                   >
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  </div>
-                )}
-                <span className="text-xs text-gray-500">
-                  {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </span>
-
-                {/* Video Display Section */}
-                {msg.sender === "bot" && (msg.videoUrl || msg.videoLoading) && (
-                  <div className="rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 mt-2">
-                    {msg.videoLoading && !msg.videoUrl && (
-                      <div className="flex items-center justify-center p-8 gap-3">
-                        <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Generating video explanation...</span>
-                      </div>
+                    {isProcessing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isListening ? (
+                      <MicOff className="h-4 w-4" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
                     )}
-
-                    {msg.videoUrl && (
-                      <div className="relative">
-                        <video
-                          src={msg.videoUrl}
-                          controls
-                          className="w-full max-h-64"
-                          preload="metadata"
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                        <div className="absolute top-2 right-2">
-                          <Badge variant="secondary" className="bg-blue-600 text-white text-xs">
-                            <Video className="h-3 w-3 mr-1" />
-                            AI Avatar
-                          </Badge>
-                        </div>
-                      </div>
-                    )}
-
-                    {msg.videoError && !msg.videoUrl && (
-                      <div className="flex items-center justify-center p-6 gap-2 text-red-500">
-                        <X className="h-4 w-4" />
-                        <span className="text-sm">Video generation failed</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {msg.showConfirmationButtons && isAwaitingInput && msg.sender === "bot" && !flowFinished && (
-                  <div className="flex gap-2 mt-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleConfirmationClick("yes")}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      Yes
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleConfirmationClick("no")}
-                    >
-                      No
-                    </Button>
-                  </div>
-                )}
-
-                {msg.showBranchOptions && msg.sender === "bot" && msg.branchOptions && (
-                  <div className="flex flex-col gap-2 mt-2">
-                    {msg.branchOptions.map((opt, idx) => (
-                      <Button
-                        key={idx}
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleBranchOptionClick(opt, msg.id)}
-                        disabled={!!msg.selectedBranch}
-                        className={msg.selectedBranch === opt ? "bg-blue-500 text-white border-blue-600" : ""}
-                      >
-                        {opt}
-                      </Button>
-                    ))}
-                  </div>
+                  </Button>
                 )}
               </div>
-              {msg.sender === "user" && (
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-gray-300">
-                    <User className="h-5 w-5" />
-                  </AvatarFallback>
-                </Avatar>
-              )}
+              <Button
+                onClick={() => handleSendMessage()}
+                disabled={!inputMessage.trim() || isLoading || !canSendText || isListening || isProcessing}
+                size="icon"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
-          ))}
-
-          {isLoading && (
-            <div className="flex gap-3 mb-4">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                  <Bot className="h-5 w-5" />
-                </AvatarFallback>
-              </Avatar>
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
-                <Loader2 className="h-5 w-5 animate-spin" />
-              </div>
+            <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+              <span>Supported languages:</span>
+              <span>{bot.supported_languages}</span>
             </div>
-          )}
-          <div ref={messagesEndRef} />
-        </ScrollArea>
-
-        {/* Input Area */}
-        <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
-          {/* Voice Waveform */}
-          <VoiceWaveform
-            isListening={isListening}
-            audioLevels={audioLevels}
-            showSilenceWarning={showSilenceWarning}
-            silenceCountdown={silenceCountdown}
-          />
-
-          {/* Processing indicator */}
-          {isProcessing && (
-            <Alert className="mb-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <AlertDescription>Processing your speech...</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Input
-                ref={inputRef}
-                value={inputMessage}
-                onChange={e => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder={
-                  isListening 
-                    ? "Listening... Speak now" 
-                    : isProcessing 
-                      ? "Processing speech..." 
-                      : flowFinished 
-                        ? "Ask me anything..." 
-                        : (canSendText ? "Type your message..." : "Select an option above...")
-                }
-                disabled={isLoading || !canSendText || isProcessing}
-                className="pr-12"
-              />
-              {bot.is_voice_enabled && canSendText && (
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  onClick={handleVoiceInput}
-                  className="absolute right-1 top-1/2 -translate-y-1/2"
-                  disabled={isLoading || isProcessing}
-                >
-                  {isProcessing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : isListening ? (
-                    <MicOff className="h-4 w-4 text-red-500" />
-                  ) : (
-                    <Mic className="h-4 w-4" />
-                  )}
-                </Button>
-              )}
-            </div>
-            <Button
-              onClick={() => handleSendMessage()}
-              disabled={!inputMessage.trim() || isLoading || !canSendText || isListening || isProcessing}
-              size="icon"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
           </div>
-
-          <div className="mt-2 text-xs text-gray-500 text-center">
-            Supported languages: {bot.supported_languages}
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
