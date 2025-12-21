@@ -243,7 +243,8 @@ export const VideoBotSection = ({
     }));
   };
 
-  const cropImageToCircle = async (): Promise<Blob | null> => {
+  // Modified function to crop to SQUARE instead of circle
+  const cropImageToSquare = async (): Promise<Blob | null> => {
     if (!hiddenImageRef.current || !canvasRef.current) return null;
 
     const img = hiddenImageRef.current;
@@ -253,34 +254,27 @@ export const VideoBotSection = ({
     const scaleX = imageDimensions.width / displayCanvas.width;
     const scaleY = imageDimensions.height / displayCanvas.height;
 
+    // Calculate the square dimensions based on the circle radius
+    // The square will be the bounding box of the circle
+    const diameter = cropCircle.radius * 2;
+    let squareSize = diameter * Math.max(scaleX, scaleY);
+
     // Limit output size to max 1024x1024 for reasonable file size
     const MAX_SIZE = 1024;
-    const diameter = cropCircle.radius * 2;
-    let outputWidth = diameter * scaleX;
-    let outputHeight = diameter * scaleY;
-
-    // Scale down if too large
-    if (outputWidth > MAX_SIZE || outputHeight > MAX_SIZE) {
-      const scale = MAX_SIZE / Math.max(outputWidth, outputHeight);
-      outputWidth *= scale;
-      outputHeight *= scale;
+    if (squareSize > MAX_SIZE) {
+      squareSize = MAX_SIZE;
     }
 
-    // Create a new canvas for the cropped image
+    // Create a new canvas for the cropped SQUARE image
     const cropCanvas = document.createElement("canvas");
-    cropCanvas.width = outputWidth;
-    cropCanvas.height = outputHeight;
+    cropCanvas.width = squareSize;
+    cropCanvas.height = squareSize;
 
     const ctx = cropCanvas.getContext("2d");
     if (!ctx) return null;
 
-    // Create circular clipping path
-    ctx.beginPath();
-    ctx.arc(cropCanvas.width / 2, cropCanvas.height / 2, cropCanvas.width / 2, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-
-    // Draw the cropped portion from the hidden image
+    // Draw the cropped SQUARE portion from the hidden image
+    // No circular clipping - just draw the square region
     ctx.drawImage(
       img,
       (cropCircle.x - cropCircle.radius) * scaleX,
@@ -289,15 +283,15 @@ export const VideoBotSection = ({
       diameter * scaleY,
       0,
       0,
-      cropCanvas.width,
-      cropCanvas.height
+      squareSize,
+      squareSize
     );
 
     // Convert canvas to blob with quality compression
     return new Promise((resolve) => {
       cropCanvas.toBlob(
         (blob) => resolve(blob),
-        "image/png" // PNG preserves transparency
+        "image/png" // PNG for quality
       );
     });
   };
@@ -399,7 +393,8 @@ export const VideoBotSection = ({
     setIsSavingCrop(true);
 
     try {
-      const croppedBlob = await cropImageToCircle();
+      // Use the new square cropping function instead of circular
+      const croppedBlob = await cropImageToSquare();
       if (!croppedBlob) {
         throw new Error("Failed to crop image");
       }
@@ -411,9 +406,9 @@ export const VideoBotSection = ({
         throw new Error("Cropped image is too large. Please select a smaller area.");
       }
 
-      // Upload cropped image to Cloudinary via new endpoint
+      // Upload cropped SQUARE image to Cloudinary via endpoint
       const formData = new FormData();
-      formData.append("video_bot_image", croppedBlob, "avatar.jpg");
+      formData.append("video_bot_image", croppedBlob, "avatar.png");
 
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/human/upload-cropped-image`,
