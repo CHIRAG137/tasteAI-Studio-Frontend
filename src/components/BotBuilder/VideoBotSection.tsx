@@ -41,6 +41,12 @@ export const VideoBotSection = ({
   const [visibleVoiceCount, setVisibleVoiceCount] = useState(VOICES_PAGE_SIZE);
 
   useEffect(() => {
+    // Only fetch voices when the VideoBot section is opened
+    if (!botConfig.isVideoBot) return;
+    
+    // Skip if voices are already loaded
+    if (voices.length > 0) return;
+
     const fetchVoices = async () => {
       setVoicesLoading(true);
       try {
@@ -72,7 +78,7 @@ export const VideoBotSection = ({
     };
 
     fetchVoices();
-  }, []);
+  }, [botConfig.isVideoBot]);
 
   const generatedImageUrl = botConfig.videoBotImageUrl || null;
 
