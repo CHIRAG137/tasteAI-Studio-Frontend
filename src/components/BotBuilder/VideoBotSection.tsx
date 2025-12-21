@@ -79,7 +79,7 @@ export const VideoBotSection = ({
         );
 
         setVoices(premadeVoices);
-        
+
         if (premadeVoices.length > 0 && !botConfig.voiceId) {
           updateConfig("voiceId", premadeVoices[0].voice_id);
         }
@@ -115,7 +115,7 @@ export const VideoBotSection = ({
     if (!ctx) return;
 
     const img = imageRef.current;
-    
+
     // Set canvas size to match displayed image
     const rect = img.getBoundingClientRect();
     canvas.width = rect.width;
@@ -228,7 +228,7 @@ export const VideoBotSection = ({
   const handleZoomIn = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     const maxRadius = Math.min(canvas.width, canvas.height) / 2;
     setCropCircle((prev) => ({
       ...prev,
@@ -248,7 +248,7 @@ export const VideoBotSection = ({
 
     const img = hiddenImageRef.current;
     const displayCanvas = canvasRef.current;
-    
+
     // Calculate scale factor between displayed image and actual image
     const scaleX = imageDimensions.width / displayCanvas.width;
     const scaleY = imageDimensions.height / displayCanvas.height;
@@ -258,7 +258,7 @@ export const VideoBotSection = ({
     const diameter = cropCircle.radius * 2;
     let outputWidth = diameter * scaleX;
     let outputHeight = diameter * scaleY;
-    
+
     // Scale down if too large
     if (outputWidth > MAX_SIZE || outputHeight > MAX_SIZE) {
       const scale = MAX_SIZE / Math.max(outputWidth, outputHeight);
@@ -270,7 +270,7 @@ export const VideoBotSection = ({
     const cropCanvas = document.createElement("canvas");
     cropCanvas.width = outputWidth;
     cropCanvas.height = outputHeight;
-    
+
     const ctx = cropCanvas.getContext("2d");
     if (!ctx) return null;
 
@@ -296,11 +296,8 @@ export const VideoBotSection = ({
     // Convert canvas to blob with quality compression
     return new Promise((resolve) => {
       cropCanvas.toBlob(
-        (blob) => {
-          resolve(blob);
-        },
-        "image/jpeg", // Use JPEG instead of PNG for smaller file size
-        0.9 // Quality 90%
+        (blob) => resolve(blob),
+        "image/png" // PNG preserves transparency
       );
     });
   };
@@ -343,29 +340,29 @@ export const VideoBotSection = ({
       // Store the generated image data URL for cropping
       setGeneratedImageForCrop(imageDataUrl);
       setImageLoaded(false);
-      
+
       // Load image for cropping
       const img = new Image();
-      
+
       img.onload = () => {
         setImageDimensions({ width: img.width, height: img.height });
         setImageLoaded(true);
-        
+
         // Set initial circle at center with radius 1/4 of smallest dimension
         const minDim = Math.min(img.width, img.height);
         const displayWidth = 400; // Max display width
         const scale = displayWidth / img.width;
         const displayHeight = img.height * scale;
-        
+
         setCropCircle({
           x: displayWidth / 2,
           y: displayHeight / 2,
           radius: Math.min(displayWidth, displayHeight) / 4,
         });
-        
+
         setShowCropTool(true);
       };
-      
+
       img.onerror = () => {
         console.error("Failed to load generated image");
         toast({
@@ -374,7 +371,7 @@ export const VideoBotSection = ({
           variant: "destructive",
         });
       };
-      
+
       img.src = imageDataUrl;
 
       toast({
@@ -544,7 +541,7 @@ export const VideoBotSection = ({
                 <p className="text-sm font-medium text-primary">Select Avatar Area</p>
                 <p className="text-xs text-muted-foreground">Choose the circular area to use as your video bot avatar</p>
               </div>
-              
+
               <div className="relative max-w-md mx-auto">
                 {/* Hidden image for cropping */}
                 <img
@@ -554,7 +551,7 @@ export const VideoBotSection = ({
                   style={{ display: 'none' }}
                   onLoad={() => setImageLoaded(true)}
                 />
-                
+
                 {/* Visible image for display */}
                 <img
                   ref={imageRef}
@@ -625,11 +622,15 @@ export const VideoBotSection = ({
             </div>
           ) : generatedImageUrl ? (
             <div className="relative max-w-md mx-auto">
-              <img
-                src={generatedImageUrl}
-                alt="Video Bot Avatar"
-                className="rounded-lg border w-full object-cover"
-              />
+              <div className="flex justify-center">
+                <div className="w-40 h-40 rounded-full overflow-hidden border bg-transparent">
+                  <img
+                    src={generatedImageUrl}
+                    alt="Video Bot Avatar"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
               <div className="absolute top-2 right-2 flex gap-2">
                 <Button
                   size="icon"
@@ -739,11 +740,10 @@ export const VideoBotSection = ({
                         role="button"
                         aria-pressed={isSelected}
                         onClick={() => updateConfig("voiceId", voice.voice_id)}
-                        className={`group p-4 rounded-xl border transition-all cursor-pointer ${
-                          isSelected
-                            ? "border-primary bg-primary/5 shadow-sm"
-                            : "hover:border-muted-foreground/50 hover:bg-muted/30"
-                        }`}
+                        className={`group p-4 rounded-xl border transition-all cursor-pointer ${isSelected
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "hover:border-muted-foreground/50 hover:bg-muted/30"
+                          }`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-1">
