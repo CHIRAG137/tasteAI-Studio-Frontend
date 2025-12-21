@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Send, Bot, User, Mic, MicOff, Video, Loader2, X, AlertCircle } from "lucide-react";
+import { Send, Bot, User, Mic, MicOff, Video, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { EmbedCustomization } from "@/components/EmbedCustomizer";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
@@ -88,13 +88,11 @@ export default function EmbedChat() {
   // Apply custom CSS dynamically
   useEffect(() => {
     if (customization?.useChatCustomCSS && customization?.chatCustomCSS) {
-      // Remove previous custom style tag
       const existingStyle = document.getElementById('embed-custom-css');
       if (existingStyle) {
         existingStyle.remove();
       }
 
-      // Create and inject new style tag
       const style = document.createElement('style');
       style.id = 'embed-custom-css';
       style.textContent = customization.chatCustomCSS;
@@ -119,7 +117,6 @@ export default function EmbedChat() {
     if (botId && !isPreview) {
       const fetchData = async () => {
         try {
-          // Fetch customization
           const customizationResponse = await fetch(
             `${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`
           );
@@ -128,7 +125,6 @@ export default function EmbedChat() {
             setCustomization(customizationData.result);
           }
 
-          // Fetch bot data
           const botResponse = await fetch(
             `${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`
           );
@@ -191,9 +187,7 @@ export default function EmbedChat() {
 
         const botMessages: Message[] = [];
 
-        // Add all messages to display
         (data.messages || []).forEach((msg: any) => {
-          // Handle redirect nodes - don't display, just redirect
           if (msg.type === "redirect") {
             const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
             if (url) {
@@ -202,12 +196,11 @@ export default function EmbedChat() {
             return;
           }
 
-          // For branch nodes with awaitingInput, only show buttons without text
           if (msg.type === "branch" && msg.awaitingInput) {
             botMessages.push({
               id: Date.now().toString() + Math.random(),
               from: "bot",
-              text: "", // No text content for branch nodes
+              text: "",
               timestamp: new Date(),
               showBranchOptions: true,
               branchOptions: msg.options || [],
@@ -226,7 +219,6 @@ export default function EmbedChat() {
           });
         });
 
-        // Check if flow finished immediately
         if (data.finished) {
           setFlowFinished(true);
           setCurrentPausedFor(null);
@@ -238,7 +230,6 @@ export default function EmbedChat() {
             timestamp: new Date(),
           });
         } else {
-          // Set current paused state only if flow not finished
           if (data.awaitingInput) {
             setCurrentPausedFor(data.awaitingInput);
           } else {
@@ -399,7 +390,6 @@ export default function EmbedChat() {
 
       setMessages((prev) => [...prev, botMessage]);
 
-      // Create video asynchronously
       createVideoForAnswer(answerText, botMessageId);
 
     } catch (err: any) {
@@ -423,7 +413,6 @@ export default function EmbedChat() {
 
     if (!messageToSend || isLoading) return;
 
-    // In preview mode, just show a demo response
     if (isPreview) {
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -448,7 +437,6 @@ export default function EmbedChat() {
       return;
     }
 
-    // If flow is finished, use Q&A mode instead
     if (flowFinished) {
       handleAskQuestion();
       return;
@@ -456,10 +444,8 @@ export default function EmbedChat() {
 
     if (!sessionId) return;
 
-    // Clear current paused state immediately to hide buttons
     setCurrentPausedFor(null);
 
-    // Create user message for display
     const userMessage: Message = {
       id: Date.now().toString(),
       from: "user",
@@ -472,7 +458,6 @@ export default function EmbedChat() {
     setIsLoading(true);
 
     try {
-      // Prepare request body based on the type of input
       let requestBody: any = {};
 
       if (currentPausedFor?.type === "branch" || isBranchOption) {
@@ -498,9 +483,7 @@ export default function EmbedChat() {
 
       const botMessages: Message[] = [];
 
-      // Add all messages to display - these are NEW messages only
       (data.messages || []).forEach((msg: any) => {
-        // Handle redirect nodes - don't display, just redirect
         if (msg.type === "redirect") {
           const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
           if (url) {
@@ -509,12 +492,11 @@ export default function EmbedChat() {
           return;
         }
 
-        // For branch nodes with awaitingInput, only show buttons without text
         if (msg.type === "branch" && msg.awaitingInput) {
           botMessages.push({
             id: Date.now().toString() + Math.random(),
             from: "bot",
-            text: "", // No text content for branch nodes
+            text: "",
             timestamp: new Date(),
             showBranchOptions: true,
             branchOptions: msg.options || [],
@@ -533,14 +515,12 @@ export default function EmbedChat() {
         });
       });
 
-      // Set current paused state
       if (data.awaitingInput) {
         setCurrentPausedFor(data.awaitingInput);
       } else {
         setCurrentPausedFor(null);
       }
 
-      // Check if flow finished
       if (data.finished) {
         setFlowFinished(true);
         setCurrentPausedFor(null);
@@ -553,7 +533,6 @@ export default function EmbedChat() {
         });
       }
 
-      // Append new bot messages to existing messages
       setMessages((prev) => [...prev, ...botMessages]);
     } catch (err: any) {
       console.error(err);
@@ -576,7 +555,6 @@ export default function EmbedChat() {
   };
 
   const handleBranchOptionClick = (option: string, messageId: string) => {
-    // Mark the branch as selected in the message
     setMessages((prev) =>
       prev.map((msg) =>
         msg.id === messageId ? { ...msg, selectedBranch: option } : msg
@@ -602,10 +580,10 @@ export default function EmbedChat() {
   if (!botId) {
     return (
       <div className="flex items-center justify-center h-full p-4">
-        <Card className="p-6 text-center">
+        <div className="p-6 text-center">
           <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <p className="text-muted-foreground">No bot ID provided</p>
-        </Card>
+        </div>
       </div>
     );
   }
@@ -625,14 +603,6 @@ export default function EmbedChat() {
     return {
       backgroundColor: customization?.headerBackground || undefined,
       borderRadius: customization ? `${customization.borderRadius}px ${customization.borderRadius}px 0 0` : undefined
-    };
-  };
-
-  const getBotIconStyle = () => {
-    if (customization?.useChatCustomCSS) return {};
-    return {
-      backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
-      borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
     };
   };
 
@@ -671,48 +641,56 @@ export default function EmbedChat() {
     };
   };
 
+  // Get bot avatar URL
+  const botAvatarUrl = botData?.videoBotImageUrl || null;
+
   return (
     <div
-      className={`flex flex-col h-full border border-border/20 transition-all duration-200 ${
+      className={`flex flex-col h-full border border-border/20 transition-all duration-200 overflow-hidden ${
         customization?.useChatCustomCSS ? 'embed-chat-container' : ''
       }`}
       style={getContainerStyle()}
     >
+      {/* Avatar Section at Top */}
+      {botAvatarUrl && (
+        <div className="flex-shrink-0 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center border-b">
+          <div className="relative">
+            <img
+              src={botAvatarUrl}
+              alt="Bot Avatar"
+              className="w-24 h-24 object-cover rounded-full shadow-lg border-4 border-white dark:border-gray-700"
+            />
+            {(isLoading) && (
+              <div className="absolute -bottom-1 -right-1 bg-blue-600 rounded-full p-1.5">
+                <Loader2 className="h-3 w-3 animate-spin text-white" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Chat Header */}
       <div
-        className={`flex items-center gap-3 p-4 border-b transition-all duration-200 ${
+        className={`flex items-center gap-3 p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white transition-all duration-200 ${
           customization?.useChatCustomCSS ? 'embed-chat-header' : ''
         }`}
-        style={getHeaderStyle()}
+        style={!botAvatarUrl ? getHeaderStyle() : {}}
       >
-        <div
-          className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
-            customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
-          }`}
-          style={getBotIconStyle()}
-        >
-          <Bot
-            className="h-4 w-4 transition-colors duration-200"
-            style={customization?.useChatCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
-          />
-        </div>
+        <Avatar className="h-10 w-10 border-2 border-white">
+          <AvatarFallback className="bg-white text-blue-600">
+            <Bot className="h-6 w-6" />
+          </AvatarFallback>
+        </Avatar>
         <div className="flex-1">
-          <h3 className="font-semibold text-sm transition-all duration-200">
-            {customization?.headerTitle || "Chat Assistant"}
+          <h3 className="font-semibold text-sm text-white">
+            {customization?.headerTitle || botData?.name || "Chat Assistant"}
           </h3>
-          <p className="text-xs opacity-70 transition-all duration-200">
+          <p className="text-xs text-white/70">
             {customization?.headerSubtitle || "Online"}
           </p>
         </div>
         {flowFinished && (
-          <Badge
-            variant="secondary"
-            className="text-xs"
-            style={{
-              backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
-              color: customization?.primaryColor || undefined
-            }}
-          >
+          <Badge variant="secondary" className="text-xs">
             Q&A Mode
           </Badge>
         )}
@@ -720,182 +698,146 @@ export default function EmbedChat() {
 
       {/* Messages Area */}
       <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex gap-3 ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
-              {msg.from === "bot" && (
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex gap-3 mb-4 ${msg.from === "user" ? "justify-end" : "justify-start"}`}
+          >
+            {msg.from === "bot" && (
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                  <Bot className="h-5 w-5" />
+                </AvatarFallback>
+              </Avatar>
+            )}
+            <div className={`flex flex-col gap-1 ${msg.from === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
+              {msg.text && (
                 <div
-                  className={`flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200 ${
-                    customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
+                  className={`rounded-lg p-3 transition-all duration-200 ${
+                    msg.from === "user"
+                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  } ${customization?.useChatCustomCSS 
+                    ? (msg.from === "user" ? 'embed-user-message' : 'embed-bot-message')
+                    : ''
                   }`}
-                  style={getBotIconStyle()}
+                  style={msg.from === "user" ? getUserMessageStyle() : getBotMessageStyle()}
                 >
-                  <Bot
-                    className="h-3 w-3 transition-colors duration-200"
-                    style={customization?.useChatCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
-                  />
+                  <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                 </div>
               )}
-              <div className="flex flex-col gap-2">
-                {msg.text && (
-                  <div className={`max-w-[80%] ${msg.from === "user" ? "ml-auto" : ""}`}>
-                    <div
-                      className={`p-3 transition-all duration-200 ${
-                        customization?.useChatCustomCSS 
-                          ? (msg.from === "user" ? 'embed-user-message' : 'embed-bot-message')
-                          : ''
-                      }`}
-                      style={msg.from === "user" ? getUserMessageStyle() : getBotMessageStyle()}
-                    >
-                      <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+              <span className="text-xs text-gray-500">
+                {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+
+              {/* Video Display Section */}
+              {msg.from === "bot" && (msg.videoUrl || msg.videoLoading) && (
+                <div className="rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 mt-2">
+                  {msg.videoLoading && !msg.videoUrl && (
+                    <div className="flex items-center justify-center p-8 gap-3">
+                      <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Generating video explanation...</span>
                     </div>
-                    <p className="text-xs opacity-70 mt-1 px-1">
-                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                )}
+                  )}
 
-                {/* Video Display Section */}
-                {msg.from === "bot" && (msg.videoUrl || msg.videoLoading) && (
-                  <div className="rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 max-w-[80%]">
-                    {msg.videoLoading && !msg.videoUrl && (
-                      <div className="flex items-center justify-center p-8 gap-3">
-                        <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Generating video explanation...</span>
-                      </div>
-                    )}
-
-                    {msg.videoUrl && (
-                      <div className="relative">
-                        <video
-                          src={msg.videoUrl}
-                          controls
-                          className="w-full max-h-64"
-                          preload="metadata"
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                        <div className="absolute top-2 right-2">
-                          <Badge variant="secondary" className="bg-blue-600 text-white text-xs">
-                            <Video className="h-3 w-3 mr-1" />
-                            AI Avatar
-                          </Badge>
-                        </div>
-                      </div>
-                    )}
-
-                    {msg.videoError && !msg.videoUrl && (
-                      <div className="flex items-center justify-center p-6 gap-2 text-red-500">
-                        <X className="h-4 w-4" />
-                        <span className="text-sm">Video generation failed</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {msg.showConfirmationButtons && isAwaitingInput && msg.from === "bot" && !flowFinished && (
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleConfirmationClick("yes")}
-                    >
-                      Yes
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleConfirmationClick("no")}
-                    >
-                      No
-                    </Button>
-                  </div>
-                )}
-
-                {msg.showBranchOptions && msg.from === "bot" && msg.branchOptions && (
-                  <div className="flex flex-wrap gap-2">
-                    {msg.branchOptions.map((opt, idx) => (
-                      <Button
-                        key={idx}
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleBranchOptionClick(opt, msg.id)}
-                        disabled={!!msg.selectedBranch}
-                        style={{
-                          borderColor: msg.selectedBranch === opt ? customization?.primaryColor || undefined : undefined,
-                          backgroundColor: msg.selectedBranch === opt ? `${customization?.primaryColor}20` || undefined : undefined,
-                          color: customization?.primaryColor || undefined,
-                        }}
+                  {msg.videoUrl && (
+                    <div className="relative">
+                      <video
+                        src={msg.videoUrl}
+                        controls
+                        className="w-full max-h-64"
+                        preload="metadata"
                       >
-                        {opt}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                        Your browser does not support the video tag.
+                      </video>
+                      <div className="absolute top-2 right-2">
+                        <Badge variant="secondary" className="bg-blue-600 text-white text-xs">
+                          <Video className="h-3 w-3 mr-1" />
+                          AI Avatar
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
 
-              {msg.from === "user" && (
-                <div
-                  className={`flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200 ${
-                    customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
-                  }`}
-                  style={getBotIconStyle()}
-                >
-                  <User
-                    className="h-3 w-3 transition-colors duration-200"
-                    style={customization?.useChatCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
-                  />
+                  {msg.videoError && !msg.videoUrl && (
+                    <div className="flex items-center justify-center p-6 gap-2 text-red-500">
+                      <X className="h-4 w-4" />
+                      <span className="text-sm">Video generation failed</span>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          ))}
 
-          {isLoading && (
-            <div className="flex gap-3 justify-start">
-              <div
-                className={`flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200 ${
-                  customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
-                }`}
-                style={getBotIconStyle()}
-              >
-                <Bot
-                  className="h-3 w-3 transition-colors duration-200"
-                  style={customization?.useChatCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
-                />
-              </div>
-              <div
-                className={`p-3 transition-all duration-200 ${
-                  customization?.useChatCustomCSS ? 'embed-bot-message' : ''
-                }`}
-                style={getBotMessageStyle()}
-              >
-                <div className="flex space-x-1">
-                  {[0, 1, 2].map((i) => (
-                    <div
-                      key={i}
-                      className={`w-2 h-2 opacity-50 rounded-full animate-bounce ${
-                        customization?.useChatCustomCSS ? 'embed-loading-dot' : ''
-                      }`}
+              {msg.showConfirmationButtons && isAwaitingInput && msg.from === "bot" && !flowFinished && (
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleConfirmationClick("yes")}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    Yes
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleConfirmationClick("no")}
+                  >
+                    No
+                  </Button>
+                </div>
+              )}
+
+              {msg.showBranchOptions && msg.from === "bot" && msg.branchOptions && (
+                <div className="flex flex-col gap-2 mt-2">
+                  {msg.branchOptions.map((opt, idx) => (
+                    <Button
+                      key={idx}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleBranchOptionClick(opt, msg.id)}
+                      disabled={!!msg.selectedBranch}
+                      className={msg.selectedBranch === opt ? "bg-blue-500 text-white border-blue-600" : ""}
                       style={{
-                        animationDelay: `${i * 0.1}s`,
-                        ...(customization?.useChatCustomCSS ? {} : { backgroundColor: customization?.textColor || undefined })
+                        borderColor: msg.selectedBranch === opt ? customization?.primaryColor || undefined : undefined,
+                        backgroundColor: msg.selectedBranch === opt ? `${customization?.primaryColor}20` || undefined : undefined,
                       }}
-                    ></div>
+                    >
+                      {opt}
+                    </Button>
                   ))}
                 </div>
-              </div>
+              )}
             </div>
-          )}
-        </div>
+            {msg.from === "user" && (
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-gray-300">
+                  <User className="h-5 w-5" />
+                </AvatarFallback>
+              </Avatar>
+            )}
+          </div>
+        ))}
+
+        {isLoading && (
+          <div className="flex gap-3 mb-4">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                <Bot className="h-5 w-5" />
+              </AvatarFallback>
+            </Avatar>
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </ScrollArea>
 
       {/* Input Area */}
       <div
-        className={`p-4 border-t transition-all duration-200 ${
-          customization?.useChatCustomCSS ? 'embed-chat-header' : ''
+        className={`p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0 transition-all duration-200 ${
+          customization?.useChatCustomCSS ? 'embed-chat-input' : ''
         }`}
-        style={getHeaderStyle()}
       >
         {/* Voice Waveform */}
         <VoiceWaveform
@@ -929,7 +871,7 @@ export default function EmbedChat() {
                     ? "Processing speech..." 
                     : flowFinished
                       ? "Ask me anything..."
-                      : (customization?.placeholder || "Type your message...")
+                      : (customization?.placeholder || (canSendText ? "Type your message..." : "Select an option above..."))
               }
               disabled={isLoading || !canSendText || isProcessing}
               className={`flex-1 transition-all duration-200 ${
@@ -939,6 +881,7 @@ export default function EmbedChat() {
             />
             {botData?.voiceEnabled && canSendText && (
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 onClick={handleVoiceInput}
@@ -972,7 +915,7 @@ export default function EmbedChat() {
             onClick={() => handleSendMessage()}
             disabled={!input.trim() || isLoading || !canSendText || isListening || isProcessing}
             size="icon"
-            className={`shrink-0 transition-all duration-200 ${
+            className={`transition-all duration-200 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 ${
               customization?.useChatCustomCSS ? 'embed-send-button' : ''
             }`}
             style={getSendButtonStyle()}
