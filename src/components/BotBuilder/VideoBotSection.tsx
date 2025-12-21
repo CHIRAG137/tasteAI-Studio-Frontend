@@ -307,6 +307,7 @@ export const VideoBotSection = ({
                 <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg">
                   <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
                   <Button
+                    type="button"
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
                   >
@@ -409,6 +410,7 @@ export const VideoBotSection = ({
                 <div className="flex items-center justify-center gap-3 pt-2">
                   {canShowMore && (
                     <Button
+                      type="button"
                       variant="outline"
                       size="sm"
                       onClick={() =>
@@ -421,6 +423,7 @@ export const VideoBotSection = ({
 
                   {canShowLess && !canShowMore && (
                     <Button
+                      type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => setVisibleVoiceCount(VOICES_PAGE_SIZE)}
