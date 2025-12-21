@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Globe, Mic, MicOff, MoreHorizontal, Play, Share, Code, Trash2, Edit, MessageSquare } from "lucide-react";
+import { Bot, Globe, Mic, MicOff, MoreHorizontal, Play, Share, Code, Trash2, Edit, MessageSquare, Video } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface BotCardProps {
@@ -81,20 +81,31 @@ export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, o
       </div>
 
       <CardHeader className="pb-4">
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center flex-shrink-0">
             <Bot className="w-5 h-5 text-white" />
           </div>
+
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg font-semibold mb-1 pr-8">{bot.name}</CardTitle>
-            {bot.websiteUrl && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                <Globe className="w-3 h-3" />
-                <span className="truncate">{bot.websiteUrl}</span>
-              </div>
-            )}
+            <CardTitle className="text-lg font-semibold pr-8">
+              {bot.name}
+            </CardTitle>
+
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {bot.isVideoBot ? (
+                <Badge variant="secondary" className="text-xs">
+                  <Video className="w-3 h-3 mr-1" />
+                  Video Bot
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs">
+                  Normal Bot
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
+
         <CardDescription className="text-sm line-clamp-2">
           {bot.description}
         </CardDescription>
