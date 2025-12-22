@@ -1124,6 +1124,15 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
+              {/* Footer Branding */}
+              <div className="text-center py-2 border-t bg-white dark:bg-gray-900">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Powered by{" "}
+                  <span className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    TasteAI Studio
+                  </span>
+                </p>
+              </div>
             </div>
           </>
         )}
