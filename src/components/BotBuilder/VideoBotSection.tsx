@@ -434,7 +434,7 @@ export const VideoBotSection = ({
 
       setShowCropTool(false);
       setGeneratedImageForCrop(null);
-      setImagePrompt("");
+      // Keep imagePrompt so it persists when user clears and re-uploads
       setImageLoaded(false);
     } catch (error: any) {
       console.error(error);
