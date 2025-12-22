@@ -724,172 +724,175 @@ export default function EmbedChat() {
       }`}
       style={getContainerStyle()}
     >
-      {/* Video Bot Avatar Section - Top */}
-      {botData?.is_video_bot && showVideoAvatar && (
-        <div className="relative w-full flex items-center justify-center border-b">
-          {videoBotAvatarUrl ? (
-            <div className="relative w-full h-48 flex items-center justify-center overflow-hidden">
-              <img
-                src={videoBotAvatarUrl}
-                alt="Video Bot Avatar"
-                className="w-full h-full object-cover"
-              />
+      {/* Fixed Header Section */}
+      <div className="flex-shrink-0">
+        {/* Video Bot Avatar Section - Top */}
+        {botData?.is_video_bot && showVideoAvatar && (
+          <div className="relative w-full flex items-center justify-center border-b">
+            {videoBotAvatarUrl ? (
+              <div className="relative w-full h-48 flex items-center justify-center overflow-hidden">
+                <img
+                  src={videoBotAvatarUrl}
+                  alt="Video Bot Avatar"
+                  className="w-full h-full object-cover"
+                />
 
-              {/* Speaking/Loading indicator */}
-              {(isLoading || isSpeaking) && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">{isSpeaking ? "Speaking..." : "Thinking..."}</span>
-                </div>
-              )}
+                {/* Speaking/Loading indicator */}
+                {(isLoading || isSpeaking) && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">{isSpeaking ? "Speaking..." : "Thinking..."}</span>
+                  </div>
+                )}
 
-              {/* Call Control Buttons (only in Q&A mode) */}
-              {flowFinished && (
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
-                  <Button
-                    onClick={handleMicToggle}
-                    size="sm"
-                    className={`h-10 w-10 rounded-full shadow-lg transition-all ${!isMuted
-                      ? isListening
-                        ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                        : "bg-green-500 hover:bg-green-600"
-                      : "bg-gray-400 hover:bg-gray-500"
-                      }`}
-                    disabled={isLoading || isProcessing || isSpeaking}
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="h-5 w-5 animate-spin text-white" />
-                    ) : isMuted ? (
-                      <MicOff className="h-5 w-5 text-white" />
-                    ) : (
-                      <Mic className="h-5 w-5 text-white" />
-                    )}
-                  </Button>
+                {/* Call Control Buttons (only in Q&A mode) */}
+                {flowFinished && (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+                    <Button
+                      onClick={handleMicToggle}
+                      size="sm"
+                      className={`h-10 w-10 rounded-full shadow-lg transition-all ${!isMuted
+                        ? isListening
+                          ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                          : "bg-green-500 hover:bg-green-600"
+                        : "bg-gray-400 hover:bg-gray-500"
+                        }`}
+                      disabled={isLoading || isProcessing || isSpeaking}
+                    >
+                      {isProcessing ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                      ) : isMuted ? (
+                        <MicOff className="h-5 w-5 text-white" />
+                      ) : (
+                        <Mic className="h-5 w-5 text-white" />
+                      )}
+                    </Button>
 
-                  <Button
-                    onClick={handleEndCall}
-                    size="sm"
-                    className="h-10 w-10 rounded-full shadow-lg bg-red-600 hover:bg-red-700"
-                  >
-                    <PhoneOff className="h-5 w-5 text-white" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="w-full h-48 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex flex-col items-center justify-center p-4">
-              <Video className="h-12 w-12 mb-2 text-purple-400" />
-              <p className="text-sm text-gray-600 dark:text-gray-400 text-center">Video Bot</p>
-              
-              {/* Call Control Buttons for no avatar (only in Q&A mode) */}
-              {flowFinished && (
-                <div className="flex gap-2 mt-3">
-                  <Button
-                    onClick={handleMicToggle}
-                    size="sm"
-                    className={`h-10 w-10 rounded-full shadow-lg ${!isMuted
-                      ? isListening
-                        ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                        : "bg-green-500 hover:bg-green-600"
-                      : "bg-gray-400 hover:bg-gray-500"
-                      }`}
-                    disabled={isLoading || isProcessing || isSpeaking}
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="h-5 w-5 animate-spin text-white" />
-                    ) : isMuted ? (
-                      <MicOff className="h-5 w-5 text-white" />
-                    ) : (
-                      <Mic className="h-5 w-5 text-white" />
-                    )}
-                  </Button>
+                    <Button
+                      onClick={handleEndCall}
+                      size="sm"
+                      className="h-10 w-10 rounded-full shadow-lg bg-red-600 hover:bg-red-700"
+                    >
+                      <PhoneOff className="h-5 w-5 text-white" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="w-full h-48 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex flex-col items-center justify-center p-4">
+                <Video className="h-12 w-12 mb-2 text-purple-400" />
+                <p className="text-sm text-gray-600 dark:text-gray-400 text-center">Video Bot</p>
+                
+                {/* Call Control Buttons for no avatar (only in Q&A mode) */}
+                {flowFinished && (
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      onClick={handleMicToggle}
+                      size="sm"
+                      className={`h-10 w-10 rounded-full shadow-lg ${!isMuted
+                        ? isListening
+                          ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                          : "bg-green-500 hover:bg-green-600"
+                        : "bg-gray-400 hover:bg-gray-500"
+                        }`}
+                      disabled={isLoading || isProcessing || isSpeaking}
+                    >
+                      {isProcessing ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                      ) : isMuted ? (
+                        <MicOff className="h-5 w-5 text-white" />
+                      ) : (
+                        <Mic className="h-5 w-5 text-white" />
+                      )}
+                    </Button>
 
-                  <Button
-                    onClick={handleEndCall}
-                    size="sm"
-                    className="h-10 w-10 rounded-full shadow-lg bg-red-600 hover:bg-red-700"
-                  >
-                    <PhoneOff className="h-5 w-5 text-white" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+                    <Button
+                      onClick={handleEndCall}
+                      size="sm"
+                      className="h-10 w-10 rounded-full shadow-lg bg-red-600 hover:bg-red-700"
+                    >
+                      <PhoneOff className="h-5 w-5 text-white" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* Show Avatar Button for video bots when hidden */}
-      {botData?.is_video_bot && !showVideoAvatar && (
-        <div className="p-2 border-b">
-          <Button
-            onClick={handleBringBackAvatar}
-            variant="outline"
-            size="sm"
-            className="w-full"
-          >
-            <Video className="h-4 w-4 mr-2" />
-            Show Video Avatar
-          </Button>
-        </div>
-      )}
-
-      {/* Chat Header */}
-      <div
-        className={`flex items-center gap-3 p-4 border-b transition-all duration-200 ${
-          customization?.useChatCustomCSS ? 'embed-chat-header' : ''
-        }`}
-        style={getHeaderStyle()}
-      >
-        <div
-          className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
-            customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
-          }`}
-          style={getBotIconStyle()}
-        >
-          <Bot
-            className="h-4 w-4 transition-colors duration-200"
-            style={customization?.useChatCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
-          />
-        </div>
-        <div className="flex-1">
-          <h3 className="font-semibold text-sm transition-all duration-200">
-            {customization?.headerTitle || botData?.name || "Chat Assistant"}
-          </h3>
-          <p className="text-xs opacity-70 transition-all duration-200">
-            {customization?.headerSubtitle || "Online"}
-          </p>
-        </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {botData?.is_voice_enabled && (
-            <Badge variant="secondary" className="text-xs">
-              <Volume2 className="h-3 w-3 mr-1" />
-              Voice
-            </Badge>
-          )}
-          {botData?.is_video_bot && (
-            <Badge variant="secondary" className="text-xs">
-              <Video className="h-3 w-3 mr-1" />
-              Video
-            </Badge>
-          )}
-          {flowFinished && (
-            <Badge
-              variant="secondary"
-              className="text-xs"
-              style={{
-                backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
-                color: customization?.primaryColor || undefined
-              }}
+        {/* Show Avatar Button for video bots when hidden */}
+        {botData?.is_video_bot && !showVideoAvatar && (
+          <div className="p-2 border-b">
+            <Button
+              onClick={handleBringBackAvatar}
+              variant="outline"
+              size="sm"
+              className="w-full"
             >
-              Q&A Mode
-            </Badge>
-          )}
+              <Video className="h-4 w-4 mr-2" />
+              Show Video Avatar
+            </Button>
+          </div>
+        )}
+
+        {/* Chat Header */}
+        <div
+          className={`flex items-center gap-3 p-4 border-b transition-all duration-200 ${
+            customization?.useChatCustomCSS ? 'embed-chat-header' : ''
+          }`}
+          style={getHeaderStyle()}
+        >
+          <div
+            className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
+              customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
+            }`}
+            style={getBotIconStyle()}
+          >
+            <Bot
+              className="h-4 w-4 transition-colors duration-200"
+              style={customization?.useChatCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
+            />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-sm transition-all duration-200">
+              {customization?.headerTitle || botData?.name || "Chat Assistant"}
+            </h3>
+            <p className="text-xs opacity-70 transition-all duration-200">
+              {customization?.headerSubtitle || "Online"}
+            </p>
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            {botData?.is_voice_enabled && (
+              <Badge variant="secondary" className="text-xs">
+                <Volume2 className="h-3 w-3 mr-1" />
+                Voice
+              </Badge>
+            )}
+            {botData?.is_video_bot && (
+              <Badge variant="secondary" className="text-xs">
+                <Video className="h-3 w-3 mr-1" />
+                Video
+              </Badge>
+            )}
+            {flowFinished && (
+              <Badge
+                variant="secondary"
+                className="text-xs"
+                style={{
+                  backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
+                  color: customization?.primaryColor || undefined
+                }}
+              >
+                Q&A Mode
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Messages Area */}
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+      {/* Scrollable Messages Area */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="p-4 space-y-4 min-h-full">
           {messages.length === 0 && !isPreview && (
             <div className="text-center text-gray-400 py-8">
               <p className="text-sm">Start a conversation!</p>
@@ -1022,13 +1025,13 @@ export default function EmbedChat() {
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
-        <div ref={messagesEndRef} />
-      </ScrollArea>
+      </div>
 
-      {/* Input Area */}
+      {/* Fixed Input Area */}
       <div
-        className={`p-4 border-t transition-all duration-200 ${
+        className={`flex-shrink-0 p-4 border-t transition-all duration-200 ${
           customization?.useChatCustomCSS ? 'embed-chat-header' : ''
         }`}
         style={getHeaderStyle()}
