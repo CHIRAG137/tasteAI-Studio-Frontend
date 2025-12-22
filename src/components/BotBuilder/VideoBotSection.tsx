@@ -457,7 +457,7 @@ export const VideoBotSection = ({
   const handleClearImage = () => {
     setSelectedImage(null);
     setImagePreview(null);
-    setImagePrompt("");
+    // Keep the prompt so user can re-upload with same prompt
     setShowCropTool(false);
     setGeneratedImageForCrop(null);
     setImageLoaded(false);
@@ -626,15 +626,9 @@ export const VideoBotSection = ({
                   />
                 </div>
               </div>
-              <div className="absolute top-2 right-2 flex gap-2">
+              <div className="absolute top-2 right-2">
                 <Button
-                  size="icon"
-                  variant="secondary"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-4 w-4" />
-                </Button>
-                <Button
+                  type="button"
                   size="icon"
                   variant="destructive"
                   onClick={handleClearImage}
