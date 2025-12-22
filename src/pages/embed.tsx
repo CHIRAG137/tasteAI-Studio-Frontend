@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Send, Bot, User, Mic, MicOff, Video, Loader2, X, AlertCircle } from "lucide-react";
+import { Send, Bot, User, Mic, MicOff, Video, Loader2, X, PhoneOff, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -21,9 +21,7 @@ interface Message {
   showBranchOptions?: boolean;
   branchOptions?: string[];
   selectedBranch?: string;
-  videoUrl?: string;
-  videoLoading?: boolean;
-  videoError?: boolean;
+  audioUrl?: string;
 }
 
 export default function EmbedChat() {
@@ -39,7 +37,103 @@ export default function EmbedChat() {
   const [currentPausedFor, setCurrentPausedFor] = useState<any>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [flowFinished, setFlowFinished] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [showVideoAvatar, setShowVideoAvatar] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Function to convert text to speech and play it
+  const playTextToSpeech = async (text: string) => {
+    if (!botData?.is_video_bot || !botData?.is_voice_enabled) return;
+    
+    try {
+      setIsSpeaking(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, voiceId: botData.voice_id }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate speech");
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      if (audioRef.current) {
+        audioRef.current.src = audioUrl;
+        audioRef.current.onended = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+        };
+        audioRef.current.onerror = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+        };
+        await audioRef.current.play();
+      }
+    } catch (error) {
+      console.error("TTS error:", error);
+      setIsSpeaking(false);
+    }
+  };
+
+  // Handle voice question for video bot in Q&A mode (auto-submit)
+  const handleVoiceQuestion = async (question: string) => {
+    if (!question.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      from: "user",
+      text: question,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question,
+            botId: botData._id,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to get answer");
+      }
+
+      const answerText = data.result.answer || "I couldn't find an answer to that question.";
+      addBotMessage(answerText);
+
+      // Convert answer to speech and play it
+      if (botData.is_video_bot) {
+        await playTextToSpeech(answerText);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: err.message || "Something went wrong",
+        variant: "destructive"
+      });
+      addBotMessage("I'm having trouble answering that. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const { 
     isListening, 
@@ -50,14 +144,24 @@ export default function EmbedChat() {
     toggleListening 
   } = useSpeechToText({
     onResult: (text) => {
-      setInput(prev => {
-        const newText = prev ? prev + " " + text : text;
-        return newText.trim();
-      });
+      // Only auto-submit voice input when in Q&A mode (flowFinished) for video bots
+      if (botData?.is_video_bot && flowFinished) {
+        handleVoiceQuestion(text);
+      } else {
+        // Otherwise, just populate the input field
+        setInput(prev => {
+          const newText = prev ? prev + " " + text : text;
+          return newText.trim();
+        });
+      }
     },
     onError: (err) => {
       if (!err.includes('speak into the microphone')) {
-        toast({ title: "Speech Error", description: err, variant: "destructive" });
+        toast({
+          title: "Speech Error",
+          description: err,
+          variant: "destructive"
+        });
       }
     },
     language: "en-US",
@@ -70,6 +174,28 @@ export default function EmbedChat() {
   };
 
   useEffect(scrollToBottom, [messages]);
+
+  // Helper to add bot message
+  const addBotMessage = (content: string, audioUrl?: string) => {
+    const botMessage: Message = {
+      id: Date.now().toString() + Math.random(),
+      from: "bot",
+      text: content,
+      timestamp: new Date(),
+      audioUrl,
+    };
+    setMessages((prev) => [...prev, botMessage]);
+
+    // Play audio if available
+    if (audioUrl && audioRef.current) {
+      audioRef.current.src = audioUrl;
+      audioRef.current.play().catch(err => {
+        console.error('Error playing audio:', err);
+      });
+    }
+
+    return botMessage;
+  };
 
   // Listen for real-time customization updates from parent window
   useEffect(() => {
@@ -191,9 +317,7 @@ export default function EmbedChat() {
 
         const botMessages: Message[] = [];
 
-        // Add all messages to display
         (data.messages || []).forEach((msg: any) => {
-          // Handle redirect nodes - don't display, just redirect
           if (msg.type === "redirect") {
             const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
             if (url) {
@@ -202,12 +326,11 @@ export default function EmbedChat() {
             return;
           }
 
-          // For branch nodes with awaitingInput, only show buttons without text
           if (msg.type === "branch" && msg.awaitingInput) {
             botMessages.push({
               id: Date.now().toString() + Math.random(),
               from: "bot",
-              text: "", // No text content for branch nodes
+              text: "",
               timestamp: new Date(),
               showBranchOptions: true,
               branchOptions: msg.options || [],
@@ -215,30 +338,27 @@ export default function EmbedChat() {
             return;
           }
 
+          const messageContent = msg.content || msg.message || "";
           botMessages.push({
             id: Date.now().toString() + Math.random(),
             from: "bot",
-            text: msg.content || msg.message || "",
+            text: messageContent,
             timestamp: new Date(),
             showConfirmationButtons: msg.type === "confirmation" && msg.awaitingInput,
             showBranchOptions: false,
             branchOptions: msg.options || [],
           });
+
+          // For video bots, speak the initial flow messages
+          if (botData.is_video_bot && messageContent) {
+            playTextToSpeech(messageContent);
+          }
         });
 
-        // Check if flow finished immediately
         if (data.finished) {
           setFlowFinished(true);
           setCurrentPausedFor(null);
-
-          botMessages.push({
-            id: Date.now().toString() + Math.random(),
-            from: "bot",
-            text: "Feel free to ask me any questions!",
-            timestamp: new Date(),
-          });
         } else {
-          // Set current paused state only if flow not finished
           if (data.awaitingInput) {
             setCurrentPausedFor(data.awaitingInput);
           } else {
@@ -261,98 +381,9 @@ export default function EmbedChat() {
     initFlow();
   }, [botData, isPreview]);
 
-  // Function to create video and poll for result
-  const createVideoForAnswer = async (text: string, messageId: string) => {
-    try {
-      const createRes = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/did/create-video`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
-        }
-      );
-
-      const createData = await createRes.json();
-
-      if (!createRes.ok || !createData?.result?.id) {
-        throw new Error("Failed to create video");
-      }
-
-      const talkId = createData.result.id;
-
-      const maxAttempts = 30;
-      let attempts = 0;
-
-      const pollVideo = async (): Promise<string | null> => {
-        attempts++;
-        const statusRes = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/did/video-status/${talkId}`
-        );
-        const statusData = await statusRes.json();
-
-        const status = statusData?.result?.status;
-        const videoUrl = statusData?.result?.result_url;
-
-        if (status === "done" && videoUrl) {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === messageId
-                ? { ...msg, videoUrl, videoLoading: false, videoError: false }
-                : msg
-            )
-          );
-          return videoUrl;
-        } else if (status === "error" || status === "rejected") {
-          throw new Error("Video generation failed");
-        } else {
-          if (attempts >= maxAttempts) {
-            throw new Error("Video generation timeout");
-          }
-          await new Promise((r) => setTimeout(r, 2000));
-          return pollVideo();
-        }
-      };
-
-      pollVideo().catch((err) => {
-        console.error("Video polling error:", err);
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === messageId
-              ? { ...msg, videoLoading: false, videoError: true }
-              : msg
-          )
-        );
-        toast({
-          title: "Video Generation Failed",
-          description: err.message || "Could not generate video",
-          variant: "destructive",
-        });
-      });
-
-      return talkId;
-    } catch (err: any) {
-      console.error("Video creation error:", err);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === messageId
-            ? { ...msg, videoLoading: false, videoError: true }
-            : msg
-        )
-      );
-      toast({
-        title: "Video Generation Failed",
-        description: err.message || "Could not create video explanation",
-        variant: "destructive",
-      });
-      return null;
-    }
-  };
-
-  // Handle Q&A mode after flow ends
+  // Handle Q&A mode
   const handleAskQuestion = async () => {
     const question = input.trim();
-
     if (!question || isLoading) return;
 
     const userMessage: Message = {
@@ -361,7 +392,6 @@ export default function EmbedChat() {
       text: question,
       timestamp: new Date(),
     };
-
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
@@ -386,24 +416,19 @@ export default function EmbedChat() {
       }
 
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
+      addBotMessage(answerText);
 
-      const botMessageId = Date.now().toString() + Math.random();
-      const botMessage: Message = {
-        id: botMessageId,
-        from: "bot",
-        text: answerText,
-        timestamp: new Date(),
-        videoLoading: true,
-        videoError: false,
-      };
-
-      setMessages((prev) => [...prev, botMessage]);
-
-      // Create video asynchronously
-      createVideoForAnswer(answerText, botMessageId);
-
+      // For video bots, speak the answer
+      if (botData.is_video_bot) {
+        await playTextToSpeech(answerText);
+      }
     } catch (err: any) {
       console.error(err);
+      toast({
+        title: "Error",
+        description: err.message || "Something went wrong",
+        variant: "destructive"
+      });
       setMessages((prev) => [
         ...prev,
         {
@@ -456,10 +481,8 @@ export default function EmbedChat() {
 
     if (!sessionId) return;
 
-    // Clear current paused state immediately to hide buttons
     setCurrentPausedFor(null);
 
-    // Create user message for display
     const userMessage: Message = {
       id: Date.now().toString(),
       from: "user",
@@ -472,7 +495,6 @@ export default function EmbedChat() {
     setIsLoading(true);
 
     try {
-      // Prepare request body based on the type of input
       let requestBody: any = {};
 
       if (currentPausedFor?.type === "branch" || isBranchOption) {
@@ -497,10 +519,7 @@ export default function EmbedChat() {
       }
 
       const botMessages: Message[] = [];
-
-      // Add all messages to display - these are NEW messages only
       (data.messages || []).forEach((msg: any) => {
-        // Handle redirect nodes - don't display, just redirect
         if (msg.type === "redirect") {
           const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
           if (url) {
@@ -509,12 +528,11 @@ export default function EmbedChat() {
           return;
         }
 
-        // For branch nodes with awaitingInput, only show buttons without text
         if (msg.type === "branch" && msg.awaitingInput) {
           botMessages.push({
             id: Date.now().toString() + Math.random(),
             from: "bot",
-            text: "", // No text content for branch nodes
+            text: "",
             timestamp: new Date(),
             showBranchOptions: true,
             branchOptions: msg.options || [],
@@ -522,41 +540,42 @@ export default function EmbedChat() {
           return;
         }
 
+        const messageContent = msg.content || msg.message || "";
         botMessages.push({
           id: Date.now().toString() + Math.random(),
           from: "bot",
-          text: msg.content || msg.message || "",
+          text: messageContent,
           timestamp: new Date(),
           showConfirmationButtons: msg.type === "confirmation" && msg.awaitingInput,
           showBranchOptions: false,
           branchOptions: msg.options || [],
         });
+
+        // For video bots, speak the flow messages
+        if (botData.is_video_bot && messageContent) {
+          playTextToSpeech(messageContent);
+        }
       });
 
-      // Set current paused state
       if (data.awaitingInput) {
         setCurrentPausedFor(data.awaitingInput);
       } else {
         setCurrentPausedFor(null);
       }
 
-      // Check if flow finished
       if (data.finished) {
         setFlowFinished(true);
         setCurrentPausedFor(null);
-
-        botMessages.push({
-          id: Date.now().toString() + Math.random(),
-          from: "bot",
-          text: "Thank you! The conversation flow has ended. Feel free to ask me any questions!",
-          timestamp: new Date(),
-        });
       }
 
-      // Append new bot messages to existing messages
       setMessages((prev) => [...prev, ...botMessages]);
     } catch (err: any) {
       console.error(err);
+      toast({
+        title: "Error",
+        description: err.message || "Something went wrong",
+        variant: "destructive"
+      });
       setMessages((prev) => [
         ...prev,
         {
@@ -576,7 +595,6 @@ export default function EmbedChat() {
   };
 
   const handleBranchOptionClick = (option: string, messageId: string) => {
-    // Mark the branch as selected in the message
     setMessages((prev) =>
       prev.map((msg) =>
         msg.id === messageId ? { ...msg, selectedBranch: option } : msg
@@ -592,12 +610,40 @@ export default function EmbedChat() {
     }
   };
 
-  const handleVoiceInput = () => botData?.voiceEnabled && toggleListening();
+  const handleVoiceInput = () => {
+    toggleListening();
+  };
+
+  const handleMicToggle = () => {
+    if (isMuted) {
+      setIsMuted(false);
+      toggleListening();
+    } else {
+      setIsMuted(true);
+      if (isListening) {
+        toggleListening();
+      }
+    }
+  };
+
+  const handleEndCall = () => {
+    setShowVideoAvatar(false);
+    setIsMuted(true);
+    if (isListening) {
+      toggleListening();
+    }
+  };
+
+  const handleBringBackAvatar = () => {
+    setShowVideoAvatar(true);
+  };
 
   const isAwaitingInput = currentPausedFor !== null;
   const canSendText = isPreview || flowFinished || (isAwaitingInput &&
     currentPausedFor?.type !== "branch" &&
     !currentPausedFor?.showConfirmationButtons);
+
+  const videoBotAvatarUrl = botData?.video_bot_image_url || null;
 
   if (!botId) {
     return (
@@ -678,6 +724,115 @@ export default function EmbedChat() {
       }`}
       style={getContainerStyle()}
     >
+      {/* Video Bot Avatar Section - Top */}
+      {botData?.is_video_bot && showVideoAvatar && (
+        <div className="relative w-full flex items-center justify-center border-b">
+          {videoBotAvatarUrl ? (
+            <div className="relative w-full h-48 flex items-center justify-center overflow-hidden">
+              <img
+                src={videoBotAvatarUrl}
+                alt="Video Bot Avatar"
+                className="w-full h-full object-cover"
+              />
+
+              {/* Speaking/Loading indicator */}
+              {(isLoading || isSpeaking) && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">{isSpeaking ? "Speaking..." : "Thinking..."}</span>
+                </div>
+              )}
+
+              {/* Call Control Buttons (only in Q&A mode) */}
+              {flowFinished && (
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+                  <Button
+                    onClick={handleMicToggle}
+                    size="sm"
+                    className={`h-10 w-10 rounded-full shadow-lg transition-all ${!isMuted
+                      ? isListening
+                        ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                        : "bg-green-500 hover:bg-green-600"
+                      : "bg-gray-400 hover:bg-gray-500"
+                      }`}
+                    disabled={isLoading || isProcessing || isSpeaking}
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-white" />
+                    ) : isMuted ? (
+                      <MicOff className="h-5 w-5 text-white" />
+                    ) : (
+                      <Mic className="h-5 w-5 text-white" />
+                    )}
+                  </Button>
+
+                  <Button
+                    onClick={handleEndCall}
+                    size="sm"
+                    className="h-10 w-10 rounded-full shadow-lg bg-red-600 hover:bg-red-700"
+                  >
+                    <PhoneOff className="h-5 w-5 text-white" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="w-full h-48 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex flex-col items-center justify-center p-4">
+              <Video className="h-12 w-12 mb-2 text-purple-400" />
+              <p className="text-sm text-gray-600 dark:text-gray-400 text-center">Video Bot</p>
+              
+              {/* Call Control Buttons for no avatar (only in Q&A mode) */}
+              {flowFinished && (
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    onClick={handleMicToggle}
+                    size="sm"
+                    className={`h-10 w-10 rounded-full shadow-lg ${!isMuted
+                      ? isListening
+                        ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                        : "bg-green-500 hover:bg-green-600"
+                      : "bg-gray-400 hover:bg-gray-500"
+                      }`}
+                    disabled={isLoading || isProcessing || isSpeaking}
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-white" />
+                    ) : isMuted ? (
+                      <MicOff className="h-5 w-5 text-white" />
+                    ) : (
+                      <Mic className="h-5 w-5 text-white" />
+                    )}
+                  </Button>
+
+                  <Button
+                    onClick={handleEndCall}
+                    size="sm"
+                    className="h-10 w-10 rounded-full shadow-lg bg-red-600 hover:bg-red-700"
+                  >
+                    <PhoneOff className="h-5 w-5 text-white" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Show Avatar Button for video bots when hidden */}
+      {botData?.is_video_bot && !showVideoAvatar && (
+        <div className="p-2 border-b">
+          <Button
+            onClick={handleBringBackAvatar}
+            variant="outline"
+            size="sm"
+            className="w-full"
+          >
+            <Video className="h-4 w-4 mr-2" />
+            Show Video Avatar
+          </Button>
+        </div>
+      )}
+
       {/* Chat Header */}
       <div
         className={`flex items-center gap-3 p-4 border-b transition-all duration-200 ${
@@ -698,29 +853,48 @@ export default function EmbedChat() {
         </div>
         <div className="flex-1">
           <h3 className="font-semibold text-sm transition-all duration-200">
-            {customization?.headerTitle || "Chat Assistant"}
+            {customization?.headerTitle || botData?.name || "Chat Assistant"}
           </h3>
           <p className="text-xs opacity-70 transition-all duration-200">
             {customization?.headerSubtitle || "Online"}
           </p>
         </div>
-        {flowFinished && (
-          <Badge
-            variant="secondary"
-            className="text-xs"
-            style={{
-              backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
-              color: customization?.primaryColor || undefined
-            }}
-          >
-            Q&A Mode
-          </Badge>
-        )}
+        <div className="flex gap-1.5 flex-wrap">
+          {botData?.is_voice_enabled && (
+            <Badge variant="secondary" className="text-xs">
+              <Volume2 className="h-3 w-3 mr-1" />
+              Voice
+            </Badge>
+          )}
+          {botData?.is_video_bot && (
+            <Badge variant="secondary" className="text-xs">
+              <Video className="h-3 w-3 mr-1" />
+              Video
+            </Badge>
+          )}
+          {flowFinished && (
+            <Badge
+              variant="secondary"
+              className="text-xs"
+              style={{
+                backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
+                color: customization?.primaryColor || undefined
+              }}
+            >
+              Q&A Mode
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Messages Area */}
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
+          {messages.length === 0 && !isPreview && (
+            <div className="text-center text-gray-400 py-8">
+              <p className="text-sm">Start a conversation!</p>
+            </div>
+          )}
           {messages.map((msg) => (
             <div key={msg.id} className={`flex gap-3 ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
               {msg.from === "bot" && (
@@ -752,44 +926,6 @@ export default function EmbedChat() {
                     <p className="text-xs opacity-70 mt-1 px-1">
                       {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
-                  </div>
-                )}
-
-                {/* Video Display Section */}
-                {msg.from === "bot" && (msg.videoUrl || msg.videoLoading) && (
-                  <div className="rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 max-w-[80%]">
-                    {msg.videoLoading && !msg.videoUrl && (
-                      <div className="flex items-center justify-center p-8 gap-3">
-                        <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Generating video explanation...</span>
-                      </div>
-                    )}
-
-                    {msg.videoUrl && (
-                      <div className="relative">
-                        <video
-                          src={msg.videoUrl}
-                          controls
-                          className="w-full max-h-64"
-                          preload="metadata"
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                        <div className="absolute top-2 right-2">
-                          <Badge variant="secondary" className="bg-blue-600 text-white text-xs">
-                            <Video className="h-3 w-3 mr-1" />
-                            AI Avatar
-                          </Badge>
-                        </div>
-                      </div>
-                    )}
-
-                    {msg.videoError && !msg.videoUrl && (
-                      <div className="flex items-center justify-center p-6 gap-2 text-red-500">
-                        <X className="h-4 w-4" />
-                        <span className="text-sm">Video generation failed</span>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -897,14 +1033,16 @@ export default function EmbedChat() {
         }`}
         style={getHeaderStyle()}
       >
-        {/* Voice Waveform */}
-        <VoiceWaveform
-          audioLevels={audioLevels}
-          isListening={isListening}
-          showSilenceWarning={showSilenceWarning}
-          silenceCountdown={silenceCountdown}
-          className="mb-3"
-        />
+        {/* Voice Waveform (only in Q&A mode for non-video bots, always for video bots) */}
+        {(flowFinished && isListening && !botData?.is_video_bot) && (
+          <VoiceWaveform
+            audioLevels={audioLevels}
+            isListening={isListening}
+            showSilenceWarning={showSilenceWarning}
+            silenceCountdown={silenceCountdown}
+            className="mb-3"
+          />
+        )}
 
         {/* Processing indicator */}
         {isProcessing && (
@@ -933,11 +1071,11 @@ export default function EmbedChat() {
               }
               disabled={isLoading || !canSendText || isProcessing}
               className={`flex-1 transition-all duration-200 ${
-                botData?.voiceEnabled ? 'pr-10' : ''
+                botData?.is_voice_enabled && canSendText && flowFinished && !botData?.is_video_bot ? 'pr-10' : ''
               } ${customization?.useChatCustomCSS ? 'embed-input' : ''}`}
               style={getInputStyle()}
             />
-            {botData?.voiceEnabled && canSendText && (
+            {botData?.is_voice_enabled && canSendText && flowFinished && !botData?.is_video_bot && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -950,13 +1088,6 @@ export default function EmbedChat() {
                       ? "text-gray-400" 
                       : "text-muted-foreground hover:text-primary"
                 }`}
-                title={
-                  isProcessing 
-                    ? "Processing..." 
-                    : isListening 
-                      ? "Stop recording" 
-                      : "Start voice input"
-                }
               >
                 {isProcessing ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -981,6 +1112,9 @@ export default function EmbedChat() {
           </Button>
         </div>
       </div>
+
+      {/* Hidden audio element for playing TTS */}
+      <audio ref={audioRef} className="hidden" />
     </div>
   );
 }
