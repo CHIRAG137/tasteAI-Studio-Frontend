@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { loginUser } from "@/api/auth";
 import { setAuthToken } from "@/utils/auth";
 import { GoogleLogin } from "@react-oauth/google";
@@ -12,9 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 
 export const LoginForm = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // Get the page they were trying to access, or default to "/"
+  const from = (location.state as any)?.from?.pathname || "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,8 +41,8 @@ export const LoginForm = () => {
           description: "Login successful!",
         });
 
-        // redirect to dashboard
-        window.location.href = "/";
+        // Redirect to the page they were trying to access, or home
+        navigate(from, { replace: true });
       }
     } catch (err) {
       console.error(err);
@@ -68,8 +73,8 @@ export const LoginForm = () => {
         description: "Login successful!",
       });
 
-      // redirect to homepage
-      window.location.href = "/";
+      // Redirect to the page they were trying to access, or home
+      navigate(from, { replace: true });
     } catch (err) {
       console.error("Google login error:", err);
       toast({

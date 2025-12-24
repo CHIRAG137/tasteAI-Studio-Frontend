@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { registerUser } from "@/api/auth";
 import { setAuthToken } from "@/utils/auth";
 import { GoogleLogin } from "@react-oauth/google";
@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 
 export const RegisterForm = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -20,6 +22,9 @@ export const RegisterForm = () => {
     password: "",
     confirmPassword: "",
   });
+
+  // Get the page they were trying to access, or default to "/"
+  const from = (location.state as any)?.from?.pathname || "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,8 +56,8 @@ export const RegisterForm = () => {
           title: "Success",
           description: "Registration successful!",
         });
-        // redirect to home
-        window.location.href = "/";
+        // Redirect to the page they were trying to access, or home
+        navigate(from, { replace: true });
       }
     } catch (err) {
       console.error(err);
@@ -83,8 +88,8 @@ export const RegisterForm = () => {
         description: "Registration successful!",
       });
 
-      // redirect to homepage
-      window.location.href = "/";
+      // Redirect to the page they were trying to access, or home
+      navigate(from, { replace: true });
     } catch (err) {
       console.error("Google login error:", err);
       toast({
