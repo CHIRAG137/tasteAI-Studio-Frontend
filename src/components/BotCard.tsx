@@ -29,6 +29,7 @@ interface BotCardProps {
 export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, onSessions }: BotCardProps) => {
   const isLoading = (bot as any).isLoading;
   const progress = (bot as any).progress || 0;
+  const isVoiceEnabledForUI = bot.isVideoBot || bot.voiceEnabled;
 
   return (
     <Card className={`relative group transition-all duration-300 ${isLoading ? "opacity-80" : "hover:shadow-strong"}`}>
@@ -117,7 +118,7 @@ export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, o
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Voice</span>
             <div className="flex items-center gap-1">
-              {bot.voiceEnabled ? (
+              {isVoiceEnabledForUI ? (
                 <>
                   <Mic className="w-4 h-4 text-green-500" />
                   <span className="text-sm text-green-500">Enabled</span>
