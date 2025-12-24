@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { 
-  ArrowLeft, 
-  Code2, 
-  Copy, 
+import {
+  ArrowLeft,
+  Code2,
+  Copy,
   ExternalLink,
   Settings,
   Check,
@@ -42,7 +42,7 @@ export default function Documentation() {
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [customization, setCustomization] = useState<EmbedCustomization | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  
+
   // Page control state
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [foundUrls, setFoundUrls] = useState<FoundUrl[]>([]);
@@ -127,8 +127,8 @@ export default function Documentation() {
   };
 
   const toggleUrlSelection = (index: number) => {
-    setFoundUrls(prev => 
-      prev.map((url, i) => 
+    setFoundUrls(prev =>
+      prev.map((url, i) =>
         i === index ? { ...url, selected: !url.selected } : url
       )
     );
@@ -164,20 +164,20 @@ export default function Documentation() {
   }
 
   const embedUrl = `${window.location.origin}/embed?botId=${botId}`;
-  
+
   const selectedUrls = foundUrls.filter(u => u.selected);
   const hasSelectedUrls = selectedUrls.length > 0;
-  
+
   // Generate allowed pages array for the code - convert full URLs to paths
-  const allowedPagesArray = hasSelectedUrls 
+  const allowedPagesArray = hasSelectedUrls
     ? selectedUrls.map(u => {
-        try {
-          const urlObj = new URL(u.url);
-          return `"${urlObj.pathname}"`;
-        } catch {
-          return `"${u.url}"`;
-        }
-      }).join(',\n      ')
+      try {
+        const urlObj = new URL(u.url);
+        return `"${urlObj.pathname}"`;
+      } catch {
+        return `"${u.url}"`;
+      }
+    }).join(',\n      ')
     : '';
 
   const basicEmbedCode = `<!-- Basic Embed Code (Shows on All Pages) -->
@@ -231,13 +231,27 @@ export default function Documentation() {
   return (
     <div className="container mx-auto p-6 max-w-5xl">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" onClick={() => navigate('/')} className="p-2">
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Documentation</h1>
-          <p className="text-muted-foreground">Integration guide for {bot.name}</p>
+      <div className="border-b bg-card">
+        <div className="container mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/")}
+                className="gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
+              </Button>
+              <div className="h-6 w-px bg-border" />
+              <div className="flex items-center gap-3">
+                <div>
+                  <h1 className="text-2xl font-semibold">Integration Guide</h1>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -313,7 +327,7 @@ export default function Documentation() {
           {/* Installation Instructions */}
           <div className="space-y-4">
             <h4 className="font-semibold text-base">📋 Installation Instructions</h4>
-            
+
             <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-4 rounded-lg">
               <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
                 <Code2 className="h-4 w-4" />
@@ -412,7 +426,7 @@ export default function Documentation() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex gap-2">
               <Input
                 placeholder="Enter your website URL (e.g., https://example.com)"
@@ -420,8 +434,8 @@ export default function Documentation() {
                 onChange={(e) => setWebsiteUrl(e.target.value)}
                 className="flex-1"
               />
-              <Button 
-                onClick={searchUrls} 
+              <Button
+                onClick={searchUrls}
                 disabled={isSearching}
                 className="flex items-center gap-2"
               >
@@ -500,7 +514,7 @@ export default function Documentation() {
                         <h4 className="font-semibold text-sm">Your Custom Embed Code:</h4>
                       </div>
                       <CodeBlock code={restrictedEmbedCode} language="HTML" type="Custom Embed" />
-                      
+
                       <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-3 rounded-lg">
                         <p className="text-sm font-medium text-amber-900 dark:text-amber-100 mb-1">
                           💡 Important:
@@ -530,7 +544,7 @@ export default function Documentation() {
           <p className="text-sm text-muted-foreground">
             For advanced users: Manually configure page patterns using wildcards and path matching.
           </p>
-          
+
           <div className="space-y-4">
             <div>
               <h4 className="text-sm font-semibold mb-2">Example 1: Show on all product and blog pages</h4>
