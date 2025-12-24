@@ -63,7 +63,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
   // Function to convert text to speech and play it
   const playTextToSpeech = async (text: string) => {
-    if (!bot.isVideoBot || !bot.voiceEnabled) return;
+    if (!bot.isVideoBot) return;
     
     try {
       setIsSpeaking(true);
@@ -136,7 +136,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
 
-      // Convert answer to speech and play it
+      // Convert answer to speech and play it - MUST happen before setIsLoading(false)
       if (bot.isVideoBot) {
         await playTextToSpeech(answerText);
       }
@@ -330,7 +330,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
 
-      // For video bots, speak the answer
+      // For video bots, speak the answer - MUST happen before setIsLoading(false)
       if (bot.isVideoBot) {
         await playTextToSpeech(answerText);
       }
@@ -341,15 +341,13 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         description: err.message || "Something went wrong",
         variant: "destructive"
       });
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString() + Math.random(),
-          content: "I'm having trouble answering that. Please try again.",
-          sender: "bot",
-          timestamp: new Date(),
-        },
-      ]);
+      const errorMessage = {
+        id: Date.now().toString() + Math.random(),
+        content: "I'm having trouble answering that. Please try again.",
+        sender: "bot" as const,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -526,6 +524,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     (isAwaitingInput &&
       currentPausedFor?.type !== "branch" &&
       !currentPausedFor?.showConfirmationButtons);
+
+  // Show mic button for video bots in flow mode, or when voice is enabled
+  const shouldShowMicButton = bot.isVideoBot ? !flowFinished : (bot.voiceEnabled && canSendText);
 
   const videoBotAvatarUrl = bot.videoBotImageUrl || null;
 
@@ -924,7 +925,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       disabled={isLoading || !canSendText || isProcessing}
                       className="pr-12"
                     />
-                    {bot.voiceEnabled && canSendText && flowFinished && (
+                    {shouldShowMicButton && (
                       <Button
                         type="button"
                         size="icon"
