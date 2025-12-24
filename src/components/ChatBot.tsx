@@ -60,45 +60,90 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  
+  // TTS Queue management
+  const ttsQueueRef = useRef<string[]>([]);
+  const isProcessingTTSRef = useRef(false);
 
-  // Function to convert text to speech and play it
-  const playTextToSpeech = async (text: string) => {
-    if (!bot.isVideoBot) return;
-    
-    try {
-      setIsSpeaking(true);
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voiceId: bot.voiceId }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to generate speech");
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      if (audioRef.current) {
-        audioRef.current.src = audioUrl;
-        audioRef.current.onended = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-        audioRef.current.onerror = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-        await audioRef.current.play();
-      }
-    } catch (error) {
-      console.error("TTS error:", error);
-      setIsSpeaking(false);
+  // Process TTS queue - ensures messages are spoken in order without overlap
+  const processTTSQueue = async () => {
+    // If already processing or queue is empty, return
+    if (isProcessingTTSRef.current || ttsQueueRef.current.length === 0) {
+      return;
     }
+
+    isProcessingTTSRef.current = true;
+    setIsSpeaking(true);
+
+    while (ttsQueueRef.current.length > 0) {
+      const text = ttsQueueRef.current.shift();
+      if (!text) continue;
+
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text, voiceId: bot.voiceId }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to generate speech");
+        }
+
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        // Wait for audio to finish playing before processing next item
+        await new Promise<void>((resolve, reject) => {
+          if (audioRef.current) {
+            audioRef.current.src = audioUrl;
+            
+            audioRef.current.onended = () => {
+              URL.revokeObjectURL(audioUrl);
+              resolve();
+            };
+            
+            audioRef.current.onerror = () => {
+              URL.revokeObjectURL(audioUrl);
+              reject(new Error("Audio playback failed"));
+            };
+            
+            audioRef.current.play().catch(reject);
+          } else {
+            resolve();
+          }
+        });
+
+      } catch (error) {
+        console.error("TTS error:", error);
+        // Continue with next item even if one fails
+      }
+    }
+
+    isProcessingTTSRef.current = false;
+    setIsSpeaking(false);
+  };
+
+  // Add text to TTS queue and start processing
+  const queueTextToSpeech = (text: string) => {
+    if (!bot.isVideoBot || !text.trim()) return;
+    
+    ttsQueueRef.current.push(text);
+    processTTSQueue();
+  };
+
+  // Clear TTS queue (useful when user interrupts)
+  const clearTTSQueue = () => {
+    ttsQueueRef.current = [];
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    isProcessingTTSRef.current = false;
+    setIsSpeaking(false);
   };
 
   // Handle voice question for video bot in Q&A mode (auto-submit)
@@ -136,10 +181,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
 
-      // Convert answer to speech and play it - MUST happen before setIsLoading(false)
-      if (bot.isVideoBot) {
-        await playTextToSpeech(answerText);
-      }
+      // Queue answer for speech
+      queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
       toast({
@@ -195,6 +238,13 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     inputRef.current?.focus();
   }, []);
 
+  // Cleanup TTS queue on unmount
+  useEffect(() => {
+    return () => {
+      clearTTSQueue();
+    };
+  }, []);
+
   // Helper to add bot message
   const addBotMessage = (content: string, audioUrl?: string) => {
     const botMessage: Message = {
@@ -230,6 +280,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         if (data.sessionId) setSessionId(data.sessionId);
 
         const botMessages: Message[] = [];
+        const textsToSpeak: string[] = [];
+
         (data.messages || []).forEach((msg: any) => {
           if (msg.type === "redirect") {
             const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
@@ -262,9 +314,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             branchOptions: msg.options || [],
           });
 
-          // For video bots, speak the initial flow messages
+          // Collect texts to speak
           if (bot.isVideoBot && messageContent) {
-            playTextToSpeech(messageContent);
+            textsToSpeak.push(messageContent);
           }
         });
 
@@ -280,6 +332,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         }
 
         setMessages(botMessages);
+
+        // Queue all texts for speech in order
+        textsToSpeak.forEach(text => queueTextToSpeech(text));
+
       } catch (err) {
         console.error("Failed to start flow", err);
         toast({
@@ -330,10 +386,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
 
-      // For video bots, speak the answer - MUST happen before setIsLoading(false)
-      if (bot.isVideoBot) {
-        await playTextToSpeech(answerText);
-      }
+      // Queue answer for speech
+      queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
       toast({
@@ -399,6 +453,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       }
 
       const botMessages: Message[] = [];
+      const textsToSpeak: string[] = [];
+
       (data.messages || []).forEach((msg: any) => {
         if (msg.type === "redirect") {
           const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
@@ -431,9 +487,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           branchOptions: msg.options || [],
         });
 
-        // For video bots, speak the flow messages
+        // Collect texts to speak
         if (bot.isVideoBot && messageContent) {
-          playTextToSpeech(messageContent);
+          textsToSpeak.push(messageContent);
         }
       });
 
@@ -449,6 +505,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       }
 
       setMessages((prev) => [...prev, ...botMessages]);
+
+      // Queue all texts for speech in order
+      textsToSpeak.forEach(text => queueTextToSpeech(text));
+
     } catch (err: any) {
       console.error(err);
       toast({
@@ -512,6 +572,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     if (isListening) {
       toggleListening();
     }
+    // Clear any pending TTS when ending call
+    clearTTSQueue();
   };
 
   const handleBringBackAvatar = () => {
