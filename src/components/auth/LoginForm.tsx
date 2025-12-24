@@ -18,7 +18,6 @@ export const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // Get the page they were trying to access, or default to "/"
   const from = (location.state as any)?.from?.pathname || "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,15 +32,11 @@ export const LoginForm = () => {
           variant: "destructive",
         });
       } else {
-        // Save token to localStorage using auth utils
         setAuthToken(response.result.token!);
-
         toast({
           title: "Success",
           description: "Login successful!",
         });
-
-        // Redirect to the page they were trying to access, or home
         navigate(from, { replace: true });
       }
     } catch (err) {
@@ -65,15 +60,11 @@ export const LoginForm = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Google login failed");
 
-      // store JWT
       setAuthToken(data.result.token);
-
       toast({
         title: "Success",
         description: "Login successful!",
       });
-
-      // Redirect to the page they were trying to access, or home
       navigate(from, { replace: true });
     } catch (err) {
       console.error("Google login error:", err);
@@ -96,8 +87,9 @@ export const LoginForm = () => {
         <GoogleLogin
           onSuccess={handleGoogleSuccess}
           onError={handleGoogleError}
-          width="400"
+          width="100%"
           size="large"
+          theme="outline"
         />
       </div>
 
@@ -151,14 +143,17 @@ export const LoginForm = () => {
           </div>
         </div>
 
-        <Button type="submit" className="w-full">
+        <Button 
+          type="submit" 
+          className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600 text-white"
+        >
           Sign In
         </Button>
       </form>
 
       <div className="text-center text-sm">
         <span className="text-muted-foreground">Don't have an account? </span>
-        <Link to="/register" className="text-primary hover:underline">
+        <Link to="/register" className="text-purple-600 hover:text-purple-700 font-semibold hover:underline">
           Sign up
         </Link>
       </div>

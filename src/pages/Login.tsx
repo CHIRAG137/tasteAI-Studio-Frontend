@@ -5,7 +5,7 @@ const Login = () => {
   return (
     <AuthLayout 
       title="Welcome back" 
-      subtitle="Sign in to your account"
+      subtitle="Sign in to continue building amazing chatbots"
     >
       <LoginForm />
     </AuthLayout>

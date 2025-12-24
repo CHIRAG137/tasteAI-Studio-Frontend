@@ -5,7 +5,7 @@ const Register = () => {
   return (
     <AuthLayout 
       title="Create account" 
-      subtitle="Get started with your new account"
+      subtitle="Start building production-ready chatbots in minutes"
     >
       <RegisterForm />
     </AuthLayout>
