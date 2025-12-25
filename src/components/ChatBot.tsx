@@ -156,6 +156,86 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   const ttsQueueRef = useRef<string[]>([]);
   const isProcessingTTSRef = useRef(false);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [showTtsPrompt, setShowTtsPrompt] = useState(false);
+
+  // Process TTS queue using browser's Speech Synthesis API
+  const processTTSQueue = async () => {
+    if (isProcessingTTSRef.current || ttsQueueRef.current.length === 0) {
+      return;
+    }
+
+    if (!window.speechSynthesis) {
+      console.warn("Speech Synthesis not supported in this browser");
+      return;
+    }
+
+    // Check if TTS is enabled by user
+    if (!ttsEnabled) {
+      setShowTtsPrompt(true);
+      return;
+    }
+
+    isProcessingTTSRef.current = true;
+    setIsSpeaking(true);
+
+    while (ttsQueueRef.current.length > 0) {
+      const text = ttsQueueRef.current.shift();
+      if (!text) continue;
+
+      try {
+        // Use browser's Speech Synthesis API
+        await new Promise<void>((resolve, reject) => {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'en-US';
+          utterance.rate = 1.0; // Speed
+          utterance.pitch = 1.0; // Pitch
+          utterance.volume = 1.0; // Volume
+
+          utterance.onend = () => {
+            resolve();
+          };
+
+          utterance.onerror = (event) => {
+            console.error("Speech synthesis error:", event);
+            // If error is "not-allowed", it means user interaction is needed
+            if (event.error === 'not-allowed') {
+              setShowTtsPrompt(true);
+              setTtsEnabled(false);
+            }
+            resolve(); // Continue with next item instead of rejecting
+          };
+
+          speechSynthesisRef.current = utterance;
+          window.speechSynthesis.speak(utterance);
+        });
+
+      } catch (error) {
+        console.error("TTS error:", error);
+        // Continue with next item even if one fails
+      }
+    }
+
+    isProcessingTTSRef.current = false;
+    setIsSpeaking(false);
+  };
+
+  // Enable TTS with user interaction
+  const enableTTS = () => {
+    setTtsEnabled(true);
+    setShowTtsPrompt(false);
+    // Process any queued messages
+    if (ttsQueueRef.current.length > 0) {
+      processTTSQueue();
+    }
+  };
+
+  // Disable TTS
+  const disableTTS = () => {
+    setTtsEnabled(false);
+    setShowTtsPrompt(false);
+    clearTTSQueue();
+  };
 
   // Process TTS queue - ensures messages are spoken in order without overlap
   // const processTTSQueue = async () => {
@@ -219,62 +299,22 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   //   setIsSpeaking(false);
   // };
 
-  // Process TTS queue using browser's Speech Synthesis API
-  const processTTSQueue = async () => {
-    if (isProcessingTTSRef.current || ttsQueueRef.current.length === 0) {
-      return;
-    }
-
-    if (!window.speechSynthesis) {
-      console.warn("Speech Synthesis not supported in this browser");
-      return;
-    }
-
-    isProcessingTTSRef.current = true;
-    setIsSpeaking(true);
-
-    while (ttsQueueRef.current.length > 0) {
-      const text = ttsQueueRef.current.shift();
-      if (!text) continue;
-
-      try {
-        // Use browser's Speech Synthesis API
-        await new Promise<void>((resolve, reject) => {
-          const utterance = new SpeechSynthesisUtterance(text);
-          utterance.lang = 'en-US';
-          utterance.rate = 1.0; // Speed
-          utterance.pitch = 1.0; // Pitch
-          utterance.volume = 1.0; // Volume
-
-          utterance.onend = () => {
-            resolve();
-          };
-
-          utterance.onerror = (event) => {
-            console.error("Speech synthesis error:", event);
-            reject(event);
-          };
-
-          speechSynthesisRef.current = utterance;
-          window.speechSynthesis.speak(utterance);
-        });
-
-      } catch (error) {
-        console.error("TTS error:", error);
-        // Continue with next item even if one fails
-      }
-    }
-
-    isProcessingTTSRef.current = false;
-    setIsSpeaking(false);
-  };
-
   // Add text to TTS queue and start processing
   const queueTextToSpeech = (text: string) => {
     if (!bot.isVideoBot || !text.trim()) return;
 
     ttsQueueRef.current.push(text);
     processTTSQueue();
+  };
+
+  // Clear TTS queue
+  const clearTTSQueue = () => {
+    ttsQueueRef.current = [];
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    isProcessingTTSRef.current = false;
+    setIsSpeaking(false);
   };
 
   // const clearTTSQueue = () => {
@@ -286,16 +326,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   //   isProcessingTTSRef.current = false;
   //   setIsSpeaking(false);
   // };
-
-  // Clear TTS queue
-  const clearTTSQueue = () => {
-    ttsQueueRef.current = [];
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
-    isProcessingTTSRef.current = false;
-    setIsSpeaking(false);
-  };
 
   // Cleanup on unmount
   useEffect(() => {
@@ -875,6 +905,24 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     {flowFinished && (
                       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-none">
                         <div className="flex gap-3 pointer-events-auto">
+                          {/* TTS Toggle Button */}
+                          <Button
+                            onClick={ttsEnabled ? disableTTS : enableTTS}
+                            size="lg"
+                            className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${
+                              ttsEnabled
+                                ? "bg-blue-500 hover:bg-blue-600"
+                                : "bg-gray-400 hover:bg-gray-500"
+                            }`}
+                            title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
+                          >
+                            {ttsEnabled ? (
+                              <Volume2 className="h-6 w-6 text-white" />
+                            ) : (
+                              <VolumeX className="h-6 w-6 text-white" />
+                            )}
+                          </Button>
+
                           {/* Mute/Unmute Button */}
                           <Button
                             onClick={handleMicToggle}
@@ -918,6 +966,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                                 : isListening
                                   ? "Listening..."
                                   : "Microphone active"}
+                          {" • "}
+                          {ttsEnabled ? "Voice on" : "Voice off"}
                         </p>
                       </div>
                     )}
@@ -936,6 +986,24 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     {flowFinished && (
                       <>
                         <div className="flex gap-3 justify-center">
+                          {/* TTS Toggle Button */}
+                          <Button
+                            onClick={ttsEnabled ? disableTTS : enableTTS}
+                            size="lg"
+                            className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${
+                              ttsEnabled
+                                ? "bg-blue-500 hover:bg-blue-600"
+                                : "bg-gray-400 hover:bg-gray-500"
+                            }`}
+                            title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
+                          >
+                            {ttsEnabled ? (
+                              <Volume2 className="h-6 w-6 text-white" />
+                            ) : (
+                              <VolumeX className="h-6 w-6 text-white" />
+                            )}
+                          </Button>
+
                           <Button
                             onClick={handleMicToggle}
                             size="lg"
@@ -977,6 +1045,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                                   ? "Listening..."
                                   : "Click to speak"
                           }
+                          {" • "}
+                          {ttsEnabled ? "Voice on" : "Voice off"}
                         </p>
                       </>
                     )}
@@ -1095,6 +1165,24 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
               {/* Input Area for Video Bot */}
               <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+                {/* TTS Permission Prompt */}
+                {showTtsPrompt && bot.isVideoBot && (
+                  <Alert className="mb-2 bg-amber-50 border-amber-200">
+                    <Volume2 className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="flex items-center justify-between">
+                      <span className="text-amber-800">Enable voice responses from the bot?</span>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={enableTTS} className="bg-amber-600 hover:bg-amber-700">
+                          Enable
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={disableTTS}>
+                          No thanks
+                        </Button>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 {/* REMOVED: Voice Waveform - replaced with simple status message */}
                 {flowFinished && isListening && (
                   <Alert className="mb-2 bg-blue-50 border-blue-200">
