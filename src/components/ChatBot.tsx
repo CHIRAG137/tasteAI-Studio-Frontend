@@ -12,10 +12,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Send, Bot, User, X, Mic, MicOff, Loader2, Video, Phone, PhoneOff, Volume2, VolumeX } from "lucide-react";
-import { useSpeechToText } from "@/hooks/useSpeechToText";
+// TODO: import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { VoiceWaveform } from "@/components/VoiceWaveform";
+// TODO: import { VoiceWaveform } from "@/components/VoiceWaveform";
 
 interface Message {
   id: string;
@@ -59,16 +59,176 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  
+  // const audioRef = useRef<HTMLAudioElement>(null);
+
   // TTS Queue management
+  // BROWSER SPEECH RECOGNITION (Speech-to-Text)
+  const [isListening, setIsListening] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  // Initialize browser's Speech Recognition API
+  useEffect(() => {
+    // Check if browser supports Speech Recognition
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      console.warn("Speech Recognition not supported in this browser");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false; // Stop after one result
+    recognition.interimResults = false;
+    recognition.lang = 'en-US'; // Set language
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setIsProcessing(false);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setIsProcessing(true);
+
+      // Handle the recognized speech
+      if (bot.isVideoBot && flowFinished) {
+        // Auto-submit for video bot in Q&A mode
+        handleVoiceQuestion(transcript);
+      } else {
+        // Just populate input field
+        setInputMessage(prev => {
+          const newText = prev ? prev + " " + transcript : transcript;
+          return newText.trim();
+        });
+      }
+
+      setIsProcessing(false);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error:", event.error);
+      setIsListening(false);
+      setIsProcessing(false);
+
+      if (event.error !== 'no-speech') {
+        toast({
+          title: "Speech Error",
+          description: `Error: ${event.error}`,
+          variant: "destructive"
+        });
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      setIsProcessing(false);
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, [bot.isVideoBot, flowFinished]);
+
+  // Toggle speech recognition
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      toast({
+        title: "Not Supported",
+        description: "Speech recognition is not supported in your browser",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      recognitionRef.current.start();
+    }
+  };
+
+  // ========================================
+  // BROWSER SPEECH SYNTHESIS (Text-to-Speech)
+  // ========================================
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   const ttsQueueRef = useRef<string[]>([]);
   const isProcessingTTSRef = useRef(false);
 
   // Process TTS queue - ensures messages are spoken in order without overlap
+  // const processTTSQueue = async () => {
+  //   // If already processing or queue is empty, return
+  //   if (isProcessingTTSRef.current || ttsQueueRef.current.length === 0) {
+  //     return;
+  //   }
+
+  //   isProcessingTTSRef.current = true;
+  //   setIsSpeaking(true);
+
+  //   while (ttsQueueRef.current.length > 0) {
+  //     const text = ttsQueueRef.current.shift();
+  //     if (!text) continue;
+
+  //     try {
+  //       const response = await fetch(
+  //         `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
+  //         {
+  //           method: "POST",
+  //           headers: { "Content-Type": "application/json" },
+  //           body: JSON.stringify({ text, voiceId: bot.voiceId }),
+  //         }
+  //       );
+
+  //       if (!response.ok) {
+  //         throw new Error("Failed to generate speech");
+  //       }
+
+  //       const audioBlob = await response.blob();
+  //       const audioUrl = URL.createObjectURL(audioBlob);
+
+  //       // Wait for audio to finish playing before processing next item
+  //       await new Promise<void>((resolve, reject) => {
+  //         if (audioRef.current) {
+  //           audioRef.current.src = audioUrl;
+
+  //           audioRef.current.onended = () => {
+  //             URL.revokeObjectURL(audioUrl);
+  //             resolve();
+  //           };
+
+  //           audioRef.current.onerror = () => {
+  //             URL.revokeObjectURL(audioUrl);
+  //             reject(new Error("Audio playback failed"));
+  //           };
+
+  //           audioRef.current.play().catch(reject);
+  //         } else {
+  //           resolve();
+  //         }
+  //       });
+
+  //     } catch (error) {
+  //       console.error("TTS error:", error);
+  //       // Continue with next item even if one fails
+  //     }
+  //   }
+
+  //   isProcessingTTSRef.current = false;
+  //   setIsSpeaking(false);
+  // };
+
+  // Process TTS queue using browser's Speech Synthesis API
   const processTTSQueue = async () => {
-    // If already processing or queue is empty, return
     if (isProcessingTTSRef.current || ttsQueueRef.current.length === 0) {
+      return;
+    }
+
+    if (!window.speechSynthesis) {
+      console.warn("Speech Synthesis not supported in this browser");
       return;
     }
 
@@ -80,41 +240,25 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       if (!text) continue;
 
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text, voiceId: bot.voiceId }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to generate speech");
-        }
-
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-
-        // Wait for audio to finish playing before processing next item
+        // Use browser's Speech Synthesis API
         await new Promise<void>((resolve, reject) => {
-          if (audioRef.current) {
-            audioRef.current.src = audioUrl;
-            
-            audioRef.current.onended = () => {
-              URL.revokeObjectURL(audioUrl);
-              resolve();
-            };
-            
-            audioRef.current.onerror = () => {
-              URL.revokeObjectURL(audioUrl);
-              reject(new Error("Audio playback failed"));
-            };
-            
-            audioRef.current.play().catch(reject);
-          } else {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'en-US';
+          utterance.rate = 1.0; // Speed
+          utterance.pitch = 1.0; // Pitch
+          utterance.volume = 1.0; // Volume
+
+          utterance.onend = () => {
             resolve();
-          }
+          };
+
+          utterance.onerror = (event) => {
+            console.error("Speech synthesis error:", event);
+            reject(event);
+          };
+
+          speechSynthesisRef.current = utterance;
+          window.speechSynthesis.speak(utterance);
         });
 
       } catch (error) {
@@ -130,21 +274,40 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   // Add text to TTS queue and start processing
   const queueTextToSpeech = (text: string) => {
     if (!bot.isVideoBot || !text.trim()) return;
-    
+
     ttsQueueRef.current.push(text);
     processTTSQueue();
   };
 
-  // Clear TTS queue (useful when user interrupts)
+  // const clearTTSQueue = () => {
+  //   ttsQueueRef.current = [];
+  //   if (audioRef.current) {
+  //     audioRef.current.pause();
+  //     audioRef.current.currentTime = 0;
+  //   }
+  //   isProcessingTTSRef.current = false;
+  //   setIsSpeaking(false);
+  // };
+
+  // Clear TTS queue
   const clearTTSQueue = () => {
     ttsQueueRef.current = [];
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
     }
     isProcessingTTSRef.current = false;
     setIsSpeaking(false);
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      clearTTSQueue();
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
 
   // Handle voice question for video bot in Q&A mode (auto-submit)
   const handleVoiceQuestion = async (question: string) => {
@@ -181,7 +344,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
 
-      // Queue answer for speech
+      // Queue answer for speech (using browser TTS)
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
@@ -196,39 +359,39 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     }
   };
 
-  const {
-    isListening,
-    isProcessing,
-    showSilenceWarning,
-    silenceCountdown,
-    audioLevels,
-    toggleListening
-  } = useSpeechToText({
-    onResult: (text) => {
-      // Only auto-submit voice input when in Q&A mode (flowFinished) for video bots
-      if (bot.isVideoBot && flowFinished) {
-        handleVoiceQuestion(text);
-      } else {
-        // Otherwise, just populate the input field
-        setInputMessage(prev => {
-          const newText = prev ? prev + " " + text : text;
-          return newText.trim();
-        });
-      }
-    },
-    onError: (err) => {
-      if (!err.includes('speak into the microphone')) {
-        toast({
-          title: "Speech Error",
-          description: err,
-          variant: "destructive"
-        });
-      }
-    },
-    language: "en-US",
-    silenceTimeout: 10,
-    stopTimeout: 5,
-  });
+  // const {
+  //   isListening,
+  //   isProcessing,
+  //   showSilenceWarning,
+  //   silenceCountdown,
+  //   audioLevels,
+  //   toggleListening
+  // } = useSpeechToText({
+  //   onResult: (text) => {
+  //     // Only auto-submit voice input when in Q&A mode (flowFinished) for video bots
+  //     if (bot.isVideoBot && flowFinished) {
+  //       handleVoiceQuestion(text);
+  //     } else {
+  //       // Otherwise, just populate the input field
+  //       setInputMessage(prev => {
+  //         const newText = prev ? prev + " " + text : text;
+  //         return newText.trim();
+  //       });
+  //     }
+  //   },
+  //   onError: (err) => {
+  //     if (!err.includes('speak into the microphone')) {
+  //       toast({
+  //         title: "Speech Error",
+  //         description: err,
+  //         variant: "destructive"
+  //       });
+  //     }
+  //   },
+  //   language: "en-US",
+  //   silenceTimeout: 10,
+  //   stopTimeout: 5,
+  // });
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
@@ -239,11 +402,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   }, []);
 
   // Cleanup TTS queue on unmount
-  useEffect(() => {
-    return () => {
-      clearTTSQueue();
-    };
-  }, []);
+  // useEffect(() => {
+  //   return () => {
+  //     clearTTSQueue();
+  //   };
+  // }, []);
 
   // Helper to add bot message
   const addBotMessage = (content: string, audioUrl?: string) => {
@@ -257,12 +420,12 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     setMessages((prev) => [...prev, botMessage]);
 
     // Play audio if available
-    if (audioUrl && audioRef.current) {
-      audioRef.current.src = audioUrl;
-      audioRef.current.play().catch(err => {
-        console.error('Error playing audio:', err);
-      });
-    }
+    // if (audioUrl && audioRef.current) {
+    //   audioRef.current.src = audioUrl;
+    //   audioRef.current.play().catch(err => {
+    //     console.error('Error playing audio:', err);
+    //   });
+    // }
 
     return botMessage;
   };
@@ -314,7 +477,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             branchOptions: msg.options || [],
           });
 
-          // Collect texts to speak
+          // Collect texts to speak (using browser TTS)
           if (bot.isVideoBot && messageContent) {
             textsToSpeak.push(messageContent);
           }
@@ -333,7 +496,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
         setMessages(botMessages);
 
-        // Queue all texts for speech in order
+        // Queue all texts for speech in order (using browser TTS)
         textsToSpeak.forEach(text => queueTextToSpeech(text));
 
       } catch (err) {
@@ -386,7 +549,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
 
-      // Queue answer for speech
+      // Queue answer for speech (using browser TTS)
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
@@ -487,7 +650,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           branchOptions: msg.options || [],
         });
 
-        // Collect texts to speak
+        // Collect texts to speak (using browser TTS)
         if (bot.isVideoBot && messageContent) {
           textsToSpeak.push(messageContent);
         }
@@ -506,7 +669,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
       setMessages((prev) => [...prev, ...botMessages]);
 
-      // Queue all texts for speech in order
+      // Queue all texts for speech in order (using browser TTS)
       textsToSpeak.forEach(text => queueTextToSpeech(text));
 
     } catch (err: any) {
@@ -608,8 +771,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   <DialogTitle className="text-xl text-white">{bot.name}</DialogTitle>
                   <div className="flex gap-1.5 flex-wrap">
                     {/* Voice Status Badge */}
-                    <Badge 
-                      variant="secondary" 
+                    <Badge
+                      variant="secondary"
                       className={`text-xs ${bot.voiceEnabled ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}
                     >
                       {bot.voiceEnabled ? (
@@ -626,8 +789,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     </Badge>
 
                     {/* Bot Type Badge */}
-                    <Badge 
-                      variant="secondary" 
+                    <Badge
+                      variant="secondary"
                       className={`text-xs ${bot.isVideoBot ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}
                     >
                       {bot.isVideoBot ? (
@@ -934,14 +1097,12 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
               {/* Input Area for Video Bot */}
               <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
-                {/* Voice Waveform (only in Q&A mode) */}
+                {/* REMOVED: Voice Waveform - replaced with simple status message */}
                 {flowFinished && isListening && (
-                  <VoiceWaveform
-                    isListening={isListening}
-                    audioLevels={audioLevels}
-                    showSilenceWarning={showSilenceWarning}
-                    silenceCountdown={silenceCountdown}
-                  />
+                  <Alert className="mb-2 bg-blue-50 border-blue-200">
+                    <Mic className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">Listening... Speak now</AlertDescription>
+                  </Alert>
                 )}
 
                 {/* Processing indicator */}
@@ -1132,13 +1293,13 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
             {/* Input Area - For non-video bots */}
             <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
-              {/* Voice Waveform */}
-              <VoiceWaveform
-                isListening={isListening}
-                audioLevels={audioLevels}
-                showSilenceWarning={showSilenceWarning}
-                silenceCountdown={silenceCountdown}
-              />
+              {/* REMOVED: Voice Waveform - replaced with simple status message */}
+              {isListening && (
+                <Alert className="mb-2 bg-blue-50 border-blue-200">
+                  <Mic className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800">Listening... Speak now</AlertDescription>
+                </Alert>
+              )}
 
               {/* Processing indicator */}
               {isProcessing && (
@@ -1211,7 +1372,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         )}
 
         {/* Hidden audio element for playing TTS */}
-        <audio ref={audioRef} className="hidden" />
+        {/* <audio ref={audioRef} className="hidden" /> */}
       </DialogContent>
     </Dialog>
   );
