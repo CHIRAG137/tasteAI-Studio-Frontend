@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Bot, User, Send, Mic, MicOff, Video, Loader2, X, PhoneOff, Volume2, VolumeX } from "lucide-react";
+import { Bot, User, Send, Mic, MicOff, Video, Loader2, PhoneOff, Volume2, VolumeX } from "lucide-react";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
 import { VoiceWaveform } from "@/components/VoiceWaveform";
@@ -41,45 +41,90 @@ export const PublicBotChatPage = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  
+  // TTS Queue management
+  const ttsQueueRef = useRef<string[]>([]);
+  const isProcessingTTSRef = useRef(false);
 
-  // Function to convert text to speech and play it
-  const playTextToSpeech = async (text: string) => {
-    if (!bot?.is_video_bot || !bot?.is_voice_enabled) return;
-
-    try {
-      setIsSpeaking(true);
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voiceId: bot.voice_id }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to generate speech");
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      if (audioRef.current) {
-        audioRef.current.src = audioUrl;
-        audioRef.current.onended = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-        audioRef.current.onerror = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-        await audioRef.current.play();
-      }
-    } catch (error) {
-      console.error("TTS error:", error);
-      setIsSpeaking(false);
+  // Process TTS queue - ensures messages are spoken in order without overlap
+  const processTTSQueue = async () => {
+    // If already processing or queue is empty, return
+    if (isProcessingTTSRef.current || ttsQueueRef.current.length === 0) {
+      return;
     }
+
+    isProcessingTTSRef.current = true;
+    setIsSpeaking(true);
+
+    while (ttsQueueRef.current.length > 0) {
+      const text = ttsQueueRef.current.shift();
+      if (!text) continue;
+
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text, voiceId: bot.voice_id }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to generate speech");
+        }
+
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        // Wait for audio to finish playing before processing next item
+        await new Promise<void>((resolve, reject) => {
+          if (audioRef.current) {
+            audioRef.current.src = audioUrl;
+            
+            audioRef.current.onended = () => {
+              URL.revokeObjectURL(audioUrl);
+              resolve();
+            };
+            
+            audioRef.current.onerror = () => {
+              URL.revokeObjectURL(audioUrl);
+              reject(new Error("Audio playback failed"));
+            };
+            
+            audioRef.current.play().catch(reject);
+          } else {
+            resolve();
+          }
+        });
+
+      } catch (error) {
+        console.error("TTS error:", error);
+        // Continue with next item even if one fails
+      }
+    }
+
+    isProcessingTTSRef.current = false;
+    setIsSpeaking(false);
+  };
+
+  // Add text to TTS queue and start processing
+  const queueTextToSpeech = (text: string) => {
+    if (!bot?.is_video_bot || !text.trim()) return;
+    
+    ttsQueueRef.current.push(text);
+    processTTSQueue();
+  };
+
+  // Clear TTS queue (useful when user interrupts)
+  const clearTTSQueue = () => {
+    ttsQueueRef.current = [];
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    isProcessingTTSRef.current = false;
+    setIsSpeaking(false);
   };
 
   // Handle voice question for video bot in Q&A mode (auto-submit)
@@ -117,10 +162,8 @@ export const PublicBotChatPage = () => {
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
 
-      // Convert answer to speech and play it
-      if (bot.is_video_bot) {
-        await playTextToSpeech(answerText);
-      }
+      // Queue answer for speech
+      queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
       toast({
@@ -172,6 +215,13 @@ export const PublicBotChatPage = () => {
 
   useEffect(scrollToBottom, [messages]);
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // Cleanup TTS queue on unmount
+  useEffect(() => {
+    return () => {
+      clearTTSQueue();
+    };
+  }, []);
 
   // Helper to add bot message
   const addBotMessage = (content: string, audioUrl?: string) => {
@@ -231,6 +281,7 @@ export const PublicBotChatPage = () => {
         if (data.sessionId) setSessionId(data.sessionId);
 
         const botMessages: Message[] = [];
+        const textsToSpeak: string[] = [];
 
         (data.messages || []).forEach((msg: any) => {
           if (msg.type === "redirect") {
@@ -264,9 +315,9 @@ export const PublicBotChatPage = () => {
             branchOptions: msg.options || [],
           });
 
-          // For video bots, speak the initial flow messages
+          // Collect texts to speak
           if (bot.is_video_bot && messageContent) {
-            playTextToSpeech(messageContent);
+            textsToSpeak.push(messageContent);
           }
         });
 
@@ -282,6 +333,9 @@ export const PublicBotChatPage = () => {
         }
 
         setMessages(botMessages);
+
+        // Queue all texts for speech in order
+        textsToSpeak.forEach(text => queueTextToSpeech(text));
       } catch (err) {
         console.error("Failed to start flow", err);
         toast({
@@ -332,10 +386,8 @@ export const PublicBotChatPage = () => {
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
 
-      // For video bots, speak the answer
-      if (bot.is_video_bot) {
-        await playTextToSpeech(answerText);
-      }
+      // Queue answer for speech
+      queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
       toast({
@@ -403,6 +455,8 @@ export const PublicBotChatPage = () => {
       }
 
       const botMessages: Message[] = [];
+      const textsToSpeak: string[] = [];
+
       (data.messages || []).forEach((msg: any) => {
         if (msg.type === "redirect") {
           const url = msg.content?.replace("Redirecting to: ", "") || msg.content;
@@ -435,9 +489,9 @@ export const PublicBotChatPage = () => {
           branchOptions: msg.options || [],
         });
 
-        // For video bots, speak the flow messages
+        // Collect texts to speak
         if (bot.is_video_bot && messageContent) {
-          playTextToSpeech(messageContent);
+          textsToSpeak.push(messageContent);
         }
       });
 
@@ -453,6 +507,9 @@ export const PublicBotChatPage = () => {
       }
 
       setMessages((prev) => [...prev, ...botMessages]);
+
+      // Queue all texts for speech in order
+      textsToSpeak.forEach(text => queueTextToSpeech(text));
     } catch (err: any) {
       console.error(err);
       toast({
@@ -516,6 +573,8 @@ export const PublicBotChatPage = () => {
     if (isListening) {
       toggleListening();
     }
+    // Clear any pending TTS when ending call
+    clearTTSQueue();
   };
 
   const handleBringBackAvatar = () => {
@@ -526,6 +585,9 @@ export const PublicBotChatPage = () => {
   const canSendText = flowFinished || (isAwaitingInput &&
     currentPausedFor?.type !== "branch" &&
     !currentPausedFor?.showConfirmationButtons);
+
+  // Show mic button for video bots in flow mode, or when voice is enabled
+  const shouldShowMicButton = bot?.is_video_bot ? true : (bot?.is_voice_enabled && canSendText);
 
   const videoBotAvatarUrl = bot?.video_bot_image_url || null;
 
@@ -879,8 +941,8 @@ export const PublicBotChatPage = () => {
 
               {/* Input Area for Video Bot */}
               <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
-                {/* Voice Waveform (only in Q&A mode) */}
-                {flowFinished && isListening && (
+                {/* Voice Waveform (only show when listening and not in Q&A mode with video bot, or always for non-video) */}
+                {isListening && (!bot.is_video_bot || !flowFinished) && (
                   <VoiceWaveform
                     isListening={isListening}
                     audioLevels={audioLevels}
@@ -932,7 +994,7 @@ export const PublicBotChatPage = () => {
                       disabled={isLoading || !canSendText || isProcessing}
                       className="pr-12"
                     />
-                    {bot.is_voice_enabled && canSendText && flowFinished && (
+                    {shouldShowMicButton && canSendText && (
                       <Button
                         type="button"
                         size="icon"
