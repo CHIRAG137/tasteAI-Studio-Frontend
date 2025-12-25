@@ -250,7 +250,7 @@ export default function EmbedChat() {
   // Function to convert text to speech and play it
   // const playTextToSpeech = async (text: string) => {
   //   if (!botData?.is_video_bot || !botData?.is_voice_enabled) return;
-    
+
   //   try {
   //     setIsSpeaking(true);
   //     const response = await fetch(
@@ -923,7 +923,7 @@ export default function EmbedChat() {
     if (customization?.useChatCustomCSS) return {};
     return {
       backgroundColor: customization?.userMessageColor || undefined,
-      color: '#ffffff',
+      color: "#000000",
       borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : '8px'
     };
   };
@@ -956,9 +956,8 @@ export default function EmbedChat() {
 
   return (
     <div
-      className={`flex flex-col h-full border border-border/20 transition-all duration-200 ${
-        customization?.useChatCustomCSS ? 'embed-chat-container' : ''
-      }`}
+      className={`flex flex-col h-full border border-border/20 transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-chat-container' : ''
+        }`}
       style={getContainerStyle()}
     >
       {/* Fixed Header Section */}
@@ -990,11 +989,10 @@ export default function EmbedChat() {
                       <Button
                         onClick={ttsEnabled ? disableTTS : enableTTS}
                         size="sm"
-                        className={`h-10 w-10 rounded-full shadow-lg transition-all ${
-                          ttsEnabled
+                        className={`h-10 w-10 rounded-full shadow-lg transition-all ${ttsEnabled
                             ? "bg-blue-500 hover:bg-blue-600"
                             : "bg-gray-400 hover:bg-gray-500"
-                        }`}
+                          }`}
                         title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
                       >
                         {ttsEnabled ? (
@@ -1042,7 +1040,7 @@ export default function EmbedChat() {
               <div className="w-full h-48 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex flex-col items-center justify-center p-4">
                 <Video className="h-12 w-12 mb-2 text-purple-400" />
                 <p className="text-sm text-gray-600 dark:text-gray-400 text-center">Video Bot</p>
-                
+
                 {/* Call Control Buttons for no avatar (only in Q&A mode) */}
                 {flowFinished && (
                   <div className="flex flex-col items-center gap-1 mt-3">
@@ -1051,11 +1049,10 @@ export default function EmbedChat() {
                       <Button
                         onClick={ttsEnabled ? disableTTS : enableTTS}
                         size="sm"
-                        className={`h-10 w-10 rounded-full shadow-lg transition-all ${
-                          ttsEnabled
+                        className={`h-10 w-10 rounded-full shadow-lg transition-all ${ttsEnabled
                             ? "bg-blue-500 hover:bg-blue-600"
                             : "bg-gray-400 hover:bg-gray-500"
-                        }`}
+                          }`}
                         title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
                       >
                         {ttsEnabled ? (
@@ -1119,56 +1116,74 @@ export default function EmbedChat() {
         )}
 
         {/* Chat Header */}
+        {/* Chat Header */}
         <div
-          className={`flex items-center gap-3 p-4 border-b transition-all duration-200 ${
-            customization?.useChatCustomCSS ? 'embed-chat-header' : ''
-          }`}
+          className={`p-4 border-b transition-all duration-200 ${customization?.useChatCustomCSS ? "embed-chat-header" : ""
+            }`}
           style={getHeaderStyle()}
         >
-          <div
-            className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
-              customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
-            }`}
-            style={getBotIconStyle()}
-          >
-            <Bot
-              className="h-4 w-4 transition-colors duration-200"
-              style={customization?.useChatCustomCSS ? {} : { color: customization?.primaryColor || undefined }}
-            />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-sm transition-all duration-200">
-              {customization?.headerTitle || botData?.name || "Chat Assistant"}
-            </h3>
-            <p className="text-xs opacity-70 transition-all duration-200">
-              {customization?.headerSubtitle || "Online"}
-            </p>
-          </div>
-          <div className="flex gap-1.5 flex-wrap">
-            {botData?.is_voice_enabled && (
-              <Badge variant="secondary" className="text-xs">
-                <Volume2 className="h-3 w-3 mr-1" />
-                Voice
-              </Badge>
-            )}
-            {botData?.is_video_bot && (
-              <Badge variant="secondary" className="text-xs">
-                <Video className="h-3 w-3 mr-1" />
-                Video
-              </Badge>
-            )}
-            {flowFinished && (
-              <Badge
-                variant="secondary"
-                className="text-xs"
-                style={{
-                  backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
-                  color: customization?.primaryColor || undefined
-                }}
-              >
-                Q&A Mode
-              </Badge>
-            )}
+          <div className="flex items-start gap-4">
+            {/* Left: Bot Icon */}
+            <div
+              className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${customization?.useChatCustomCSS ? "embed-bot-icon" : ""
+                }`}
+              style={getBotIconStyle()}
+            >
+              <Bot
+                className="h-5 w-5"
+                style={
+                  customization?.useChatCustomCSS
+                    ? {}
+                    : { color: customization?.primaryColor || undefined }
+                }
+              />
+            </div>
+
+            {/* Right: Name + Tags */}
+            <div className="flex-1 min-w-0">
+              {/* Bot Name */}
+              <h3 className="text-sm font-semibold leading-tight truncate">
+                {customization?.headerTitle || botData?.name || "Chat Assistant"}
+              </h3>
+
+              {/* Subtitle (optional) */}
+              {customization?.headerSubtitle && (
+                <p className="text-xs opacity-70 mt-0.5 truncate">
+                  {customization.headerSubtitle}
+                </p>
+              )}
+
+              {/* Tags */}
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {botData?.is_voice_enabled && (
+                  <Badge variant="secondary" className="text-[11px] px-2 py-0.5">
+                    <Volume2 className="h-3 w-3 mr-1" />
+                    Voice
+                  </Badge>
+                )}
+
+                {botData?.is_video_bot && (
+                  <Badge variant="secondary" className="text-[11px] px-2 py-0.5">
+                    <Video className="h-3 w-3 mr-1" />
+                    Video
+                  </Badge>
+                )}
+
+                {flowFinished && (
+                  <Badge
+                    className="text-[11px] px-2 py-0.5"
+                    style={{
+                      backgroundColor: customization?.primaryColor
+                        ? `${customization.primaryColor}20`
+                        : undefined,
+                      color: customization?.primaryColor || undefined,
+                    }}
+                  >
+                    Q&A Mode
+                  </Badge>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1185,9 +1200,8 @@ export default function EmbedChat() {
             <div key={msg.id} className={`flex gap-3 ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
               {msg.from === "bot" && (
                 <div
-                  className={`flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200 ${
-                    customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
-                  }`}
+                  className={`flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
+                    }`}
                   style={getBotIconStyle()}
                 >
                   <Bot
@@ -1200,11 +1214,10 @@ export default function EmbedChat() {
                 {msg.text && (
                   <div className={`max-w-[80%] ${msg.from === "user" ? "ml-auto" : ""}`}>
                     <div
-                      className={`p-3 transition-all duration-200 ${
-                        customization?.useChatCustomCSS 
+                      className={`p-3 transition-all duration-200 ${customization?.useChatCustomCSS
                           ? (msg.from === "user" ? 'embed-user-message' : 'embed-bot-message')
                           : ''
-                      }`}
+                        }`}
                       style={msg.from === "user" ? getUserMessageStyle() : getBotMessageStyle()}
                     >
                       <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
@@ -1258,9 +1271,8 @@ export default function EmbedChat() {
 
               {msg.from === "user" && (
                 <div
-                  className={`flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200 ${
-                    customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
-                  }`}
+                  className={`flex items-center justify-center w-6 h-6 rounded-full mt-auto transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
+                    }`}
                   style={getBotIconStyle()}
                 >
                   <User
@@ -1275,9 +1287,8 @@ export default function EmbedChat() {
           {isLoading && (
             <div className="flex gap-3 justify-start">
               <div
-                className={`flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200 ${
-                  customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
-                }`}
+                className={`flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
+                  }`}
                 style={getBotIconStyle()}
               >
                 <Bot
@@ -1286,18 +1297,16 @@ export default function EmbedChat() {
                 />
               </div>
               <div
-                className={`p-3 transition-all duration-200 ${
-                  customization?.useChatCustomCSS ? 'embed-bot-message' : ''
-                }`}
+                className={`p-3 transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-bot-message' : ''
+                  }`}
                 style={getBotMessageStyle()}
               >
                 <div className="flex space-x-1">
                   {[0, 1, 2].map((i) => (
                     <div
                       key={i}
-                      className={`w-2 h-2 opacity-50 rounded-full animate-bounce ${
-                        customization?.useChatCustomCSS ? 'embed-loading-dot' : ''
-                      }`}
+                      className={`w-2 h-2 opacity-50 rounded-full animate-bounce ${customization?.useChatCustomCSS ? 'embed-loading-dot' : ''
+                        }`}
                       style={{
                         animationDelay: `${i * 0.1}s`,
                         ...(customization?.useChatCustomCSS ? {} : { backgroundColor: customization?.textColor || undefined })
@@ -1314,9 +1323,8 @@ export default function EmbedChat() {
 
       {/* Fixed Input Area */}
       <div
-        className={`flex-shrink-0 p-4 border-t transition-all duration-200 ${
-          customization?.useChatCustomCSS ? 'embed-chat-header' : ''
-        }`}
+        className={`flex-shrink-0 p-4 border-t transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-chat-header' : ''
+          }`}
         style={getHeaderStyle()}
       >
         {/* TTS Permission Prompt */}
@@ -1373,18 +1381,17 @@ export default function EmbedChat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder={
-                isListening 
-                  ? "Listening... Speak now" 
-                  : isProcessing 
-                    ? "Processing speech..." 
+                isListening
+                  ? "Listening... Speak now"
+                  : isProcessing
+                    ? "Processing speech..."
                     : flowFinished
                       ? "Ask me anything..."
                       : (customization?.placeholder || "Type your message...")
               }
               disabled={isLoading || !canSendText || isProcessing}
-              className={`flex-1 transition-all duration-200 ${
-                botData?.is_voice_enabled && canSendText && flowFinished && !botData?.is_video_bot ? 'pr-10' : ''
-              } ${customization?.useChatCustomCSS ? 'embed-input' : ''}`}
+              className={`flex-1 transition-all duration-200 ${botData?.is_voice_enabled && canSendText && flowFinished && !botData?.is_video_bot ? 'pr-10' : ''
+                } ${customization?.useChatCustomCSS ? 'embed-input' : ''}`}
               style={getInputStyle()}
             />
             {botData?.is_voice_enabled && canSendText && flowFinished && !botData?.is_video_bot && (
@@ -1393,13 +1400,12 @@ export default function EmbedChat() {
                 size="icon"
                 onClick={handleVoiceInput}
                 disabled={isProcessing}
-                className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${
-                  isListening 
-                    ? "text-red-500 animate-pulse" 
-                    : isProcessing 
-                      ? "text-gray-400" 
+                className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${isListening
+                    ? "text-red-500 animate-pulse"
+                    : isProcessing
+                      ? "text-gray-400"
                       : "text-muted-foreground hover:text-primary"
-                }`}
+                  }`}
               >
                 {isProcessing ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1415,9 +1421,8 @@ export default function EmbedChat() {
             onClick={() => handleSendMessage()}
             disabled={!input.trim() || isLoading || !canSendText || isListening || isProcessing}
             size="icon"
-            className={`shrink-0 transition-all duration-200 ${
-              customization?.useChatCustomCSS ? 'embed-send-button' : ''
-            }`}
+            className={`shrink-0 transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-send-button' : ''
+              }`}
             style={getSendButtonStyle()}
           >
             <Send className="h-4 w-4" />
