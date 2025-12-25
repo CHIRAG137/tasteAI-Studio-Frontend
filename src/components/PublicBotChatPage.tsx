@@ -54,13 +54,14 @@ export const PublicBotChatPage = () => {
     }
 
     isProcessingTTSRef.current = true;
-    setIsSpeaking(true);
 
     while (ttsQueueRef.current.length > 0) {
       const text = ttsQueueRef.current.shift();
-      if (!text) continue;
+      if (!text || !text.trim()) continue;
 
       try {
+        setIsSpeaking(true);
+        
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
           {
@@ -82,15 +83,22 @@ export const PublicBotChatPage = () => {
           if (audioRef.current) {
             audioRef.current.src = audioUrl;
             
-            audioRef.current.onended = () => {
+            const handleEnded = () => {
               URL.revokeObjectURL(audioUrl);
+              audioRef.current?.removeEventListener('ended', handleEnded);
+              audioRef.current?.removeEventListener('error', handleError);
               resolve();
             };
             
-            audioRef.current.onerror = () => {
+            const handleError = () => {
               URL.revokeObjectURL(audioUrl);
+              audioRef.current?.removeEventListener('ended', handleEnded);
+              audioRef.current?.removeEventListener('error', handleError);
               reject(new Error("Audio playback failed"));
             };
+            
+            audioRef.current.addEventListener('ended', handleEnded);
+            audioRef.current.addEventListener('error', handleError);
             
             audioRef.current.play().catch(reject);
           } else {
@@ -104,8 +112,8 @@ export const PublicBotChatPage = () => {
       }
     }
 
-    isProcessingTTSRef.current = false;
     setIsSpeaking(false);
+    isProcessingTTSRef.current = false;
   };
 
   // Add text to TTS queue and start processing
@@ -113,7 +121,11 @@ export const PublicBotChatPage = () => {
     if (!bot?.is_video_bot || !text.trim()) return;
     
     ttsQueueRef.current.push(text);
-    processTTSQueue();
+    
+    // Use setTimeout to ensure state updates have completed
+    setTimeout(() => {
+      processTTSQueue();
+    }, 100);
   };
 
   // Clear TTS queue (useful when user interrupts)
@@ -586,8 +598,8 @@ export const PublicBotChatPage = () => {
     currentPausedFor?.type !== "branch" &&
     !currentPausedFor?.showConfirmationButtons);
 
-  // Show mic button for video bots in flow mode, or when voice is enabled
-  const shouldShowMicButton = bot?.is_video_bot ? true : (bot?.is_voice_enabled && canSendText);
+  // Show mic button: for video bots only in flow mode, for non-video bots when voice is enabled
+  const shouldShowMicButton = bot?.is_video_bot ? !flowFinished : (bot?.is_voice_enabled && canSendText);
 
   const videoBotAvatarUrl = bot?.video_bot_image_url || null;
 
