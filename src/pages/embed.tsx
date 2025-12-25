@@ -956,7 +956,7 @@ export default function EmbedChat() {
 
   return (
     <div
-      className={`flex flex-col h-full border border-border/20 transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-chat-container' : ''
+      className={`flex flex-col h-screen max-h-screen border border-border/20 transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-chat-container' : ''
         }`}
       style={getContainerStyle()}
     >
