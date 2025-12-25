@@ -152,9 +152,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     }
   };
 
-  // ========================================
   // BROWSER SPEECH SYNTHESIS (Text-to-Speech)
-  // ========================================
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   const ttsQueueRef = useRef<string[]>([]);
   const isProcessingTTSRef = useRef(false);
