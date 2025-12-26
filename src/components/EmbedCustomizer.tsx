@@ -161,46 +161,28 @@ const defaultChatCSS = `/* Chat container */
   /* background-color: #94a3b8; */
 }`;
 
-const defaultButtonCSS = `/* ============================================
-   CHATBOT BUTTON CUSTOMIZATION
-   Complete control over button appearance
-   ============================================ */
-
-/* Main Button Container */
+const defaultButtonCSS = `/* Main Button */
 #chatbot-widget-button {
-  /* Position */
   position: fixed;
-  bottom: 20px;
-  right: 20px;
-  
-  /* Size */
   width: 56px;
   height: 56px;
-  
-  /* Appearance */
   background: linear-gradient(135deg, #9b5de5, #f15bb5);
   border: none;
   border-radius: 50%;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-  
-  /* Layout */
   display: flex;
   align-items: center;
   justify-content: center;
-  
-  /* Interaction */
   cursor: pointer;
   transition: all 0.3s ease;
   z-index: 9999;
 }
 
-/* Hover Effect */
 #chatbot-widget-button:hover {
   transform: scale(1.1);
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
 }
 
-/* Active/Click Effect */
 #chatbot-widget-button:active {
   transform: scale(0.95);
 }
@@ -217,15 +199,12 @@ const defaultButtonCSS = `/* ============================================
   transform: rotate(10deg);
 }
 
-/* ============================================
-   OPTIONAL: Text Label Next to Button
-   ============================================ */
-
-/* Text label container (if enabled) */
-#chatbot-widget-button-wrapper {
+/* Text Label */
+#chatbot-widget-container {
   position: fixed;
   bottom: 20px;
   right: 20px;
+  z-index: 9999;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -242,65 +221,34 @@ const defaultButtonCSS = `/* ============================================
   white-space: nowrap;
 }
 
-/* ============================================
-   ANIMATIONS
-   ============================================ */
-
-/* Bounce Animation */
+/* Animations */
 @keyframes bounce-button {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
 }
 
-/* Apply bounce */
-.animate-bounce {
-  animation: bounce-button 2s infinite;
-}
-
-/* Pulse Animation */
 @keyframes pulse-button {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.05); }
 }
 
-.animate-pulse {
-  animation: pulse-button 2s infinite;
-}
-
-/* Shake Animation */
 @keyframes shake-button {
   0%, 100% { transform: translateX(0); }
   10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
   20%, 40%, 60%, 80% { transform: translateX(5px); }
 }
 
-.animate-shake {
-  animation: shake-button 0.5s infinite;
-}
-
-/* Rotate Animation */
 @keyframes rotate-button {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-.animate-rotate {
-  animation: rotate-button 3s linear infinite;
-}
-
-/* Swing Animation */
 @keyframes swing-button {
   0%, 100% { transform: rotate(0deg); }
   25% { transform: rotate(15deg); }
   75% { transform: rotate(-15deg); }
 }
 
-.animate-swing {
-  animation: swing-button 2s ease-in-out infinite;
-  transform-origin: top center;
-}
-
-/* Tada Animation */
 @keyframes tada-button {
   0%, 100% { transform: scale(1) rotate(0deg); }
   10%, 20% { transform: scale(0.9) rotate(-3deg); }
@@ -308,11 +256,6 @@ const defaultButtonCSS = `/* ============================================
   40%, 60%, 80% { transform: scale(1.1) rotate(-3deg); }
 }
 
-.animate-tada {
-  animation: tada-button 2s infinite;
-}
-
-/* Wobble Animation */
 @keyframes wobble-button {
   0%, 100% { transform: translateX(0) rotate(0deg); }
   15% { transform: translateX(-25px) rotate(-5deg); }
@@ -322,20 +265,39 @@ const defaultButtonCSS = `/* ============================================
   75% { transform: translateX(-5px) rotate(-1deg); }
 }
 
-.animate-wobble {
-  animation: wobble-button 2s infinite;
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
 }
 
-/* Pulse Ring Effect */
-@keyframes pulse-ring {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
-  }
+/* Apply Animations */
+#chatbot-widget-button.animate-bounce {
+  animation: bounce-button 2s infinite;
+}
+
+#chatbot-widget-button.animate-pulse {
+  animation: pulse-button 2s infinite;
+}
+
+#chatbot-widget-button.animate-shake {
+  animation: shake-button 0.5s infinite;
+}
+
+#chatbot-widget-button.animate-rotate {
+  animation: rotate-button 3s linear infinite;
+}
+
+#chatbot-widget-button.animate-swing {
+  animation: swing-button 2s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+#chatbot-widget-button.animate-tada {
+  animation: tada-button 2s infinite;
+}
+
+#chatbot-widget-button.animate-wobble {
+  animation: wobble-button 2s infinite;
 }
 
 #chatbot-widget-button.pulse-effect::before {
@@ -348,77 +310,23 @@ const defaultButtonCSS = `/* ============================================
   z-index: -1;
 }
 
-/* ============================================
-   HOVER ANIMATIONS
-   ============================================ */
-
-/* Scale on Hover */
+/* Hover Effects */
 #chatbot-widget-button.hover-scale:hover {
   transform: scale(1.15);
 }
 
-/* Lift on Hover */
 #chatbot-widget-button.hover-lift:hover {
   transform: translateY(-8px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* Glow on Hover */
 #chatbot-widget-button.hover-glow:hover {
   box-shadow: 0 0 25px rgba(155, 93, 229, 0.8);
 }
 
-/* Rotate on Hover */
 #chatbot-widget-button.hover-rotate:hover {
   transform: rotate(360deg);
-}
-
-/* ============================================
-   EXAMPLES & VARIATIONS
-   ============================================ */
-
-/* Example: Square Button with Rounded Corners */
-/*
-#chatbot-widget-button {
-  border-radius: 12px;
-}
-*/
-
-/* Example: Different Color Scheme */
-/*
-#chatbot-widget-button {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-}
-*/
-
-/* Example: Simple Solid Color */
-/*
-#chatbot-widget-button {
-  background: #3b82f6;
-}
-*/
-
-/* Example: Bottom Left Position */
-/*
-#chatbot-widget-button {
-  bottom: 20px;
-  right: auto;
-  left: 20px;
-}
-*/
-
-/* Example: Larger Button */
-/*
-#chatbot-widget-button {
-  width: 70px;
-  height: 70px;
-}
-
-#chatbot-widget-button svg {
-  width: 32px;
-  height: 32px;
-}
-*/`;
+}`;
 
 const iconOptions = [
   { value: 'chat', label: 'Chat Bubble', path: 'M2 2v20l4-4h14V2H2zm16 10H6v-2h12v2z' },
@@ -680,7 +588,7 @@ export const EmbedCustomizer = ({
     `;
 
     // Add text label if enabled
-    if (customization.buttonShowText && customization.buttonText && !customization.useButtonCustomCSS) {
+    if (customization.buttonShowText && customization.buttonText) {
       const textEl = document.createElement('div');
       textEl.textContent = customization.buttonText;
       textEl.style.cssText = `
@@ -700,21 +608,19 @@ export const EmbedCustomizer = ({
     const button = document.createElement('button');
     button.id = 'preview-button';
 
-    // Generate icon HTML
+    // Generate icon HTML - always respect visual editor settings
     let iconHTML = '';
-    if (!customization.useButtonCustomCSS) {
-      if (customization.buttonIconType === 'emoji' && customization.buttonCustomIcon) {
-        iconHTML = `<span style="font-size: ${customization.buttonIconSize}px;">${customization.buttonCustomIcon}</span>`;
-      } else if (customization.buttonIconType === 'custom' && customization.buttonCustomIcon) {
-        iconHTML = customization.buttonCustomIcon;
-      } else if (customization.buttonIconType !== 'none') {
-        const selectedIcon = iconOptions.find(i => i.value === customization.buttonIcon) || iconOptions[0];
-        iconHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" height="${customization.buttonIconSize}" width="${customization.buttonIconSize}" fill="${customization.buttonColor}" viewBox="0 0 24 24">
-            <path d="${selectedIcon.path}"/>
-          </svg>
-        `;
-      }
+    if (customization.buttonIconType === 'emoji' && customization.buttonCustomIcon) {
+      iconHTML = `<span style="font-size: ${customization.buttonIconSize}px;">${customization.buttonCustomIcon}</span>`;
+    } else if (customization.buttonIconType === 'custom' && customization.buttonCustomIcon) {
+      iconHTML = customization.buttonCustomIcon;
+    } else if (customization.buttonIconType !== 'none') {
+      const selectedIcon = iconOptions.find(i => i.value === customization.buttonIcon) || iconOptions[0];
+      iconHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" height="${customization.buttonIconSize}" width="${customization.buttonIconSize}" fill="${customization.buttonColor}" viewBox="0 0 24 24">
+          <path d="${selectedIcon.path}"/>
+        </svg>
+      `;
     }
 
     button.innerHTML = iconHTML;
@@ -1239,7 +1145,6 @@ export const EmbedCustomizer = ({
                             value={customization.buttonIconType}
                             onChange={(e) => handleInputChange('buttonIconType', e.target.value)}
                             className="w-full p-2 border rounded-md"
-                            disabled={customization.useButtonCustomCSS}
                           >
                             <option value="default">Default Icons</option>
                             <option value="emoji">Emoji</option>
@@ -1256,7 +1161,6 @@ export const EmbedCustomizer = ({
                               value={customization.buttonIcon}
                               onChange={(e) => handleInputChange('buttonIcon', e.target.value)}
                               className="w-full p-2 border rounded-md"
-                              disabled={customization.useButtonCustomCSS}
                             >
                               {iconOptions.map(icon => (
                                 <option key={icon.value} value={icon.value}>{icon.label}</option>
@@ -1275,7 +1179,6 @@ export const EmbedCustomizer = ({
                               value={customization.buttonCustomIcon}
                               onChange={(e) => handleInputChange('buttonCustomIcon', e.target.value)}
                               placeholder={customization.buttonIconType === 'emoji' ? '💬' : '<svg>...</svg>'}
-                              disabled={customization.useButtonCustomCSS}
                             />
                           </div>
                         )}
@@ -1289,7 +1192,6 @@ export const EmbedCustomizer = ({
                               value={customization.buttonIconSize}
                               onChange={(e) => handleInputChange('buttonIconSize', e.target.value)}
                               placeholder="24"
-                              disabled={customization.useButtonCustomCSS}
                             />
                             <p className="text-xs text-muted-foreground mt-1">
                               Size of the icon inside the button
@@ -1303,7 +1205,6 @@ export const EmbedCustomizer = ({
                             <Switch
                               checked={customization.buttonShowText}
                               onCheckedChange={(checked) => handleInputChange('buttonShowText', checked)}
-                              disabled={customization.useButtonCustomCSS}
                             />
                           </div>
                         </div>
@@ -1317,7 +1218,6 @@ export const EmbedCustomizer = ({
                                 value={customization.buttonText}
                                 onChange={(e) => handleInputChange('buttonText', e.target.value)}
                                 placeholder="Chat with us"
-                                disabled={customization.useButtonCustomCSS}
                               />
                             </div>
 
@@ -1328,7 +1228,6 @@ export const EmbedCustomizer = ({
                                 value={customization.buttonTextPosition}
                                 onChange={(e) => handleInputChange('buttonTextPosition', e.target.value)}
                                 className="w-full p-2 border rounded-md"
-                                disabled={customization.useButtonCustomCSS}
                               >
                                 <option value="left">Left of Button</option>
                                 <option value="right">Right of Button</option>
@@ -1345,13 +1244,11 @@ export const EmbedCustomizer = ({
                                   value={customization.buttonTextColor}
                                   onChange={(e) => handleInputChange('buttonTextColor', e.target.value)}
                                   className="w-12 h-12 p-1 rounded cursor-pointer"
-                                  disabled={customization.useButtonCustomCSS}
                                 />
                                 <Input
                                   value={customization.buttonTextColor}
                                   onChange={(e) => handleInputChange('buttonTextColor', e.target.value)}
                                   placeholder="#1e293b"
-                                  disabled={customization.useButtonCustomCSS}
                                 />
                               </div>
                             </div>
@@ -1364,7 +1261,6 @@ export const EmbedCustomizer = ({
                                 value={customization.buttonTextSize}
                                 onChange={(e) => handleInputChange('buttonTextSize', e.target.value)}
                                 placeholder="14"
-                                disabled={customization.useButtonCustomCSS}
                               />
                             </div>
                           </>
@@ -1557,9 +1453,9 @@ export const EmbedCustomizer = ({
                       <CardContent className="space-y-4">
                         <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
                           <p className="text-sm text-blue-800 dark:text-blue-200">
-                            <strong>Note:</strong> Custom CSS is completely independent from the Visual Editor. 
-                            When enabled, all visual settings are ignored and only your CSS code is used.
-                            Click "Insert Full Template" to get started with a comprehensive default template.
+                            <strong>Note:</strong> Custom CSS controls button styling only. 
+                            Icon selection, text label, and their properties are set in the Visual Editor tab.
+                            When Custom CSS is enabled, only the button appearance styles from your CSS are applied.
                           </p>
                         </div>
                         <div className="space-y-2">
@@ -1641,7 +1537,7 @@ export const EmbedCustomizer = ({
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-between items-center mt-2 pt-2 border-t">
+        <div className="flex justify-between items-center mt26 pt-2 border-t">
           <Button variant="outline" onClick={handleReset} className="flex items-center gap-2">
             <RotateCcw className="h-4 w-4" />
             Reset to Default
