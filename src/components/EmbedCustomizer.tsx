@@ -48,6 +48,7 @@ export interface EmbedCustomization {
   buttonIcon?: string;
   buttonIconType?: 'default' | 'custom' | 'emoji' | 'none';
   buttonCustomIcon?: string;
+  buttonIconSize?: string;
   buttonAnimation?: string;
   buttonHoverAnimation?: string;
   buttonPulse?: boolean;
@@ -101,6 +102,7 @@ const defaultCustomization: Omit<EmbedCustomization, 'botId'> = {
   buttonIcon: "chat",
   buttonIconType: "default",
   buttonCustomIcon: "",
+  buttonIconSize: "24",
   buttonAnimation: "none",
   buttonHoverAnimation: "scale",
   buttonPulse: false,
@@ -159,25 +161,264 @@ const defaultChatCSS = `/* Chat container */
   /* background-color: #94a3b8; */
 }`;
 
-const defaultButtonCSS = `/* Chatbot button */
+const defaultButtonCSS = `/* ============================================
+   CHATBOT BUTTON CUSTOMIZATION
+   Complete control over button appearance
+   ============================================ */
+
+/* Main Button Container */
 #chatbot-widget-button {
-  /* background: linear-gradient(135deg, #9b5de5, #f15bb5); */
-  /* width: 56px; */
-  /* height: 56px; */
-  /* border-radius: 50%; */
-  /* box-shadow: 0 4px 10px rgba(0,0,0,0.3); */
+  /* Position */
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  
+  /* Size */
+  width: 56px;
+  height: 56px;
+  
+  /* Appearance */
+  background: linear-gradient(135deg, #9b5de5, #f15bb5);
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  
+  /* Layout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* Interaction */
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 9999;
 }
 
-/* Button hover effect */
+/* Hover Effect */
 #chatbot-widget-button:hover {
-  /* transform: scale(1.05); */
-  /* box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); */
+  transform: scale(1.1);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
 }
 
-/* Button icon */
+/* Active/Click Effect */
+#chatbot-widget-button:active {
+  transform: scale(0.95);
+}
+
+/* Button Icon */
 #chatbot-widget-button svg {
-  /* fill: white; */
-}`;
+  width: 24px;
+  height: 24px;
+  fill: white;
+  transition: transform 0.3s ease;
+}
+
+#chatbot-widget-button:hover svg {
+  transform: rotate(10deg);
+}
+
+/* ============================================
+   OPTIONAL: Text Label Next to Button
+   ============================================ */
+
+/* Text label container (if enabled) */
+#chatbot-widget-button-wrapper {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chatbot-button-text {
+  background: white;
+  color: #1e293b;
+  padding: 12px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+/* Bounce Animation */
+@keyframes bounce-button {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Apply bounce */
+.animate-bounce {
+  animation: bounce-button 2s infinite;
+}
+
+/* Pulse Animation */
+@keyframes pulse-button {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.animate-pulse {
+  animation: pulse-button 2s infinite;
+}
+
+/* Shake Animation */
+@keyframes shake-button {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: shake-button 0.5s infinite;
+}
+
+/* Rotate Animation */
+@keyframes rotate-button {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-rotate {
+  animation: rotate-button 3s linear infinite;
+}
+
+/* Swing Animation */
+@keyframes swing-button {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(15deg); }
+  75% { transform: rotate(-15deg); }
+}
+
+.animate-swing {
+  animation: swing-button 2s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+/* Tada Animation */
+@keyframes tada-button {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  10%, 20% { transform: scale(0.9) rotate(-3deg); }
+  30%, 50%, 70%, 90% { transform: scale(1.1) rotate(3deg); }
+  40%, 60%, 80% { transform: scale(1.1) rotate(-3deg); }
+}
+
+.animate-tada {
+  animation: tada-button 2s infinite;
+}
+
+/* Wobble Animation */
+@keyframes wobble-button {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  15% { transform: translateX(-25px) rotate(-5deg); }
+  30% { transform: translateX(20px) rotate(3deg); }
+  45% { transform: translateX(-15px) rotate(-3deg); }
+  60% { transform: translateX(10px) rotate(2deg); }
+  75% { transform: translateX(-5px) rotate(-1deg); }
+}
+
+.animate-wobble {
+  animation: wobble-button 2s infinite;
+}
+
+/* Pulse Ring Effect */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+#chatbot-widget-button.pulse-effect::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  animation: pulse-ring 2s infinite;
+  z-index: -1;
+}
+
+/* ============================================
+   HOVER ANIMATIONS
+   ============================================ */
+
+/* Scale on Hover */
+#chatbot-widget-button.hover-scale:hover {
+  transform: scale(1.15);
+}
+
+/* Lift on Hover */
+#chatbot-widget-button.hover-lift:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Glow on Hover */
+#chatbot-widget-button.hover-glow:hover {
+  box-shadow: 0 0 25px rgba(155, 93, 229, 0.8);
+}
+
+/* Rotate on Hover */
+#chatbot-widget-button.hover-rotate:hover {
+  transform: rotate(360deg);
+}
+
+/* ============================================
+   EXAMPLES & VARIATIONS
+   ============================================ */
+
+/* Example: Square Button with Rounded Corners */
+/*
+#chatbot-widget-button {
+  border-radius: 12px;
+}
+*/
+
+/* Example: Different Color Scheme */
+/*
+#chatbot-widget-button {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+*/
+
+/* Example: Simple Solid Color */
+/*
+#chatbot-widget-button {
+  background: #3b82f6;
+}
+*/
+
+/* Example: Bottom Left Position */
+/*
+#chatbot-widget-button {
+  bottom: 20px;
+  right: auto;
+  left: 20px;
+}
+*/
+
+/* Example: Larger Button */
+/*
+#chatbot-widget-button {
+  width: 70px;
+  height: 70px;
+}
+
+#chatbot-widget-button svg {
+  width: 32px;
+  height: 32px;
+}
+*/`;
 
 const iconOptions = [
   { value: 'chat', label: 'Chat Bubble', path: 'M2 2v20l4-4h14V2H2zm16 10H6v-2h12v2z' },
@@ -277,76 +518,78 @@ export const EmbedCustomizer = ({
   }, [customization, mainTab]);
 
   const getAnimationCSS = (animation: string) => {
-    const animations = {
+    const animations: Record<string, string> = {
       bounce: `
-        @keyframes bounce {
+        @keyframes bounce-anim {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-10px); }
         }
-        animation: bounce 2s infinite;
+        #preview-button { animation: bounce-anim 2s infinite; }
       `,
       pulse: `
-        @keyframes pulse {
+        @keyframes pulse-anim {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.05); }
         }
-        animation: pulse 2s infinite;
+        #preview-button { animation: pulse-anim 2s infinite; }
       `,
       shake: `
-        @keyframes shake {
+        @keyframes shake-anim {
           0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+          20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
-        animation: shake 0.5s infinite;
+        #preview-button { animation: shake-anim 0.5s infinite; }
       `,
       rotate: `
-        @keyframes rotate {
+        @keyframes rotate-anim {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        animation: rotate 3s linear infinite;
+        #preview-button { animation: rotate-anim 3s linear infinite; }
       `,
       swing: `
-        @keyframes swing {
+        @keyframes swing-anim {
           0%, 100% { transform: rotate(0deg); }
           25% { transform: rotate(15deg); }
           75% { transform: rotate(-15deg); }
         }
-        animation: swing 2s ease-in-out infinite;
-        transform-origin: top center;
+        #preview-button { 
+          animation: swing-anim 2s ease-in-out infinite;
+          transform-origin: top center;
+        }
       `,
       tada: `
-        @keyframes tada {
+        @keyframes tada-anim {
           0%, 100% { transform: scale(1) rotate(0deg); }
           10%, 20% { transform: scale(0.9) rotate(-3deg); }
           30%, 50%, 70%, 90% { transform: scale(1.1) rotate(3deg); }
           40%, 60%, 80% { transform: scale(1.1) rotate(-3deg); }
         }
-        animation: tada 2s infinite;
+        #preview-button { animation: tada-anim 2s infinite; }
       `,
       wobble: `
-        @keyframes wobble {
-          0%, 100% { transform: translateX(0%); }
+        @keyframes wobble-anim {
+          0%, 100% { transform: translateX(0) rotate(0deg); }
           15% { transform: translateX(-25px) rotate(-5deg); }
           30% { transform: translateX(20px) rotate(3deg); }
           45% { transform: translateX(-15px) rotate(-3deg); }
           60% { transform: translateX(10px) rotate(2deg); }
           75% { transform: translateX(-5px) rotate(-1deg); }
         }
-        animation: wobble 2s infinite;
+        #preview-button { animation: wobble-anim 2s infinite; }
       `
     };
     return animations[animation] || '';
   };
 
   const getHoverAnimationCSS = (animation: string) => {
-    const hoverAnimations = {
-      scale: 'transform: scale(1.1);',
-      lift: 'transform: translateY(-5px);',
-      glow: 'box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);',
-      rotate: 'transform: rotate(360deg);',
-      bounce: 'animation: bounce 0.5s;'
+    const hoverAnimations: Record<string, string> = {
+      scale: 'transform: scale(1.15) !important;',
+      lift: 'transform: translateY(-8px) !important; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;',
+      glow: 'box-shadow: 0 0 25px rgba(155, 93, 229, 0.8) !important;',
+      rotate: 'transform: rotate(360deg) !important;',
+      bounce: 'animation: bounce-hover 0.5s !important;'
     };
     return hoverAnimations[animation] || '';
   };
@@ -360,22 +603,22 @@ export const EmbedCustomizer = ({
     const styleEl = document.createElement('style');
     
     if (customization.useButtonCustomCSS && customization.buttonCustomCSS) {
+      // Use custom CSS - completely independent from visual editor
       const previewCSS = customization.buttonCustomCSS.replace(/#chatbot-widget-button/g, '#preview-button');
       styleEl.textContent = previewCSS;
     } else {
-      let styles = `
-        #preview-button {
-          transition: all 0.3s ease;
-          ${customization.buttonAnimation !== 'none' ? getAnimationCSS(customization.buttonAnimation) : ''}
-        }
-        #preview-button:hover {
-          ${customization.buttonHoverAnimation !== 'none' ? getHoverAnimationCSS(customization.buttonHoverAnimation) : ''}
-        }
-      `;
+      // Use visual editor settings
+      let styles = '';
       
+      // Add animation keyframes if needed
+      if (customization.buttonAnimation && customization.buttonAnimation !== 'none') {
+        styles += getAnimationCSS(customization.buttonAnimation);
+      }
+      
+      // Add pulse ring animation if enabled
       if (customization.buttonPulse) {
         styles += `
-          @keyframes pulse-ring {
+          @keyframes pulse-ring-preview {
             0% { transform: scale(1); opacity: 1; }
             100% { transform: scale(1.5); opacity: 0; }
           }
@@ -385,16 +628,41 @@ export const EmbedCustomizer = ({
             inset: 0;
             border-radius: inherit;
             background: inherit;
-            animation: pulse-ring 2s infinite;
+            animation: pulse-ring-preview 2s infinite;
             z-index: -1;
           }
         `;
       }
       
+      // Add hover animation
+      if (customization.buttonHoverAnimation && customization.buttonHoverAnimation !== 'none') {
+        styles += `
+          #preview-button:hover {
+            ${getHoverAnimationCSS(customization.buttonHoverAnimation)}
+          }
+        `;
+      } else {
+        styles += `
+          #preview-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+          }
+        `;
+      }
+      
+      // Base button transition
+      styles += `
+        #preview-button {
+          transition: all 0.3s ease;
+        }
+      `;
+      
       styleEl.textContent = styles;
     }
+    
     container.appendChild(styleEl);
 
+    // Create button wrapper for positioning
     const buttonWrapper = document.createElement('div');
     buttonWrapper.style.cssText = `
       position: absolute;
@@ -411,7 +679,8 @@ export const EmbedCustomizer = ({
       ${customization.buttonTextPosition === 'top' ? 'flex-direction: column-reverse;' : ''}
     `;
 
-    if (customization.buttonShowText && customization.buttonText) {
+    // Add text label if enabled
+    if (customization.buttonShowText && customization.buttonText && !customization.useButtonCustomCSS) {
       const textEl = document.createElement('div');
       textEl.textContent = customization.buttonText;
       textEl.style.cssText = `
@@ -427,26 +696,32 @@ export const EmbedCustomizer = ({
       buttonWrapper.appendChild(textEl);
     }
 
+    // Create the button
     const button = document.createElement('button');
     button.id = 'preview-button';
 
+    // Generate icon HTML
     let iconHTML = '';
-    if (customization.buttonIconType === 'emoji' && customization.buttonCustomIcon) {
-      iconHTML = `<span style="font-size: 24px;">${customization.buttonCustomIcon}</span>`;
-    } else if (customization.buttonIconType === 'custom' && customization.buttonCustomIcon) {
-      iconHTML = customization.buttonCustomIcon;
-    } else if (customization.buttonIconType !== 'none') {
-      const selectedIcon = iconOptions.find(i => i.value === customization.buttonIcon) || iconOptions[0];
-      iconHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" fill="${customization.buttonColor}" viewBox="0 0 24 24">
-          <path d="${selectedIcon.path}"/>
-        </svg>
-      `;
+    if (!customization.useButtonCustomCSS) {
+      if (customization.buttonIconType === 'emoji' && customization.buttonCustomIcon) {
+        iconHTML = `<span style="font-size: ${customization.buttonIconSize}px;">${customization.buttonCustomIcon}</span>`;
+      } else if (customization.buttonIconType === 'custom' && customization.buttonCustomIcon) {
+        iconHTML = customization.buttonCustomIcon;
+      } else if (customization.buttonIconType !== 'none') {
+        const selectedIcon = iconOptions.find(i => i.value === customization.buttonIcon) || iconOptions[0];
+        iconHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" height="${customization.buttonIconSize}" width="${customization.buttonIconSize}" fill="${customization.buttonColor}" viewBox="0 0 24 24">
+            <path d="${selectedIcon.path}"/>
+          </svg>
+        `;
+      }
     }
 
     button.innerHTML = iconHTML;
 
+    // Apply button styles
     if (customization.useButtonCustomCSS) {
+      // Minimal styling when using custom CSS
       button.style.cssText = `
         position: relative;
         display: flex;
@@ -456,6 +731,7 @@ export const EmbedCustomizer = ({
         border: none;
       `;
     } else {
+      // Full styling from visual editor
       button.style.cssText = `
         position: relative;
         background: ${customization.buttonBackground};
@@ -530,15 +806,25 @@ export const EmbedCustomizer = ({
   const handleInsertChatTemplate = () => {
     setCustomization(prev => ({
       ...prev,
-      chatCustomCSS: defaultChatCSS
+      chatCustomCSS: defaultChatCSS,
+      useChatCustomCSS: true
     }));
+    toast({
+      title: "Template Inserted",
+      description: "Default CSS template has been inserted. Customize it as needed!"
+    });
   };
 
   const handleInsertButtonTemplate = () => {
     setCustomization(prev => ({
       ...prev,
-      buttonCustomCSS: defaultButtonCSS
+      buttonCustomCSS: defaultButtonCSS,
+      useButtonCustomCSS: true
     }));
+    toast({
+      title: "Template Inserted",
+      description: "Default CSS template has been inserted. Customize it as needed!"
+    });
   };
 
   const previewUrl = `${window.location.origin}/embed?botId=${botId}&preview=true`;
@@ -801,28 +1087,35 @@ export const EmbedCustomizer = ({
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center justify-between">
-                          Custom CSS
+                          Custom CSS Editor
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={handleInsertChatTemplate}
                           >
-                            Insert Template
+                            Insert Full Template
                           </Button>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
+                        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
+                            <strong>Note:</strong> Custom CSS is completely independent from the Visual Editor. 
+                            When enabled, all visual settings are ignored and only your CSS code is used.
+                            Click "Insert Full Template" to get started with a comprehensive default template.
+                          </p>
+                        </div>
                         <div className="space-y-2">
                           <Label htmlFor="chatCustomCSS">CSS Code</Label>
                           <Textarea
                             id="chatCustomCSS"
                             value={customization.chatCustomCSS || ""}
                             onChange={(e) => handleInputChange('chatCustomCSS', e.target.value)}
-                            placeholder="/* Write your custom CSS here */"
-                            className="font-mono text-sm min-h-[300px]"
+                            placeholder="/* Click 'Insert Full Template' to get started with a complete CSS template */"
+                            className="font-mono text-sm min-h-[400px]"
                           />
                           <p className="text-xs text-muted-foreground">
-                            Toggle "Use Custom CSS" to apply your styles.
+                            Toggle "Use Custom CSS" above to apply your styles. Use the classes listed below to target specific elements.
                           </p>
                         </div>
                       </CardContent>
@@ -833,15 +1126,27 @@ export const EmbedCustomizer = ({
                         <CardTitle className="text-sm">Available CSS Classes</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-xs space-y-1 font-mono text-muted-foreground">
-                          <p>.embed-chat-container - Main chat container</p>
-                          <p>.embed-chat-header - Header section</p>
-                          <p>.embed-bot-icon - Bot avatar icon</p>
-                          <p>.embed-user-message - User message bubble</p>
-                          <p>.embed-bot-message - Bot message bubble</p>
-                          <p>.embed-input - Input text field</p>
-                          <p>.embed-send-button - Send button</p>
-                          <p>.embed-loading-dot - Loading animation dots</p>
+                        <div className="text-xs space-y-2 font-mono text-muted-foreground">
+                          <div>
+                            <p className="font-semibold text-foreground mb-1">Main Components:</p>
+                            <p>.embed-chat-container - Main chat container</p>
+                            <p>.embed-chat-header - Header section</p>
+                            <p>.embed-bot-icon - Bot avatar icon</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground mb-1">Messages:</p>
+                            <p>.embed-user-message - User message bubble</p>
+                            <p>.embed-bot-message - Bot message bubble</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground mb-1">Input Area:</p>
+                            <p>.embed-input - Input text field</p>
+                            <p>.embed-send-button - Send button</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground mb-1">Loading:</p>
+                            <p>.embed-loading-dot - Loading animation dots</p>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -859,7 +1164,7 @@ export const EmbedCustomizer = ({
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="border rounded-lg overflow-hidden" style={{ height: '340px' }}>
+                    <div className="border rounded-lg overflow-hidden" style={{ height: '320px' }}>
                       <iframe
                         ref={chatIframeRef}
                         src={previewUrl}
@@ -875,7 +1180,7 @@ export const EmbedCustomizer = ({
                         }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-2">
                       Live preview of your chat window with current customization
                     </p>
                   </CardContent>
@@ -972,6 +1277,23 @@ export const EmbedCustomizer = ({
                               placeholder={customization.buttonIconType === 'emoji' ? '💬' : '<svg>...</svg>'}
                               disabled={customization.useButtonCustomCSS}
                             />
+                          </div>
+                        )}
+
+                        {customization.buttonIconType !== 'none' && (
+                          <div>
+                            <Label htmlFor="buttonIconSize">Icon Size (px)</Label>
+                            <Input
+                              id="buttonIconSize"
+                              type="number"
+                              value={customization.buttonIconSize}
+                              onChange={(e) => handleInputChange('buttonIconSize', e.target.value)}
+                              placeholder="24"
+                              disabled={customization.useButtonCustomCSS}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Size of the icon inside the button
+                            </p>
                           </div>
                         )}
 
@@ -1222,39 +1544,72 @@ export const EmbedCustomizer = ({
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center justify-between">
-                          Custom CSS
+                          Custom CSS Editor
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={handleInsertButtonTemplate}
                           >
-                            Insert Template
+                            Insert Full Template
                           </Button>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
+                        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
+                            <strong>Note:</strong> Custom CSS is completely independent from the Visual Editor. 
+                            When enabled, all visual settings are ignored and only your CSS code is used.
+                            Click "Insert Full Template" to get started with a comprehensive default template.
+                          </p>
+                        </div>
                         <div className="space-y-2">
                           <Label htmlFor="buttonCustomCSS">CSS Code</Label>
                           <Textarea
                             id="buttonCustomCSS"
                             value={customization.buttonCustomCSS || ""}
                             onChange={(e) => handleInputChange('buttonCustomCSS', e.target.value)}
-                            placeholder="/* Write your custom CSS here */"
-                            className="font-mono text-sm min-h-[300px]"
+                            placeholder="/* Click 'Insert Full Template' to get started with a complete CSS template */"
+                            className="font-mono text-sm min-h-[400px]"
                           />
+                          <p className="text-xs text-muted-foreground">
+                            Use #chatbot-widget-button to target the button. Apply classes like .animate-bounce, .hover-scale, etc.
+                          </p>
                         </div>
                       </CardContent>
                     </Card>
 
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-sm">Available Selectors</CardTitle>
+                        <CardTitle className="text-sm">Available CSS Classes & Animations</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-xs space-y-1 font-mono text-muted-foreground">
-                          <p>#chatbot-widget-button - The button element</p>
-                          <p>#chatbot-widget-button:hover - Button hover state</p>
-                          <p>#chatbot-widget-button svg - Button icon</p>
+                        <div className="text-xs space-y-2 font-mono text-muted-foreground">
+                          <div>
+                            <p className="font-semibold text-foreground mb-1">Selectors:</p>
+                            <p>#chatbot-widget-button - Main button</p>
+                            <p>#chatbot-widget-button:hover - Hover state</p>
+                            <p>#chatbot-widget-button svg - Icon</p>
+                            <p>#chatbot-widget-button-wrapper - Container (with text)</p>
+                            <p>.chatbot-button-text - Text label</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground mb-1">Animation Classes:</p>
+                            <p>.animate-bounce - Bouncing effect</p>
+                            <p>.animate-pulse - Pulsing effect</p>
+                            <p>.animate-shake - Shaking effect</p>
+                            <p>.animate-rotate - Rotating effect</p>
+                            <p>.animate-swing - Swinging effect</p>
+                            <p>.animate-tada - Tada effect</p>
+                            <p>.animate-wobble - Wobbling effect</p>
+                            <p>.pulse-effect - Pulse ring effect</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground mb-1">Hover Classes:</p>
+                            <p>.hover-scale - Scale on hover</p>
+                            <p>.hover-lift - Lift on hover</p>
+                            <p>.hover-glow - Glow on hover</p>
+                            <p>.hover-rotate - Rotate on hover</p>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -1286,7 +1641,7 @@ export const EmbedCustomizer = ({
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-between items-center pt-2 border-t">
+        <div className="flex justify-between items-center mt-2 pt-2 border-t">
           <Button variant="outline" onClick={handleReset} className="flex items-center gap-2">
             <RotateCcw className="h-4 w-4" />
             Reset to Default
