@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Palette, Save, Eye, RotateCcw, Code, MessageSquare, MousePointer } from "lucide-react";
+import { Palette, Save, Eye, RotateCcw, Code, MessageSquare, MousePointer, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
 
@@ -29,7 +29,7 @@ export interface EmbedCustomization {
   chatCustomCSS?: string;
   useChatCustomCSS?: boolean;
   
-  // Button customization
+  // Enhanced button customization
   buttonBackground: string;
   buttonColor: string;
   buttonSize: string;
@@ -40,6 +40,21 @@ export interface EmbedCustomization {
   buttonLeft: string;
   buttonCustomCSS?: string;
   useButtonCustomCSS?: boolean;
+  
+  // New button features
+  buttonText?: string;
+  buttonShowText?: boolean;
+  buttonTextPosition?: 'left' | 'right' | 'top' | 'bottom';
+  buttonIcon?: string;
+  buttonIconType?: 'default' | 'custom' | 'emoji' | 'none';
+  buttonCustomIcon?: string;
+  buttonAnimation?: string;
+  buttonHoverAnimation?: string;
+  buttonPulse?: boolean;
+  buttonShadow?: string;
+  buttonTextColor?: string;
+  buttonTextSize?: string;
+  buttonPadding?: string;
 }
 
 interface EmbedCustomizerProps {
@@ -77,7 +92,22 @@ const defaultCustomization: Omit<EmbedCustomization, 'botId'> = {
   buttonRight: "20",
   buttonLeft: "20",
   buttonCustomCSS: "",
-  useButtonCustomCSS: false
+  useButtonCustomCSS: false,
+  
+  // New button features
+  buttonText: "Chat with us",
+  buttonShowText: false,
+  buttonTextPosition: "left",
+  buttonIcon: "chat",
+  buttonIconType: "default",
+  buttonCustomIcon: "",
+  buttonAnimation: "none",
+  buttonHoverAnimation: "scale",
+  buttonPulse: false,
+  buttonShadow: "0 4px 10px rgba(0,0,0,0.3)",
+  buttonTextColor: "#1e293b",
+  buttonTextSize: "14",
+  buttonPadding: "12"
 };
 
 const defaultChatCSS = `/* Chat container */
@@ -149,6 +179,34 @@ const defaultButtonCSS = `/* Chatbot button */
   /* fill: white; */
 }`;
 
+const iconOptions = [
+  { value: 'chat', label: 'Chat Bubble', path: 'M2 2v20l4-4h14V2H2zm16 10H6v-2h12v2z' },
+  { value: 'message', label: 'Message', path: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' },
+  { value: 'support', label: 'Support', path: 'M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z' },
+  { value: 'help', label: 'Help Circle', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z' },
+  { value: 'bot', label: 'Robot', path: 'M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3s1.34 3 3 3v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4c1.66 0 3-1.34 3-3s-1.34-3-3-3zM7.5 11.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S9.83 13 9 13s-1.5-.67-1.5-1.5zM16 17H8v-2h8v2zm-1-4c-.83 0-1.5-.67-1.5-1.5S14.17 10 15 10s1.5.67 1.5 1.5S15.83 13 15 13z' }
+];
+
+const animationOptions = [
+  { value: 'none', label: 'None' },
+  { value: 'bounce', label: 'Bounce' },
+  { value: 'pulse', label: 'Pulse' },
+  { value: 'shake', label: 'Shake' },
+  { value: 'rotate', label: 'Rotate' },
+  { value: 'swing', label: 'Swing' },
+  { value: 'tada', label: 'Tada' },
+  { value: 'wobble', label: 'Wobble' }
+];
+
+const hoverAnimationOptions = [
+  { value: 'none', label: 'None' },
+  { value: 'scale', label: 'Scale Up' },
+  { value: 'lift', label: 'Lift' },
+  { value: 'glow', label: 'Glow' },
+  { value: 'rotate', label: 'Rotate' },
+  { value: 'bounce', label: 'Bounce' }
+];
+
 export const EmbedCustomizer = ({
   isOpen,
   onClose,
@@ -176,37 +234,13 @@ export const EmbedCustomizer = ({
             `${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`
           );
           const data = await response.json();
-
           const apiCustomization = data.result || {};
 
           setCustomization({
             ...defaultCustomization,
             botId,
-            headerTitle: apiCustomization.headerTitle || botName || defaultCustomization.headerTitle,
-            headerSubtitle: apiCustomization.headerSubtitle || defaultCustomization.headerSubtitle,
-            placeholder: apiCustomization.placeholder || defaultCustomization.placeholder,
-            primaryColor: apiCustomization.primaryColor || defaultCustomization.primaryColor,
-            backgroundColor: apiCustomization.backgroundColor || defaultCustomization.backgroundColor,
-            messageBackgroundColor: apiCustomization.messageBackgroundColor || defaultCustomization.messageBackgroundColor,
-            userMessageColor: apiCustomization.userMessageColor || defaultCustomization.userMessageColor,
-            botMessageColor: apiCustomization.botMessageColor || defaultCustomization.botMessageColor,
-            textColor: apiCustomization.textColor || defaultCustomization.textColor,
-            borderRadius: apiCustomization.borderRadius || defaultCustomization.borderRadius,
-            fontFamily: apiCustomization.fontFamily || defaultCustomization.fontFamily,
-            headerBackground: apiCustomization.headerBackground || defaultCustomization.headerBackground,
-            chatCustomCSS: apiCustomization.chatCustomCSS || defaultCustomization.chatCustomCSS,
-            useChatCustomCSS: apiCustomization.useChatCustomCSS ?? defaultCustomization.useChatCustomCSS,
-            
-            buttonBackground: apiCustomization.buttonBackground || defaultCustomization.buttonBackground,
-            buttonColor: apiCustomization.buttonColor || defaultCustomization.buttonColor,
-            buttonSize: apiCustomization.buttonSize || defaultCustomization.buttonSize,
-            buttonBorderRadius: apiCustomization.buttonBorderRadius || defaultCustomization.buttonBorderRadius,
-            buttonPosition: apiCustomization.buttonPosition || defaultCustomization.buttonPosition,
-            buttonBottom: apiCustomization.buttonBottom || defaultCustomization.buttonBottom,
-            buttonRight: apiCustomization.buttonRight || defaultCustomization.buttonRight,
-            buttonLeft: apiCustomization.buttonLeft || defaultCustomization.buttonLeft,
-            buttonCustomCSS: apiCustomization.buttonCustomCSS || defaultCustomization.buttonCustomCSS,
-            useButtonCustomCSS: apiCustomization.useButtonCustomCSS ?? defaultCustomization.useButtonCustomCSS
+            ...apiCustomization,
+            headerTitle: apiCustomization.headerTitle || botName || defaultCustomization.headerTitle
           });
         } catch (error) {
           console.error("Error loading customization:", error);
@@ -222,7 +256,6 @@ export const EmbedCustomizer = ({
     }
   }, [isOpen, botId, botName]);
 
-  // Send customization updates to iframe in real-time
   useEffect(() => {
     if (chatIframeRef.current && chatIframeRef.current.contentWindow) {
       chatIframeRef.current.contentWindow.postMessage({
@@ -232,10 +265,8 @@ export const EmbedCustomizer = ({
     }
   }, [customization]);
 
-  // Update button preview
   useEffect(() => {
     if (mainTab === 'button') {
-      // Small delay to ensure the ref is mounted
       const timer = setTimeout(() => {
         if (buttonPreviewRef.current) {
           updateButtonPreview();
@@ -245,63 +276,188 @@ export const EmbedCustomizer = ({
     }
   }, [customization, mainTab]);
 
+  const getAnimationCSS = (animation: string) => {
+    const animations = {
+      bounce: `
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        animation: bounce 2s infinite;
+      `,
+      pulse: `
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        animation: pulse 2s infinite;
+      `,
+      shake: `
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        animation: shake 0.5s infinite;
+      `,
+      rotate: `
+        @keyframes rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        animation: rotate 3s linear infinite;
+      `,
+      swing: `
+        @keyframes swing {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(15deg); }
+          75% { transform: rotate(-15deg); }
+        }
+        animation: swing 2s ease-in-out infinite;
+        transform-origin: top center;
+      `,
+      tada: `
+        @keyframes tada {
+          0%, 100% { transform: scale(1) rotate(0deg); }
+          10%, 20% { transform: scale(0.9) rotate(-3deg); }
+          30%, 50%, 70%, 90% { transform: scale(1.1) rotate(3deg); }
+          40%, 60%, 80% { transform: scale(1.1) rotate(-3deg); }
+        }
+        animation: tada 2s infinite;
+      `,
+      wobble: `
+        @keyframes wobble {
+          0%, 100% { transform: translateX(0%); }
+          15% { transform: translateX(-25px) rotate(-5deg); }
+          30% { transform: translateX(20px) rotate(3deg); }
+          45% { transform: translateX(-15px) rotate(-3deg); }
+          60% { transform: translateX(10px) rotate(2deg); }
+          75% { transform: translateX(-5px) rotate(-1deg); }
+        }
+        animation: wobble 2s infinite;
+      `
+    };
+    return animations[animation] || '';
+  };
+
+  const getHoverAnimationCSS = (animation: string) => {
+    const hoverAnimations = {
+      scale: 'transform: scale(1.1);',
+      lift: 'transform: translateY(-5px);',
+      glow: 'box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);',
+      rotate: 'transform: rotate(360deg);',
+      bounce: 'animation: bounce 0.5s;'
+    };
+    return hoverAnimations[animation] || '';
+  };
+
   const updateButtonPreview = () => {
-    if (!buttonPreviewRef.current) {
-      console.log('Button preview ref not available');
-      return;
-    }
+    if (!buttonPreviewRef.current) return;
 
     const container = buttonPreviewRef.current;
     container.innerHTML = '';
 
-    // Create style element for custom CSS and hover effects
     const styleEl = document.createElement('style');
+    
     if (customization.useButtonCustomCSS && customization.buttonCustomCSS) {
-      // Replace #chatbot-widget-button with #preview-button for preview
       const previewCSS = customization.buttonCustomCSS.replace(/#chatbot-widget-button/g, '#preview-button');
       styleEl.textContent = previewCSS;
     } else {
-      styleEl.textContent = `
+      let styles = `
+        #preview-button {
+          transition: all 0.3s ease;
+          ${customization.buttonAnimation !== 'none' ? getAnimationCSS(customization.buttonAnimation) : ''}
+        }
         #preview-button:hover {
-          transform: scale(1.05);
-          box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+          ${customization.buttonHoverAnimation !== 'none' ? getHoverAnimationCSS(customization.buttonHoverAnimation) : ''}
         }
       `;
+      
+      if (customization.buttonPulse) {
+        styles += `
+          @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+          }
+          #preview-button::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: inherit;
+            animation: pulse-ring 2s infinite;
+            z-index: -1;
+          }
+        `;
+      }
+      
+      styleEl.textContent = styles;
     }
     container.appendChild(styleEl);
 
-    // Create button
-    const button = document.createElement('button');
-    button.id = 'preview-button';
-    button.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" fill="${customization.buttonColor}" viewBox="0 0 24 24">
-        <path d="M2 2v20l4-4h14V2H2zm16 10H6v-2h12v2z"/>
-      </svg>
+    const buttonWrapper = document.createElement('div');
+    buttonWrapper.style.cssText = `
+      position: absolute;
+      bottom: ${customization.buttonPosition.includes('bottom') ? customization.buttonBottom : 'auto'}px;
+      top: ${customization.buttonPosition.includes('top') ? customization.buttonBottom : 'auto'}px;
+      right: ${customization.buttonPosition.includes('right') ? customization.buttonRight : 'auto'}px;
+      left: ${customization.buttonPosition.includes('left') ? customization.buttonLeft : 'auto'}px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      ${customization.buttonTextPosition === 'right' ? 'flex-direction: row;' : ''}
+      ${customization.buttonTextPosition === 'left' ? 'flex-direction: row-reverse;' : ''}
+      ${customization.buttonTextPosition === 'bottom' ? 'flex-direction: column;' : ''}
+      ${customization.buttonTextPosition === 'top' ? 'flex-direction: column-reverse;' : ''}
     `;
 
+    if (customization.buttonShowText && customization.buttonText) {
+      const textEl = document.createElement('div');
+      textEl.textContent = customization.buttonText;
+      textEl.style.cssText = `
+        background: white;
+        padding: ${customization.buttonPadding}px;
+        border-radius: 20px;
+        box-shadow: ${customization.buttonShadow};
+        color: ${customization.buttonTextColor};
+        font-size: ${customization.buttonTextSize}px;
+        white-space: nowrap;
+        font-weight: 500;
+      `;
+      buttonWrapper.appendChild(textEl);
+    }
+
+    const button = document.createElement('button');
+    button.id = 'preview-button';
+
+    let iconHTML = '';
+    if (customization.buttonIconType === 'emoji' && customization.buttonCustomIcon) {
+      iconHTML = `<span style="font-size: 24px;">${customization.buttonCustomIcon}</span>`;
+    } else if (customization.buttonIconType === 'custom' && customization.buttonCustomIcon) {
+      iconHTML = customization.buttonCustomIcon;
+    } else if (customization.buttonIconType !== 'none') {
+      const selectedIcon = iconOptions.find(i => i.value === customization.buttonIcon) || iconOptions[0];
+      iconHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" fill="${customization.buttonColor}" viewBox="0 0 24 24">
+          <path d="${selectedIcon.path}"/>
+        </svg>
+      `;
+    }
+
+    button.innerHTML = iconHTML;
+
     if (customization.useButtonCustomCSS) {
-      // When using custom CSS, only apply minimal positioning
       button.style.cssText = `
-        position: absolute;
-        bottom: ${customization.buttonPosition.includes('bottom') ? customization.buttonBottom : 'auto'}px;
-        top: ${customization.buttonPosition.includes('top') ? customization.buttonBottom : 'auto'}px;
-        right: ${customization.buttonPosition.includes('right') ? customization.buttonRight : 'auto'}px;
-        left: ${customization.buttonPosition.includes('left') ? customization.buttonLeft : 'auto'}px;
+        position: relative;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
         border: none;
-        transition: transform 0.2s, box-shadow 0.2s;
       `;
     } else {
-      // Apply full visual editor styles
       button.style.cssText = `
-        position: absolute;
-        bottom: ${customization.buttonPosition.includes('bottom') ? customization.buttonBottom : 'auto'}px;
-        top: ${customization.buttonPosition.includes('top') ? customization.buttonBottom : 'auto'}px;
-        right: ${customization.buttonPosition.includes('right') ? customization.buttonRight : 'auto'}px;
-        left: ${customization.buttonPosition.includes('left') ? customization.buttonLeft : 'auto'}px;
+        position: relative;
         background: ${customization.buttonBackground};
         color: ${customization.buttonColor};
         border: none;
@@ -311,14 +467,13 @@ export const EmbedCustomizer = ({
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        box-shadow: ${customization.buttonShadow};
         cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
       `;
     }
 
-    container.appendChild(button);
-    console.log('Button preview updated');
+    buttonWrapper.appendChild(button);
+    container.appendChild(buttonWrapper);
   };
 
   const handleInputChange = (field: keyof EmbedCustomization, value: string | boolean) => {
@@ -390,7 +545,7 @@ export const EmbedCustomizer = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh]">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
             <Palette className="h-6 w-6 text-primary" />
@@ -514,6 +669,27 @@ export const EmbedCustomizer = ({
                               disabled={customization.useChatCustomCSS}
                             />
                           </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Used for bot icon, send button, and accents
+                          </p>
+                        </div>
+                        <div>
+                          <Label htmlFor="backgroundColor">Chat Background Color</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="color"
+                              value={customization.backgroundColor}
+                              onChange={(e) => handleInputChange('backgroundColor', e.target.value)}
+                              className="w-12 h-12 p-1 rounded-full cursor-pointer"
+                              disabled={customization.useChatCustomCSS}
+                            />
+                            <Input
+                              value={customization.backgroundColor}
+                              onChange={(e) => handleInputChange('backgroundColor', e.target.value)}
+                              placeholder="#ffffff"
+                              disabled={customization.useChatCustomCSS}
+                            />
+                          </div>
                         </div>
                         <div>
                           <Label htmlFor="userMessageColor">User Message Color</Label>
@@ -551,6 +727,27 @@ export const EmbedCustomizer = ({
                             />
                           </div>
                         </div>
+                        <div>
+                          <Label htmlFor="textColor">Text Color</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="color"
+                              value={customization.textColor}
+                              onChange={(e) => handleInputChange('textColor', e.target.value)}
+                              className="w-12 h-12 p-1 rounded-full cursor-pointer"
+                              disabled={customization.useChatCustomCSS}
+                            />
+                            <Input
+                              value={customization.textColor}
+                              onChange={(e) => handleInputChange('textColor', e.target.value)}
+                              placeholder="#1e293b"
+                              disabled={customization.useChatCustomCSS}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Main text color for messages and UI elements
+                          </p>
+                        </div>
                       </CardContent>
                     </Card>
 
@@ -561,7 +758,7 @@ export const EmbedCustomizer = ({
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div>
-                          <Label htmlFor="borderRadius">Border Radius</Label>
+                          <Label htmlFor="borderRadius">Border Radius (px)</Label>
                           <Input
                             id="borderRadius"
                             type="number"
@@ -570,6 +767,9 @@ export const EmbedCustomizer = ({
                             placeholder="8"
                             disabled={customization.useChatCustomCSS}
                           />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Applied to messages, buttons, and input fields
+                          </p>
                         </div>
                         <div>
                           <Label htmlFor="fontFamily">Font Family</Label>
@@ -579,6 +779,18 @@ export const EmbedCustomizer = ({
                             onChange={(e) => handleInputChange('fontFamily', e.target.value)}
                             placeholder="Inter, sans-serif"
                             disabled={customization.useChatCustomCSS}
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            e.g., "Roboto, sans-serif" or "Georgia, serif"
+                          </p>
+                        </div>
+                        <div>
+                          <Label htmlFor="placeholder">Input Placeholder Text</Label>
+                          <Input
+                            id="placeholder"
+                            value={customization.placeholder}
+                            onChange={(e) => handleInputChange('placeholder', e.target.value)}
+                            placeholder="Type your message..."
                           />
                         </div>
                       </CardContent>
@@ -622,14 +834,14 @@ export const EmbedCustomizer = ({
                       </CardHeader>
                       <CardContent>
                         <div className="text-xs space-y-1 font-mono text-muted-foreground">
-                          <p>.embed-chat-container</p>
-                          <p>.embed-chat-header</p>
-                          <p>.embed-bot-icon</p>
-                          <p>.embed-user-message</p>
-                          <p>.embed-bot-message</p>
-                          <p>.embed-input</p>
-                          <p>.embed-send-button</p>
-                          <p>.embed-loading-dot</p>
+                          <p>.embed-chat-container - Main chat container</p>
+                          <p>.embed-chat-header - Header section</p>
+                          <p>.embed-bot-icon - Bot avatar icon</p>
+                          <p>.embed-user-message - User message bubble</p>
+                          <p>.embed-bot-message - Bot message bubble</p>
+                          <p>.embed-input - Input text field</p>
+                          <p>.embed-send-button - Send button</p>
+                          <p>.embed-loading-dot - Loading animation dots</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -647,7 +859,7 @@ export const EmbedCustomizer = ({
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="border rounded-lg overflow-hidden h-[300px]">
+                    <div className="border rounded-lg overflow-hidden" style={{ height: '340px' }}>
                       <iframe
                         ref={chatIframeRef}
                         src={previewUrl}
@@ -663,6 +875,9 @@ export const EmbedCustomizer = ({
                         }}
                       />
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Live preview of your chat window with current customization
+                    </p>
                   </CardContent>
                 </Card>
               </div>
@@ -687,7 +902,6 @@ export const EmbedCustomizer = ({
                   </TabsList>
 
                   <TabsContent value="visual" className="space-y-4 mt-4">
-                    {/* Use Custom CSS Toggle */}
                     <Card>
                       <CardContent className="pt-6">
                         <div className="flex items-center justify-between">
@@ -705,7 +919,137 @@ export const EmbedCustomizer = ({
                       </CardContent>
                     </Card>
 
-                    {/* Button Appearance */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Sparkles className="h-5 w-5" />
+                          Button Content
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <Label htmlFor="buttonIconType">Icon Type</Label>
+                          <select
+                            id="buttonIconType"
+                            value={customization.buttonIconType}
+                            onChange={(e) => handleInputChange('buttonIconType', e.target.value)}
+                            className="w-full p-2 border rounded-md"
+                            disabled={customization.useButtonCustomCSS}
+                          >
+                            <option value="default">Default Icons</option>
+                            <option value="emoji">Emoji</option>
+                            <option value="custom">Custom SVG/HTML</option>
+                            <option value="none">No Icon</option>
+                          </select>
+                        </div>
+
+                        {customization.buttonIconType === 'default' && (
+                          <div>
+                            <Label htmlFor="buttonIcon">Select Icon</Label>
+                            <select
+                              id="buttonIcon"
+                              value={customization.buttonIcon}
+                              onChange={(e) => handleInputChange('buttonIcon', e.target.value)}
+                              className="w-full p-2 border rounded-md"
+                              disabled={customization.useButtonCustomCSS}
+                            >
+                              {iconOptions.map(icon => (
+                                <option key={icon.value} value={icon.value}>{icon.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {(customization.buttonIconType === 'emoji' || customization.buttonIconType === 'custom') && (
+                          <div>
+                            <Label htmlFor="buttonCustomIcon">
+                              {customization.buttonIconType === 'emoji' ? 'Emoji' : 'Custom SVG/HTML'}
+                            </Label>
+                            <Input
+                              id="buttonCustomIcon"
+                              value={customization.buttonCustomIcon}
+                              onChange={(e) => handleInputChange('buttonCustomIcon', e.target.value)}
+                              placeholder={customization.buttonIconType === 'emoji' ? '💬' : '<svg>...</svg>'}
+                              disabled={customization.useButtonCustomCSS}
+                            />
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label>Show Text Label</Label>
+                            <Switch
+                              checked={customization.buttonShowText}
+                              onCheckedChange={(checked) => handleInputChange('buttonShowText', checked)}
+                              disabled={customization.useButtonCustomCSS}
+                            />
+                          </div>
+                        </div>
+
+                        {customization.buttonShowText && (
+                          <>
+                            <div>
+                              <Label htmlFor="buttonText">Button Text</Label>
+                              <Input
+                                id="buttonText"
+                                value={customization.buttonText}
+                                onChange={(e) => handleInputChange('buttonText', e.target.value)}
+                                placeholder="Chat with us"
+                                disabled={customization.useButtonCustomCSS}
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor="buttonTextPosition">Text Position</Label>
+                              <select
+                                id="buttonTextPosition"
+                                value={customization.buttonTextPosition}
+                                onChange={(e) => handleInputChange('buttonTextPosition', e.target.value)}
+                                className="w-full p-2 border rounded-md"
+                                disabled={customization.useButtonCustomCSS}
+                              >
+                                <option value="left">Left of Button</option>
+                                <option value="right">Right of Button</option>
+                                <option value="top">Above Button</option>
+                                <option value="bottom">Below Button</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <Label htmlFor="buttonTextColor">Text Color</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="color"
+                                  value={customization.buttonTextColor}
+                                  onChange={(e) => handleInputChange('buttonTextColor', e.target.value)}
+                                  className="w-12 h-12 p-1 rounded cursor-pointer"
+                                  disabled={customization.useButtonCustomCSS}
+                                />
+                                <Input
+                                  value={customization.buttonTextColor}
+                                  onChange={(e) => handleInputChange('buttonTextColor', e.target.value)}
+                                  placeholder="#1e293b"
+                                  disabled={customization.useButtonCustomCSS}
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <Label htmlFor="buttonTextSize">Text Size (px)</Label>
+                              <Input
+                                id="buttonTextSize"
+                                type="number"
+                                value={customization.buttonTextSize}
+                                onChange={(e) => handleInputChange('buttonTextSize', e.target.value)}
+                                placeholder="14"
+                                disabled={customization.useButtonCustomCSS}
+                              />
+                            </div>
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
+
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg">Button Appearance</CardTitle>
@@ -721,7 +1065,7 @@ export const EmbedCustomizer = ({
                             disabled={customization.useButtonCustomCSS}
                           />
                           <p className="text-xs text-muted-foreground mt-1">
-                            Use color code or gradient (e.g., linear-gradient(...))
+                            Use color code or gradient
                           </p>
                         </div>
                         <div>
@@ -731,13 +1075,12 @@ export const EmbedCustomizer = ({
                               type="color"
                               value={customization.buttonColor}
                               onChange={(e) => handleInputChange('buttonColor', e.target.value)}
-                              className="w-12 h-12 p-1 rounded-full cursor-pointer"
+                              className="w-12 h-12 p-1 rounded cursor-pointer"
                               disabled={customization.useButtonCustomCSS}
                             />
                             <Input
                               value={customization.buttonColor}
                               onChange={(e) => handleInputChange('buttonColor', e.target.value)}
-                              placeholder="#ffffff"
                               disabled={customization.useButtonCustomCSS}
                             />
                           </div>
@@ -749,7 +1092,6 @@ export const EmbedCustomizer = ({
                             type="number"
                             value={customization.buttonSize}
                             onChange={(e) => handleInputChange('buttonSize', e.target.value)}
-                            placeholder="56"
                             disabled={customization.useButtonCustomCSS}
                           />
                         </div>
@@ -760,17 +1102,76 @@ export const EmbedCustomizer = ({
                             type="number"
                             value={customization.buttonBorderRadius}
                             onChange={(e) => handleInputChange('buttonBorderRadius', e.target.value)}
-                            placeholder="50"
                             disabled={customization.useButtonCustomCSS}
                           />
                           <p className="text-xs text-muted-foreground mt-1">
                             50% = circle, 0-20% = rounded square
                           </p>
                         </div>
+                        <div>
+                          <Label htmlFor="buttonShadow">Box Shadow</Label>
+                          <Input
+                            id="buttonShadow"
+                            value={customization.buttonShadow}
+                            onChange={(e) => handleInputChange('buttonShadow', e.target.value)}
+                            placeholder="0 4px 10px rgba(0,0,0,0.3)"
+                            disabled={customization.useButtonCustomCSS}
+                          />
+                        </div>
                       </CardContent>
                     </Card>
 
-                    {/* Button Position */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Animations & Effects</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <Label htmlFor="buttonAnimation">Entry Animation</Label>
+                          <select
+                            id="buttonAnimation"
+                            value={customization.buttonAnimation}
+                            onChange={(e) => handleInputChange('buttonAnimation', e.target.value)}
+                            className="w-full p-2 border rounded-md"
+                            disabled={customization.useButtonCustomCSS}
+                          >
+                            {animationOptions.map(anim => (
+                              <option key={anim.value} value={anim.value}>{anim.label}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="buttonHoverAnimation">Hover Effect</Label>
+                          <select
+                            id="buttonHoverAnimation"
+                            value={customization.buttonHoverAnimation}
+                            onChange={(e) => handleInputChange('buttonHoverAnimation', e.target.value)}
+                            className="w-full p-2 border rounded-md"
+                            disabled={customization.useButtonCustomCSS}
+                          >
+                            {hoverAnimationOptions.map(anim => (
+                              <option key={anim.value} value={anim.value}>{anim.label}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label>Pulse Effect</Label>
+                              <p className="text-xs text-muted-foreground">Add attention-grabbing pulse ring</p>
+                            </div>
+                            <Switch
+                              checked={customization.buttonPulse}
+                              onCheckedChange={(checked) => handleInputChange('buttonPulse', checked)}
+                              disabled={customization.useButtonCustomCSS}
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg">Button Position</CardTitle>
@@ -796,23 +1197,20 @@ export const EmbedCustomizer = ({
                             type="number"
                             value={customization.buttonBottom}
                             onChange={(e) => handleInputChange('buttonBottom', e.target.value)}
-                            placeholder="20"
                             disabled={customization.useButtonCustomCSS}
                           />
                         </div>
                         <div>
-                          <Label htmlFor="buttonRight">
+                          <Label>
                             {customization.buttonPosition === 'bottom-right' ? 'Right' : 'Left'} Distance (px)
                           </Label>
                           <Input
-                            id="buttonRight"
                             type="number"
                             value={customization.buttonPosition === 'bottom-right' ? customization.buttonRight : customization.buttonLeft}
                             onChange={(e) => handleInputChange(
                               customization.buttonPosition === 'bottom-right' ? 'buttonRight' : 'buttonLeft',
                               e.target.value
                             )}
-                            placeholder="20"
                             disabled={customization.useButtonCustomCSS}
                           />
                         </div>
@@ -844,9 +1242,6 @@ export const EmbedCustomizer = ({
                             placeholder="/* Write your custom CSS here */"
                             className="font-mono text-sm min-h-[300px]"
                           />
-                          <p className="text-xs text-muted-foreground">
-                            Toggle "Use Custom CSS" to apply your styles. Use #chatbot-widget-button to target the button.
-                          </p>
                         </div>
                       </CardContent>
                     </Card>
@@ -879,12 +1274,10 @@ export const EmbedCustomizer = ({
                   <CardContent>
                     <div 
                       ref={buttonPreviewRef}
-                      className="border rounded-lg h-[300px] bg-gradient-to-br from-gray-50 to-gray-100 relative"
-                    >
-                      {/* Button will be rendered here via updateButtonPreview */}
-                    </div>
+                      className="border rounded-lg h-[400px] bg-gradient-to-br from-gray-50 to-gray-100 relative"
+                    />
                     <p className="text-xs text-muted-foreground mt-2">
-                      This preview shows how your button will appear on the website
+                      Hover over the button to see hover effects
                     </p>
                   </CardContent>
                 </Card>
@@ -893,7 +1286,7 @@ export const EmbedCustomizer = ({
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-between items-center mt-6">
+        <div className="flex justify-between items-center pt-2 border-t">
           <Button variant="outline" onClick={handleReset} className="flex items-center gap-2">
             <RotateCcw className="h-4 w-4" />
             Reset to Default
