@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Palette, Save, Eye, RotateCcw, Code, MessageSquare, MousePointer, Sparkles } from "lucide-react";
+import { Palette, Save, Eye, RotateCcw, Code, MessageSquare, MousePointer, Sparkles, Bot, User, Send, Video, Volume2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
 
@@ -356,6 +357,28 @@ const hoverAnimationOptions = [
   { value: 'bounce', label: 'Bounce' }
 ];
 
+// Mock messages for preview
+const getMockMessages = (customization: EmbedCustomization) => [
+  {
+    id: "bot-1",
+    from: "bot" as const,
+    text: "Hello! I'm here to help. What would you like to know?",
+    timestamp: new Date(Date.now() - 120000)
+  },
+  {
+    id: "user-1",
+    from: "user" as const,
+    text: "This is a preview of how user messages will appear",
+    timestamp: new Date(Date.now() - 60000)
+  },
+  {
+    id: "bot-2",
+    from: "bot" as const,
+    text: "This is how my responses will look with your customized colors and styling!",
+    timestamp: new Date()
+  }
+];
+
 export const EmbedCustomizer = ({
   isOpen,
   onClose,
@@ -364,7 +387,7 @@ export const EmbedCustomizer = ({
   onSave,
 }: EmbedCustomizerProps) => {
   const { toast } = useToast();
-  const chatIframeRef = useRef<HTMLIFrameElement>(null);
+  const chatPreviewRef = useRef<HTMLDivElement>(null);
   const buttonPreviewRef = useRef<HTMLDivElement>(null);
   const [customization, setCustomization] = useState<EmbedCustomization>({
     ...defaultCustomization,
@@ -374,6 +397,7 @@ export const EmbedCustomizer = ({
   const [mainTab, setMainTab] = useState<string>("chat");
   const [chatSubTab, setChatSubTab] = useState<string>("visual");
   const [buttonSubTab, setButtonSubTab] = useState<string>("visual");
+  const [previewMessages] = useState(getMockMessages(customization));
 
   useEffect(() => {
     if (isOpen && botId) {
@@ -404,15 +428,6 @@ export const EmbedCustomizer = ({
       fetchCustomization();
     }
   }, [isOpen, botId, botName]);
-
-  useEffect(() => {
-    if (chatIframeRef.current && chatIframeRef.current.contentWindow) {
-      chatIframeRef.current.contentWindow.postMessage({
-        type: 'CUSTOMIZATION_UPDATE',
-        customization: customization
-      }, '*');
-    }
-  }, [customization]);
 
   useEffect(() => {
     if (mainTab === 'button') {
@@ -511,19 +526,15 @@ export const EmbedCustomizer = ({
     const styleEl = document.createElement('style');
     
     if (customization.useButtonCustomCSS && customization.buttonCustomCSS) {
-      // Use custom CSS - completely independent from visual editor
       const previewCSS = customization.buttonCustomCSS.replace(/#chatbot-widget-button/g, '#preview-button');
       styleEl.textContent = previewCSS;
     } else {
-      // Use visual editor settings
       let styles = '';
       
-      // Add animation keyframes if needed
       if (customization.buttonAnimation && customization.buttonAnimation !== 'none') {
         styles += getAnimationCSS(customization.buttonAnimation);
       }
       
-      // Add pulse ring animation if enabled
       if (customization.buttonPulse) {
         styles += `
           @keyframes pulse-ring-preview {
@@ -542,7 +553,6 @@ export const EmbedCustomizer = ({
         `;
       }
       
-      // Add hover animation
       if (customization.buttonHoverAnimation && customization.buttonHoverAnimation !== 'none') {
         styles += `
           #preview-button:hover {
@@ -558,7 +568,6 @@ export const EmbedCustomizer = ({
         `;
       }
       
-      // Base button transition
       styles += `
         #preview-button {
           transition: all 0.3s ease;
@@ -570,7 +579,6 @@ export const EmbedCustomizer = ({
     
     container.appendChild(styleEl);
 
-    // Create button wrapper for positioning
     const buttonWrapper = document.createElement('div');
     buttonWrapper.style.cssText = `
       position: absolute;
@@ -587,7 +595,6 @@ export const EmbedCustomizer = ({
       ${customization.buttonTextPosition === 'top' ? 'flex-direction: column-reverse;' : ''}
     `;
 
-    // Add text label if enabled
     if (customization.buttonShowText && customization.buttonText) {
       const textEl = document.createElement('div');
       textEl.textContent = customization.buttonText;
@@ -604,11 +611,9 @@ export const EmbedCustomizer = ({
       buttonWrapper.appendChild(textEl);
     }
 
-    // Create the button
     const button = document.createElement('button');
     button.id = 'preview-button';
 
-    // Generate icon HTML - always respect visual editor settings
     let iconHTML = '';
     if (customization.buttonIconType === 'emoji' && customization.buttonCustomIcon) {
       iconHTML = `<span style="font-size: ${customization.buttonIconSize}px;">${customization.buttonCustomIcon}</span>`;
@@ -625,9 +630,7 @@ export const EmbedCustomizer = ({
 
     button.innerHTML = iconHTML;
 
-    // Apply button styles
     if (customization.useButtonCustomCSS) {
-      // Minimal styling when using custom CSS
       button.style.cssText = `
         position: relative;
         display: flex;
@@ -637,7 +640,6 @@ export const EmbedCustomizer = ({
         border: none;
       `;
     } else {
-      // Full styling from visual editor
       button.style.cssText = `
         position: relative;
         background: ${customization.buttonBackground};
@@ -733,7 +735,66 @@ export const EmbedCustomizer = ({
     });
   };
 
-  const previewUrl = `${window.location.origin}/embed?botId=${botId}&preview=true`;
+  // Helper functions for conditional styling in preview
+  const getContainerStyle = () => {
+    if (customization?.useChatCustomCSS) return {};
+    return {
+      backgroundColor: customization?.backgroundColor || undefined,
+      color: customization?.textColor || undefined,
+      fontFamily: customization?.fontFamily || undefined
+    };
+  };
+
+  const getHeaderStyle = () => {
+    if (customization?.useChatCustomCSS) return {};
+    return {
+      backgroundColor: customization?.headerBackground || undefined,
+      borderRadius: customization ? `${customization.borderRadius}px ${customization.borderRadius}px 0 0` : undefined
+    };
+  };
+
+  const getBotIconStyle = () => {
+    if (customization?.useChatCustomCSS) return {};
+    return {
+      backgroundColor: customization?.primaryColor ? `${customization.primaryColor}20` : undefined,
+      borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
+    };
+  };
+
+  const getUserMessageStyle = () => {
+    if (customization?.useChatCustomCSS) return {};
+    return {
+      backgroundColor: customization?.userMessageColor || undefined,
+      color: "#ffffff",
+      borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : '8px'
+    };
+  };
+
+  const getBotMessageStyle = () => {
+    if (customization?.useChatCustomCSS) return {};
+    return {
+      backgroundColor: customization?.botMessageColor || undefined,
+      color: customization?.textColor || undefined,
+      borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : '8px'
+    };
+  };
+
+  const getInputStyle = () => {
+    if (customization?.useChatCustomCSS) return {};
+    return {
+      borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined,
+      backgroundColor: customization?.backgroundColor || undefined,
+      color: customization?.textColor || undefined
+    };
+  };
+
+  const getSendButtonStyle = () => {
+    if (customization?.useChatCustomCSS) return {};
+    return {
+      backgroundColor: customization?.primaryColor || undefined,
+      borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : undefined
+    };
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -1060,7 +1121,7 @@ export const EmbedCustomizer = ({
                 </Tabs>
               </div>
 
-              {/* Chat Preview */}
+              {/* Chat Preview - Now matching embed structure */}
               <div className="space-y-4">
                 <Card>
                   <CardHeader>
@@ -1069,26 +1130,158 @@ export const EmbedCustomizer = ({
                       Chat Window Preview
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="border rounded-lg overflow-hidden" style={{ height: '320px' }}>
-                      <iframe
-                        ref={chatIframeRef}
-                        src={previewUrl}
-                        className="w-full h-full"
-                        style={{ filter: 'none' }}
-                        onLoad={() => {
-                          if (chatIframeRef.current && chatIframeRef.current.contentWindow) {
-                            chatIframeRef.current.contentWindow.postMessage({
-                              type: 'CUSTOMIZATION_UPDATE',
-                              customization: customization
-                            }, '*');
-                          }
-                        }}
-                      />
+                  <CardContent className="p-0">
+                    <div 
+                      ref={chatPreviewRef}
+                      className={`flex flex-col h-[370px] border rounded-lg overflow-hidden ${
+                        customization?.useChatCustomCSS ? 'embed-chat-container' : ''
+                      }`}
+                      style={getContainerStyle()}
+                    >
+                      {/* Header */}
+                      <div
+                        className={`p-4 border-b flex-shrink-0 ${
+                          customization?.useChatCustomCSS ? 'embed-chat-header' : ''
+                        }`}
+                        style={getHeaderStyle()}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div
+                            className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${
+                              customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
+                            }`}
+                            style={getBotIconStyle()}
+                          >
+                            <Bot
+                              className="h-5 w-5"
+                              style={
+                                customization?.useChatCustomCSS
+                                  ? {}
+                                  : { color: customization?.primaryColor || undefined }
+                              }
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold leading-tight truncate">
+                              {customization?.headerTitle || "Chat Assistant"}
+                            </h3>
+                            {customization?.headerSubtitle && (
+                              <p className="text-xs opacity-70 mt-0.5 truncate">
+                                {customization.headerSubtitle}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              <Badge variant="secondary" className="text-[11px] px-2 py-0.5">
+                                <Volume2 className="h-3 w-3 mr-1" />
+                                Voice
+                              </Badge>
+                              <Badge variant="secondary" className="text-[11px] px-2 py-0.5">
+                                <Video className="h-3 w-3 mr-1" />
+                                Video
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Messages Area */}
+                      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {previewMessages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex gap-3 ${
+                              msg.from === "user" ? "justify-end" : "justify-start"
+                            }`}
+                          >
+                            {msg.from === "bot" && (
+                              <div
+                                className={`flex items-center justify-center w-6 h-6 rounded-full mt-auto ${
+                                  customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
+                                }`}
+                                style={getBotIconStyle()}
+                              >
+                                <Bot
+                                  className="h-3 w-3"
+                                  style={
+                                    customization?.useChatCustomCSS
+                                      ? {}
+                                      : { color: customization?.primaryColor || undefined }
+                                  }
+                                />
+                              </div>
+                            )}
+                            <div className="flex flex-col gap-2">
+                              <div className={`max-w-[80%] ${msg.from === "user" ? "ml-auto" : ""}`}>
+                                <div
+                                  className={`p-3 ${
+                                    customization?.useChatCustomCSS
+                                      ? (msg.from === "user" ? 'embed-user-message' : 'embed-bot-message')
+                                      : ''
+                                  }`}
+                                  style={msg.from === "user" ? getUserMessageStyle() : getBotMessageStyle()}
+                                >
+                                  <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                                </div>
+                                <p className="text-xs opacity-70 mt-1 px-1">
+                                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              </div>
+                            </div>
+                            {msg.from === "user" && (
+                              <div
+                                className={`flex items-center justify-center w-6 h-6 rounded-full mt-auto ${
+                                  customization?.useChatCustomCSS ? 'embed-bot-icon' : ''
+                                }`}
+                                style={getBotIconStyle()}
+                              >
+                                <User
+                                  className="h-3 w-3"
+                                  style={
+                                    customization?.useChatCustomCSS
+                                      ? {}
+                                      : { color: customization?.primaryColor || undefined }
+                                  }
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Input Area */}
+                      <div
+                        className={`flex-shrink-0 p-4 border-t ${
+                          customization?.useChatCustomCSS ? 'embed-chat-header' : ''
+                        }`}
+                        style={getHeaderStyle()}
+                      >
+                        <div className="flex gap-2">
+                          <Input
+                            value=""
+                            placeholder={customization?.placeholder || "Type your message..."}
+                            disabled
+                            className={`flex-1 ${customization?.useChatCustomCSS ? 'embed-input' : ''}`}
+                            style={getInputStyle()}
+                          />
+                          <Button
+                            disabled
+                            size="icon"
+                            className={`shrink-0 ${customization?.useChatCustomCSS ? 'embed-send-button' : ''}`}
+                            style={getSendButtonStyle()}
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="text-center py-2 border-t mt-2">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Powered by{" "}
+                            <span className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                              TasteAI Studio
+                            </span>
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Live preview of your chat window with current customization
-                    </p>
                   </CardContent>
                 </Card>
               </div>
