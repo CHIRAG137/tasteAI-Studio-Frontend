@@ -1525,7 +1525,7 @@ export const EmbedCustomizer = ({
                   <CardContent>
                     <div 
                       ref={buttonPreviewRef}
-                      className="border rounded-lg h-[400px] bg-gradient-to-br from-gray-50 to-gray-100 relative"
+                      className="border rounded-lg h-[320px] bg-gradient-to-br from-gray-50 to-gray-100 relative"
                     />
                     <p className="text-xs text-muted-foreground mt-2">
                       Hover over the button to see hover effects
@@ -1537,7 +1537,7 @@ export const EmbedCustomizer = ({
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-between items-center mt26 pt-2 border-t">
+        <div className="flex justify-between items-center mt-2 pt-2 border-t">
           <Button variant="outline" onClick={handleReset} className="flex items-center gap-2">
             <RotateCcw className="h-4 w-4" />
             Reset to Default
