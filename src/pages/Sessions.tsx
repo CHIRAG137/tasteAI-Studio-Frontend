@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X, Filter, Sparkles, Loader2, ArrowLeft } from "lucide-react";
+import { Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X, Filter, Sparkles, Loader2, ArrowLeft, MapPin, Monitor } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -23,6 +23,8 @@ interface Message {
 interface Session {
   id: string;
   userId: string;
+  ipAddress?: string;
+  userAgent?: string;
   timestamp: string;
   messages: Message[];
   duration?: string;
@@ -47,6 +49,27 @@ export default function Sessions() {
   const [summarizerAvailable, setSummarizerAvailable] = useState<boolean | null>(null);
   const [summarizerError, setSummarizerError] = useState<string>("");
   const [showSummary, setShowSummary] = useState(false);
+
+  // ✅ NEW: Helper functions to parse user agent
+  const parseBrowser = (userAgent: string | undefined) => {
+    if (!userAgent || userAgent === 'Unknown') return 'Unknown Browser';
+    if (userAgent.includes('Chrome')) return 'Chrome';
+    if (userAgent.includes('Firefox')) return 'Firefox';
+    if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) return 'Safari';
+    if (userAgent.includes('Edge')) return 'Edge';
+    if (userAgent.includes('Opera')) return 'Opera';
+    return 'Unknown Browser';
+  };
+
+  const parseOS = (userAgent: string | undefined) => {
+    if (!userAgent || userAgent === 'Unknown') return 'Unknown OS';
+    if (userAgent.includes('Windows')) return 'Windows';
+    if (userAgent.includes('Mac OS')) return 'macOS';
+    if (userAgent.includes('Linux')) return 'Linux';
+    if (userAgent.includes('Android')) return 'Android';
+    if (userAgent.includes('iOS')) return 'iOS';
+    return 'Unknown OS';
+  };
 
   // Check summarizer availability on mount
   useEffect(() => {
@@ -100,7 +123,10 @@ export default function Sessions() {
       if (data?.status === "success" && Array.isArray(data.result?.sessions)) {
         const mappedSessions: Session[] = data.result.sessions.map((s: any) => ({
           id: s._id,
-          userId: s.variables?.username || "Unknown User",
+          // ✅ UPDATED: Use IP address as primary identifier, fallback to username
+          userId: s.ipAddress || s.variables?.username || "Unknown User",
+          ipAddress: s.ipAddress,
+          userAgent: s.userAgent,
           timestamp: s.createdAt,
           duration: s.duration,
           messages: s.history.map((h: any) => {
@@ -143,7 +169,10 @@ export default function Sessions() {
         const s = data.result;
         const mappedSession: Session = {
           id: s.sessionId,
-          userId: s.history.find((h: any) => h.fromUser)?.content || "Unknown User",
+          // ✅ UPDATED: Use IP address from API response
+          userId: s.ipAddress || s.history.find((h: any) => h.fromUser)?.content || "Unknown User",
+          ipAddress: s.ipAddress,
+          userAgent: s.userAgent,
           timestamp: s.createdAt,
           messages: s.history.map((h: any) => {
             let content = "";
@@ -248,8 +277,9 @@ export default function Sessions() {
     if (searchFilter) {
       const searchLower = searchFilter.toLowerCase();
       const matchesUserId = session.userId.toLowerCase().includes(searchLower);
+      const matchesIp = session.ipAddress?.toLowerCase().includes(searchLower);
       const matchesMessages = session.messages.some((msg) => msg.content.toLowerCase().includes(searchLower));
-      if (!matchesUserId && !matchesMessages) return false;
+      if (!matchesUserId && !matchesIp && !matchesMessages) return false;
     }
 
     const sessionDate = new Date(session.timestamp);
@@ -309,7 +339,7 @@ export default function Sessions() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by user or message..."
+                  placeholder="Search by IP, user, or message..."
                   value={searchFilter}
                   onChange={(e) => setSearchFilter(e.target.value)}
                   className="pl-9"
@@ -409,20 +439,35 @@ export default function Sessions() {
                   >
                     <CardHeader className="p-4 pb-2">
                       <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{session.userId}</span>
+                        {/* ✅ UPDATED: Show IP address with icon */}
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <span className="text-sm font-medium block truncate">
+                              {session.ipAddress || session.userId}
+                            </span>
+                            {/* ✅ NEW: Show browser and OS info if available */}
+                            {session.userAgent && (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <Monitor className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground truncate">
+                                  {parseBrowser(session.userAgent)} • {parseOS(session.userAgent)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <Badge variant="secondary" className="text-xs">{session.messages.length} msgs</Badge>
+                        <Badge variant="secondary" className="text-xs flex-shrink-0 ml-2">
+                          {session.messages.length} msgs
+                        </Badge>
                       </div>
                     </CardHeader>
                     <CardContent className="p-4 pt-0 space-y-1">
-                      {session.duration && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          {session.duration}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        {formatDate(session.timestamp)}
+                        {session.duration && ` • ${session.duration}`}
+                      </div>
                       <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
                         {session.messages[0]?.content}
                       </p>
@@ -455,9 +500,26 @@ export default function Sessions() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold text-lg">Session Replay</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDate(selectedSession.timestamp)} at {formatTime(selectedSession.timestamp)}
-                      </p>
+                      {/* ✅ UPDATED: Show IP address in session header */}
+                      <div className="flex items-center gap-2 mt-1">
+                        <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          {selectedSession.ipAddress || selectedSession.userId}
+                        </p>
+                        <span className="text-muted-foreground">•</span>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(selectedSession.timestamp)} at {formatTime(selectedSession.timestamp)}
+                        </p>
+                      </div>
+                      {/* ✅ NEW: Show device info in header */}
+                      {selectedSession.userAgent && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <Monitor className="w-3.5 h-3.5 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">
+                            {parseBrowser(selectedSession.userAgent)} on {parseOS(selectedSession.userAgent)}
+                          </p>
+                        </div>
+                      )}
                     </div>
                     {selectedSession.duration && (
                       <Badge variant="outline">
