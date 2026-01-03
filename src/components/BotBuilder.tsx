@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
-import { Bot, Sparkles, User, Globe, Mic, Languages, Brain, MessageSquare, Video } from "lucide-react";
+import { Bot, Sparkles, User, Globe, Mic, Languages, Brain, MessageSquare, Video, Users } from "lucide-react";
 import { BasicInfoSection } from "./BotBuilder/BasicInfoSection";
 import { WebsiteSection } from "./BotBuilder/WebsiteSection";
 import { VoiceSection } from "./BotBuilder/VoiceSection";
@@ -11,6 +11,7 @@ import { PersonaSection } from "./BotBuilder/PersonaSection";
 import { SlackSection } from "./BotBuilder/SlackSection";
 import { ConversationFlowSection } from "./BotBuilder/ConversationFlowSection";
 import { VideoBotSection } from "./BotBuilder/VideoBotSection";
+import { HumanHandoffSection } from "./BotBuilder/HumanHandoffSection";
 import { Node, Edge } from '@xyflow/react';
 import { useToast } from "@/hooks/use-toast";
 import { BotCard } from "@/components/BotCard";
@@ -44,6 +45,8 @@ interface BotConfig {
   videoBotImageUrl?: string;
   videoBotImagePublicId?: string;
   voiceId?: string;
+  humanHandoffEnabled?: boolean;
+  humanHandoffEmails?: string;
 }
 
 export const BotBuilder = () => {
@@ -102,6 +105,8 @@ export const BotBuilder = () => {
     videoBotImageUrl: "",
     videoBotImagePublicId: "",
     voiceId: "",
+    humanHandoffEnabled: false,
+    humanHandoffEmails: "",
   });
 
   const fetchBots = async () => {
@@ -240,6 +245,8 @@ export const BotBuilder = () => {
         video_bot_image_url: botConfig.videoBotImageUrl || "",
         video_bot_image_public_id: botConfig.videoBotImagePublicId || "",
         voice_id: botConfig.voiceId || "",
+        human_handoff_enabled: (botConfig.humanHandoffEnabled || false).toString(),
+        human_handoff_emails: botConfig.humanHandoffEmails || "",
       }).forEach(([key, value]) => formData.append(key, value as string));
 
       if (botConfig.scrapedMarkdown?.length)
@@ -389,6 +396,10 @@ export const BotBuilder = () => {
                 </CollapsibleSection>
                 <CollapsibleSection title="Add Bot to Slack Channel" icon={<MessageSquare className="w-5 h-5 text-primary" />}>
                   <SlackSection botConfig={botConfig} updateConfig={updateConfig} />
+                </CollapsibleSection>
+
+                <CollapsibleSection title="Talk to Human" icon={<Users className="w-5 h-5 text-primary" />}>
+                  <HumanHandoffSection botConfig={botConfig} updateConfig={updateConfig} />
                 </CollapsibleSection>
 
                 <ConversationFlowSection
