@@ -14,6 +14,11 @@ import EditBot from "./pages/EditBot";
 import { PublicBotChatPage } from "@/components/PublicBotChatPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PublicRoute } from "@/components/PublicRoute";
+import { AgentProtectedRoute } from "@/components/agent/AgentProtectedRoute";
+import AgentLogin from "./pages/agent/AgentLogin";
+import AgentDashboard from "./pages/agent/AgentDashboard";
+import AgentChat from "./pages/agent/AgentChat";
+import AgentConversationLink from "./pages/agent/AgentConversationLink";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +91,26 @@ const App = () => (
 
           {/* Public bot chat page - accessible to everyone */}
           <Route path="/bot/:botId" element={<PublicBotChatPage />} />
+
+          {/* Agent Routes */}
+          <Route path="/agent/login" element={<AgentLogin />} />
+          <Route path="/agent/link/:conversationId" element={<AgentConversationLink />} />
+          <Route 
+            path="/agent" 
+            element={
+              <AgentProtectedRoute>
+                <AgentDashboard />
+              </AgentProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/agent/chat/:conversationId" 
+            element={
+              <AgentProtectedRoute>
+                <AgentChat />
+              </AgentProtectedRoute>
+            } 
+          />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
