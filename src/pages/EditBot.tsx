@@ -20,6 +20,7 @@ import {
   MessageSquare,
   ArrowLeft,
   Video,
+  Users,
 } from "lucide-react";
 
 import { BasicInfoSection } from "@/components/BotBuilder/BasicInfoSection";
@@ -30,6 +31,7 @@ import { PersonaSection } from "@/components/BotBuilder/PersonaSection";
 import { SlackSection } from "@/components/BotBuilder/SlackSection";
 import { ConversationFlowSection } from "@/components/BotBuilder/ConversationFlowSection";
 import { VideoBotSection } from "@/components/BotBuilder/VideoBotSection";
+import { HumanHandoffSection } from "@/components/BotBuilder/HumanHandoffSection";
 
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
@@ -71,6 +73,10 @@ interface BotConfig {
   isVideoBot: boolean;
   videoBotImageUrl?: string;
   videoBotImagePublicId?: string;
+
+  // Human handoff
+  humanHandoffEnabled?: boolean;
+  humanHandoffEmails?: string;
 }
 
 const EditBot = () => {
@@ -112,6 +118,9 @@ const EditBot = () => {
     isVideoBot: false,
     videoBotImageUrl: "",
     videoBotImagePublicId: "",
+
+    humanHandoffEnabled: false,
+    humanHandoffEmails: "",
   });
 
   // ---------------- FETCH BOT ----------------
@@ -160,6 +169,9 @@ const EditBot = () => {
           isVideoBot: bot.is_video_bot || false,
           videoBotImageUrl: bot.video_bot_image_url || "",
           videoBotImagePublicId: bot.video_bot_image_public_id || "",
+
+          humanHandoffEnabled: bot.human_handoff_enabled || false,
+          humanHandoffEmails: bot.human_handoff_emails || "",
         });
       } catch (err) {
         toast({
@@ -235,6 +247,10 @@ const EditBot = () => {
       formData.append("video_bot_image_url", botConfig.videoBotImageUrl || "");
       formData.append("video_bot_image_public_id", botConfig.videoBotImagePublicId || "");
       formData.append("voice_id", botConfig.voiceId || "");
+
+      // Human handoff
+      formData.append("human_handoff_enabled", (botConfig.humanHandoffEnabled || false).toString());
+      formData.append("human_handoff_emails", botConfig.humanHandoffEmails || "");
 
       if (botConfig.scrapedMarkdown?.length) {
         formData.append("scraped_content", JSON.stringify(botConfig.scrapedMarkdown));
@@ -334,6 +350,10 @@ const EditBot = () => {
 
                 <CollapsibleSection title="Slack Integration" icon={<MessageSquare className="w-5 h-5 text-primary" />}>
                   <SlackSection botConfig={botConfig} updateConfig={updateConfig} />
+                </CollapsibleSection>
+
+                <CollapsibleSection title="Talk to Human" icon={<Users className="w-5 h-5 text-primary" />}>
+                  <HumanHandoffSection botConfig={botConfig} updateConfig={updateConfig} />
                 </CollapsibleSection>
 
                 <ConversationFlowSection
