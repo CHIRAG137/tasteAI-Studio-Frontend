@@ -19,6 +19,7 @@ import AgentLogin from "./pages/agent/AgentLogin";
 import AgentDashboard from "./pages/agent/AgentDashboard";
 import AgentChat from "./pages/agent/AgentChat";
 import AgentConversationLink from "./pages/agent/AgentConversationLink";
+import AgentSetPassword from "./pages/agent/AgentSetPassword";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,7 @@ const App = () => (
 
           {/* Agent Routes */}
           <Route path="/agent/login" element={<AgentLogin />} />
+          <Route path="/agent/set-password" element={<AgentSetPassword />} />
           <Route path="/agent/link/:conversationId" element={<AgentConversationLink />} />
           <Route 
             path="/agent" 
