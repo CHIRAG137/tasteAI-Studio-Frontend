@@ -130,25 +130,47 @@ const AgentSetPassword = () => {
   if (isTokenValid === false) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4">
-        <Card className="w-full max-w-md shadow-lg">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
-                <AlertCircle className="w-8 h-8 text-destructive" />
+        <div className="w-full max-w-md space-y-6">
+          {/* Logo and Branding */}
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-14 h-14 bg-gradient-to-br from-emerald-600 to-teal-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Headphones className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-xl font-bold text-foreground">Invalid or Expired Link</h2>
-              <p className="text-muted-foreground">
-                This password setup link is invalid or has expired. Please contact your administrator for a new link.
-              </p>
-              <Button
-                onClick={() => navigate("/agent/login")}
-                className="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white"
-              >
-                Go to Login
-              </Button>
+              <div className="text-left">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
+                  Agent Portal
+                </h1>
+                <p className="text-xs text-muted-foreground">TasteAI Studio</p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <Card className="shadow-lg">
+            <CardContent className="pt-6">
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
+                  <AlertCircle className="w-8 h-8 text-destructive" />
+                </div>
+                <h2 className="text-xl font-bold text-foreground">Invalid or Expired Link</h2>
+                <p className="text-muted-foreground">
+                  This password setup link is invalid or has expired. Please contact your administrator for a new link.
+                </p>
+                <Button
+                  onClick={() => navigate("/agent/login")}
+                  className="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white"
+                >
+                  Go to Login
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Footer */}
+          <div className="text-center text-xs text-muted-foreground">
+            <p>Powered by TasteAI Studio</p>
+          </div>
+        </div>
       </div>
     );
   }
