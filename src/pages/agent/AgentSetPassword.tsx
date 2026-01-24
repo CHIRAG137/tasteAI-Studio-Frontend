@@ -20,6 +20,7 @@ const AgentSetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
+  const [agentEmail, setAgentEmail] = useState<string>("");
 
   useEffect(() => {
     if (!token) {
@@ -27,25 +28,42 @@ const AgentSetPassword = () => {
       return;
     }
 
-    // Optionally verify token validity on mount
+    // Verify token validity on mount
     const verifyToken = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/verify-agent-token`, {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/human-agent/verify-token`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
         });
 
         const data = await response.json();
-        setIsTokenValid(response.ok && !data.error);
+        
+        // Backend returns: {status: "success", result: {valid, email, agentId}, message}
+        if (response.ok && data.status === "success" && data.result?.valid) {
+          setIsTokenValid(true);
+          setAgentEmail(data.result.email || "");
+        } else {
+          setIsTokenValid(false);
+          toast({
+            title: "Invalid Token",
+            description: data.message || "This token is invalid or has expired",
+            variant: "destructive",
+          });
+        }
       } catch (err) {
         console.error("Token verification failed:", err);
         setIsTokenValid(false);
+        toast({
+          title: "Error",
+          description: "Failed to verify token. Please try again.",
+          variant: "destructive",
+        });
       }
     };
 
     verifyToken();
-  }, [token]);
+  }, [token, toast]);
 
   const passwordsMatch = password === confirmPassword;
   const isPasswordValid = password.length >= 8;
@@ -74,7 +92,7 @@ const AgentSetPassword = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/agent-set-password`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/human-agent/set-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password }),
@@ -82,24 +100,25 @@ const AgentSetPassword = () => {
 
       const data = await response.json();
 
-      if (!response.ok || data.error) {
+      // Backend returns: {status: "success", result: {...}, message}
+      if (!response.ok || data.status !== "success") {
         toast({
           title: "Error",
-          description: data.error || "Failed to set password",
+          description: data.message || "Failed to set password",
           variant: "destructive",
         });
       } else {
         setIsSuccess(true);
         toast({
           title: "Success",
-          description: "Password set successfully!",
+          description: data.result?.message || data.message || "Password set successfully!",
         });
       }
     } catch (err) {
       console.error(err);
       toast({
         title: "Error",
-        description: "Something went wrong",
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -199,6 +218,9 @@ const AgentSetPassword = () => {
           <div className="space-y-1">
             <h2 className="text-3xl font-bold text-foreground">Set Your Password</h2>
             <p className="text-muted-foreground">Create a secure password for your agent account</p>
+            {agentEmail && (
+              <p className="text-sm text-emerald-600 font-medium">{agentEmail}</p>
+            )}
           </div>
         </div>
 
@@ -222,6 +244,7 @@ const AgentSetPassword = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={8}
+                    className="pr-10"
                   />
                   <Button
                     type="button"
@@ -229,6 +252,7 @@ const AgentSetPassword = () => {
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -238,7 +262,16 @@ const AgentSetPassword = () => {
                   </Button>
                 </div>
                 {password && !isPasswordValid && (
-                  <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Password must be at least 8 characters
+                  </p>
+                )}
+                {password && isPasswordValid && (
+                  <p className="text-xs text-emerald-600 flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Password meets requirements
+                  </p>
                 )}
               </div>
 
@@ -252,6 +285,7 @@ const AgentSetPassword = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
+                    className="pr-10"
                   />
                   <Button
                     type="button"
@@ -259,6 +293,7 @@ const AgentSetPassword = () => {
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    tabIndex={-1}
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -268,16 +303,35 @@ const AgentSetPassword = () => {
                   </Button>
                 </div>
                 {confirmPassword && !passwordsMatch && (
-                  <p className="text-xs text-destructive">Passwords do not match</p>
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Passwords do not match
+                  </p>
+                )}
+                {confirmPassword && passwordsMatch && (
+                  <p className="text-xs text-emerald-600 flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Passwords match
+                  </p>
                 )}
               </div>
 
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white"
-                disabled={isLoading || !isPasswordValid || !passwordsMatch}
+                disabled={isLoading || !isPasswordValid || !passwordsMatch || !password || !confirmPassword}
               >
-                {isLoading ? "Setting Password..." : "Set Password"}
+                {isLoading ? (
+                  <>
+                    <Lock className="mr-2 h-4 w-4 animate-spin" />
+                    Setting Password...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Set Password
+                  </>
+                )}
               </Button>
             </form>
           </CardContent>
@@ -286,6 +340,7 @@ const AgentSetPassword = () => {
         {/* Footer */}
         <div className="text-center text-xs text-muted-foreground">
           <p>Powered by TasteAI Studio</p>
+          <p className="mt-1">Need help? Contact your administrator</p>
         </div>
       </div>
     </div>

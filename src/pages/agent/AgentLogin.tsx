@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Eye, EyeOff, Headphones, MessageSquare } from "lucide-react";
+import { Eye, EyeOff, Headphones, MessageSquare, LogIn, Mail, Lock } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { setAgentAuthToken, setAgentEmail } from "@/utils/agentAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +13,7 @@ const AgentLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmailInput] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -21,10 +21,20 @@ const AgentLogin = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!email || !password) {
+      toast({
+        title: "Error",
+        description: "Please enter both email and password",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/agent-login`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/human-agent/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -32,26 +42,36 @@ const AgentLogin = () => {
 
       const data = await response.json();
 
-      if (!response.ok || data.error) {
+      // Backend returns: {status: "success", result: {token, agent}, message}
+      if (!response.ok || data.status !== "success") {
         toast({
-          title: "Error",
-          description: data.error || "Invalid credentials",
+          title: "Login Failed",
+          description: data.message || "Invalid email or password",
           variant: "destructive",
         });
       } else {
+        // Store the JWT token using your utility functions
         setAgentAuthToken(data.result.token);
-        setAgentEmail(email);
+        setAgentEmail(data.result.agent.email);
+        
+        // Also store agent ID for future use
+        localStorage.setItem("agentId", data.result.agent.id);
+
         toast({
           title: "Success",
-          description: "Login successful!",
+          description: "Login successful! Redirecting...",
         });
-        navigate(from, { replace: true });
+
+        // Redirect to agent dashboard or previous location
+        setTimeout(() => {
+          navigate(from, { replace: true });
+        }, 500);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Login error:", err);
       toast({
         title: "Error",
-        description: "Something went wrong",
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -102,20 +122,25 @@ const AgentLogin = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your agent email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+                <Label htmlFor="email">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="agent@example.com"
+                    value={email}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    required
+                    className="pl-10"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -123,6 +148,7 @@ const AgentLogin = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    className="pl-10 pr-10"
                   />
                   <Button
                     type="button"
@@ -130,6 +156,7 @@ const AgentLogin = () => {
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -145,15 +172,29 @@ const AgentLogin = () => {
                 className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white"
                 disabled={isLoading}
               >
-                {isLoading ? "Signing in..." : "Sign In"}
+                {isLoading ? (
+                  <>
+                    <LogIn className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Sign In
+                  </>
+                )}
               </Button>
             </form>
           </CardContent>
         </Card>
 
         {/* Footer */}
-        <div className="text-center text-xs text-muted-foreground">
+        <div className="text-center text-xs text-muted-foreground space-y-2">
           <p>Powered by TasteAI Studio</p>
+          <p>
+            Don't have access?{" "}
+            <span className="text-emerald-600 font-medium">Contact your administrator</span>
+          </p>
         </div>
       </div>
     </div>
