@@ -11,22 +11,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Send, Bot, User, X, Mic, MicOff, Loader2, Video, Phone, PhoneOff, Volume2, VolumeX } from "lucide-react";
-// TODO: import { useSpeechToText } from "@/hooks/useSpeechToText";
+import { Send, Bot, User, X, Mic, MicOff, Loader2, Video, Phone, PhoneOff, Volume2, VolumeX, Headphones, Clock } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-// TODO: import { VoiceWaveform } from "@/components/VoiceWaveform";
 
 interface Message {
   id: string;
   content: string | object;
-  sender: "user" | "bot";
+  sender: "user" | "bot" | "agent";
   timestamp: Date;
   showConfirmationButtons?: boolean;
   showBranchOptions?: boolean;
   branchOptions?: string[];
   selectedBranch?: string;
   audioUrl?: string;
+  isSystemMessage?: boolean;
 }
 
 interface ChatBotProps {
@@ -42,6 +41,7 @@ interface ChatBotProps {
     primaryPurpose: string;
     conversationalTone: string;
     voiceId: string;
+    humanHandoffEnabled?: boolean;
   };
   onClose: () => void;
 }
@@ -57,19 +57,173 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const [isMuted, setIsMuted] = useState(true);
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  
+  // Human handoff state
+  const [handoffRequested, setHandoffRequested] = useState(false);
+  const [handoffSessionId, setHandoffSessionId] = useState<string | null>(null);
+  const [isConnectedToAgent, setIsConnectedToAgent] = useState(false);
+  const [assignedAgentEmail, setAssignedAgentEmail] = useState<string | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // const audioRef = useRef<HTMLAudioElement>(null);
 
-  // TTS Queue management
-  // BROWSER SPEECH RECOGNITION (Speech-to-Text)
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const recognitionRef = useRef<any>(null);
 
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const ttsQueueRef = useRef<string[]>([]);
+  const isProcessingTTSRef = useRef(false);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [showTtsPrompt, setShowTtsPrompt] = useState(false);
+
+  // Human handoff keywords detection
+  const detectHandoffIntent = (message: string): boolean => {
+    const handoffKeywords = [
+      'speak to human',
+      'talk to agent',
+      'live agent',
+      'customer service',
+      'representative',
+      'real person',
+      'human support',
+      'talk to someone',
+      'speak to someone',
+      'human help',
+      'agent',
+    ];
+
+    const lowerMessage = message.toLowerCase();
+    return handoffKeywords.some(keyword => lowerMessage.includes(keyword));
+  };
+
+  // Add system message helper
+  const addSystemMessage = (content: string) => {
+    const systemMessage: Message = {
+      id: `system-${Date.now()}`,
+      content,
+      sender: "bot",
+      timestamp: new Date(),
+      isSystemMessage: true,
+    };
+    setMessages((prev) => [...prev, systemMessage]);
+  };
+
+  // Request human handoff
+  const requestHumanHandoff = async (userQuestion: string) => {
+    if (!bot.humanHandoffEnabled) {
+      addSystemMessage("Human support is not available for this bot.");
+      return;
+    }
+
+    if (handoffRequested) {
+      addSystemMessage("Your request for human support has already been submitted.");
+      return;
+    }
+
+    setHandoffRequested(true);
+    addSystemMessage("Connecting you with a human agent...");
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/handoff/request`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            botId: bot.id,
+            flowSessionId: sessionId,
+            userQuestion,
+            userIpAddress: "",
+            userAgent: navigator.userAgent,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.status === "success" && data.result) {
+        setHandoffSessionId(data.result.handoffSession._id);
+        setAssignedAgentEmail(data.result.agent.email);
+        setIsConnectedToAgent(data.result.agent.isOnline);
+
+        addSystemMessage(data.result.message);
+        
+        if (!data.result.agent.isOnline) {
+          addSystemMessage(
+            "The agent is currently offline but will respond as soon as possible. You can continue asking questions or close this chat."
+          );
+        }
+      } else {
+        throw new Error(data.message || "Failed to request human support");
+      }
+    } catch (error: any) {
+      console.error("Handoff request error:", error);
+      addSystemMessage("Failed to connect with a human agent. Please try again later.");
+      setHandoffRequested(false);
+    }
+  };
+
+  // Send message to agent when in handoff mode
+  const sendMessageToAgent = async (message: string) => {
+    if (!handoffSessionId) return;
+
+    try {
+      await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-message`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message, sender: "user" }),
+        }
+      );
+    } catch (error) {
+      console.error("Error sending message to agent:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send message to agent",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Poll for agent messages when handoff is active
+  useEffect(() => {
+    if (!handoffSessionId || !isConnectedToAgent) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-messages`
+        );
+        const data = await response.json();
+
+        if (data.status === "success" && data.result?.messages) {
+          const agentMessages = data.result.messages
+            .filter((m: any) => m.sender === "agent")
+            .map((m: any) => ({
+              id: `agent-${m.timestamp || Date.now()}`,
+              content: m.message,
+              sender: "agent" as const,
+              timestamp: new Date(m.timestamp),
+            }));
+
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map(m => m.id));
+            const newMessages = agentMessages.filter((m: Message) => !existingIds.has(m.id));
+            return [...prev, ...newMessages];
+          });
+        }
+      } catch (error) {
+        console.error("Error polling agent messages:", error);
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [handoffSessionId, isConnectedToAgent]);
+
   // Initialize browser's Speech Recognition API
   useEffect(() => {
-    // Check if browser supports Speech Recognition
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
@@ -78,9 +232,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false; // Stop after one result
+    recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = 'en-US'; // Set language
+    recognition.lang = 'en-US';
 
     recognition.onstart = () => {
       setIsListening(true);
@@ -91,12 +245,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       const transcript = event.results[0][0].transcript;
       setIsProcessing(true);
 
-      // Handle the recognized speech
       if (bot.isVideoBot && flowFinished) {
-        // Auto-submit for video bot in Q&A mode
         handleVoiceQuestion(transcript);
       } else {
-        // Just populate input field
         setInputMessage(prev => {
           const newText = prev ? prev + " " + transcript : transcript;
           return newText.trim();
@@ -134,7 +285,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     };
   }, [bot.isVideoBot, flowFinished]);
 
-  // Toggle speech recognition
   const toggleListening = () => {
     if (!recognitionRef.current) {
       toast({
@@ -152,14 +302,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     }
   };
 
-  // BROWSER SPEECH SYNTHESIS (Text-to-Speech)
-  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const ttsQueueRef = useRef<string[]>([]);
-  const isProcessingTTSRef = useRef(false);
-  const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [showTtsPrompt, setShowTtsPrompt] = useState(false);
-
-  // Process TTS queue using browser's Speech Synthesis API
   const processTTSQueue = async () => {
     if (isProcessingTTSRef.current || ttsQueueRef.current.length === 0) {
       return;
@@ -170,7 +312,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       return;
     }
 
-    // Check if TTS is enabled by user
     if (!ttsEnabled) {
       setShowTtsPrompt(true);
       return;
@@ -184,13 +325,12 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       if (!text) continue;
 
       try {
-        // Use browser's Speech Synthesis API
-        await new Promise<void>((resolve, reject) => {
+        await new Promise<void>((resolve) => {
           const utterance = new SpeechSynthesisUtterance(text);
           utterance.lang = 'en-US';
-          utterance.rate = 1.0; // Speed
-          utterance.pitch = 1.0; // Pitch
-          utterance.volume = 1.0; // Volume
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          utterance.volume = 1.0;
 
           utterance.onend = () => {
             resolve();
@@ -198,12 +338,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
           utterance.onerror = (event) => {
             console.error("Speech synthesis error:", event);
-            // If error is "not-allowed", it means user interaction is needed
             if (event.error === 'not-allowed') {
               setShowTtsPrompt(true);
               setTtsEnabled(false);
             }
-            resolve(); // Continue with next item instead of rejecting
+            resolve();
           };
 
           speechSynthesisRef.current = utterance;
@@ -212,7 +351,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
       } catch (error) {
         console.error("TTS error:", error);
-        // Continue with next item even if one fails
       }
     }
 
@@ -220,86 +358,20 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     setIsSpeaking(false);
   };
 
-  // Enable TTS with user interaction
   const enableTTS = () => {
     setTtsEnabled(true);
     setShowTtsPrompt(false);
-    // Process any queued messages
     if (ttsQueueRef.current.length > 0) {
       processTTSQueue();
     }
   };
 
-  // Disable TTS
   const disableTTS = () => {
     setTtsEnabled(false);
     setShowTtsPrompt(false);
     clearTTSQueue();
   };
 
-  // Process TTS queue - ensures messages are spoken in order without overlap
-  // const processTTSQueue = async () => {
-  //   // If already processing or queue is empty, return
-  //   if (isProcessingTTSRef.current || ttsQueueRef.current.length === 0) {
-  //     return;
-  //   }
-
-  //   isProcessingTTSRef.current = true;
-  //   setIsSpeaking(true);
-
-  //   while (ttsQueueRef.current.length > 0) {
-  //     const text = ttsQueueRef.current.shift();
-  //     if (!text) continue;
-
-  //     try {
-  //       const response = await fetch(
-  //         `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
-  //         {
-  //           method: "POST",
-  //           headers: { "Content-Type": "application/json" },
-  //           body: JSON.stringify({ text, voiceId: bot.voiceId }),
-  //         }
-  //       );
-
-  //       if (!response.ok) {
-  //         throw new Error("Failed to generate speech");
-  //       }
-
-  //       const audioBlob = await response.blob();
-  //       const audioUrl = URL.createObjectURL(audioBlob);
-
-  //       // Wait for audio to finish playing before processing next item
-  //       await new Promise<void>((resolve, reject) => {
-  //         if (audioRef.current) {
-  //           audioRef.current.src = audioUrl;
-
-  //           audioRef.current.onended = () => {
-  //             URL.revokeObjectURL(audioUrl);
-  //             resolve();
-  //           };
-
-  //           audioRef.current.onerror = () => {
-  //             URL.revokeObjectURL(audioUrl);
-  //             reject(new Error("Audio playback failed"));
-  //           };
-
-  //           audioRef.current.play().catch(reject);
-  //         } else {
-  //           resolve();
-  //         }
-  //       });
-
-  //     } catch (error) {
-  //       console.error("TTS error:", error);
-  //       // Continue with next item even if one fails
-  //     }
-  //   }
-
-  //   isProcessingTTSRef.current = false;
-  //   setIsSpeaking(false);
-  // };
-
-  // Add text to TTS queue and start processing
   const queueTextToSpeech = (text: string) => {
     if (!bot.isVideoBot || !text.trim()) return;
 
@@ -307,7 +379,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     processTTSQueue();
   };
 
-  // Clear TTS queue
   const clearTTSQueue = () => {
     ttsQueueRef.current = [];
     if (window.speechSynthesis) {
@@ -317,17 +388,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     setIsSpeaking(false);
   };
 
-  // const clearTTSQueue = () => {
-  //   ttsQueueRef.current = [];
-  //   if (audioRef.current) {
-  //     audioRef.current.pause();
-  //     audioRef.current.currentTime = 0;
-  //   }
-  //   isProcessingTTSRef.current = false;
-  //   setIsSpeaking(false);
-  // };
-
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       clearTTSQueue();
@@ -337,9 +397,21 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     };
   }, []);
 
-  // Handle voice question for video bot in Q&A mode (auto-submit)
   const handleVoiceQuestion = async (question: string) => {
     if (!question.trim() || isLoading) return;
+
+    // Check for handoff intent in voice mode too
+    if (flowFinished && detectHandoffIntent(question) && bot.humanHandoffEnabled) {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: question,
+        sender: "user",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+      await requestHumanHandoff(question);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -349,6 +421,13 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     };
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
+
+    // If in handoff mode, send to agent
+    if (handoffRequested && handoffSessionId) {
+      await sendMessageToAgent(question);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch(
@@ -371,8 +450,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
-
-      // Queue answer for speech (using browser TTS)
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
@@ -387,40 +464,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     }
   };
 
-  // const {
-  //   isListening,
-  //   isProcessing,
-  //   showSilenceWarning,
-  //   silenceCountdown,
-  //   audioLevels,
-  //   toggleListening
-  // } = useSpeechToText({
-  //   onResult: (text) => {
-  //     // Only auto-submit voice input when in Q&A mode (flowFinished) for video bots
-  //     if (bot.isVideoBot && flowFinished) {
-  //       handleVoiceQuestion(text);
-  //     } else {
-  //       // Otherwise, just populate the input field
-  //       setInputMessage(prev => {
-  //         const newText = prev ? prev + " " + text : text;
-  //         return newText.trim();
-  //       });
-  //     }
-  //   },
-  //   onError: (err) => {
-  //     if (!err.includes('speak into the microphone')) {
-  //       toast({
-  //         title: "Speech Error",
-  //         description: err,
-  //         variant: "destructive"
-  //       });
-  //     }
-  //   },
-  //   language: "en-US",
-  //   silenceTimeout: 10,
-  //   stopTimeout: 5,
-  // });
-
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
   useEffect(scrollToBottom, [messages]);
@@ -429,14 +472,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     inputRef.current?.focus();
   }, []);
 
-  // Cleanup TTS queue on unmount
-  // useEffect(() => {
-  //   return () => {
-  //     clearTTSQueue();
-  //   };
-  // }, []);
-
-  // Helper to add bot message
   const addBotMessage = (content: string, audioUrl?: string) => {
     const botMessage: Message = {
       id: Date.now().toString() + Math.random(),
@@ -446,19 +481,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       audioUrl,
     };
     setMessages((prev) => [...prev, botMessage]);
-
-    // Play audio if available
-    // if (audioUrl && audioRef.current) {
-    //   audioRef.current.src = audioUrl;
-    //   audioRef.current.play().catch(err => {
-    //     console.error('Error playing audio:', err);
-    //   });
-    // }
-
     return botMessage;
   };
 
-  // Start flow (for both video and non-video bots)
   useEffect(() => {
     const initFlow = async () => {
       try {
@@ -505,7 +530,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             branchOptions: msg.options || [],
           });
 
-          // Collect texts to speak (using browser TTS)
           if (bot.isVideoBot && messageContent) {
             textsToSpeak.push(messageContent);
           }
@@ -523,8 +547,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         }
 
         setMessages(botMessages);
-
-        // Queue all texts for speech in order (using browser TTS)
         textsToSpeak.forEach(text => queueTextToSpeech(text));
 
       } catch (err) {
@@ -540,10 +562,23 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     initFlow();
   }, [bot.id]);
 
-  // Handle Q&A mode
   const handleAskQuestion = async () => {
     const question = inputMessage.trim();
     if (!question || isLoading) return;
+
+    // Check for handoff intent
+    if (flowFinished && detectHandoffIntent(question) && bot.humanHandoffEnabled) {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: question,
+        sender: "user",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+      setInputMessage("");
+      await requestHumanHandoff(question);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -554,6 +589,13 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
     setIsLoading(true);
+
+    // If in handoff mode, send to agent
+    if (handoffRequested && handoffSessionId) {
+      await sendMessageToAgent(question);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch(
@@ -576,8 +618,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
-
-      // Queue answer for speech (using browser TTS)
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
@@ -678,7 +718,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           branchOptions: msg.options || [],
         });
 
-        // Collect texts to speak (using browser TTS)
         if (bot.isVideoBot && messageContent) {
           textsToSpeak.push(messageContent);
         }
@@ -696,8 +735,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       }
 
       setMessages((prev) => [...prev, ...botMessages]);
-
-      // Queue all texts for speech in order (using browser TTS)
       textsToSpeak.forEach(text => queueTextToSpeech(text));
 
     } catch (err: any) {
@@ -763,7 +800,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     if (isListening) {
       toggleListening();
     }
-    // Clear any pending TTS when ending call
     clearTTSQueue();
   };
 
@@ -778,10 +814,19 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       currentPausedFor?.type !== "branch" &&
       !currentPausedFor?.showConfirmationButtons);
 
-  // Show mic button for video bots in flow mode, or when voice is enabled
   const shouldShowMicButton = bot.isVideoBot ? !flowFinished : (bot.voiceEnabled && canSendText);
 
   const videoBotAvatarUrl = bot.videoBotImageUrl || null;
+
+  const getPlaceholderText = () => {
+    if (isListening) return "Listening... Speak now";
+    if (isProcessing) return "Processing speech...";
+    if (handoffRequested && isConnectedToAgent) return "Message the agent...";
+    if (handoffRequested && !isConnectedToAgent) return "Waiting for agent...";
+    if (flowFinished) return "Ask me anything...";
+    if (canSendText) return "Type your message...";
+    return "Select an option above...";
+  };
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
@@ -791,14 +836,20 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             <div className="flex items-start gap-3 flex-1 min-w-0">
               <Avatar className="h-12 w-12 border-2 border-white flex-shrink-0 mt-1">
                 <AvatarFallback className="bg-white text-blue-600">
-                  <Bot className="h-6 w-6" />
+                  {handoffRequested ? <Headphones className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <DialogTitle className="text-xl text-white">{bot.name}</DialogTitle>
                   <div className="flex gap-1.5 flex-wrap">
-                    {/* Voice Status Badge */}
+                    {handoffRequested && (
+                      <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 border-orange-200 animate-pulse">
+                        <Headphones className="h-3 w-3 mr-1" />
+                        {isConnectedToAgent ? "Agent Connected" : "Waiting for Agent"}
+                      </Badge>
+                    )}
+
                     <Badge
                       variant="secondary"
                       className={`text-xs ${bot.voiceEnabled ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}
@@ -816,7 +867,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       )}
                     </Badge>
 
-                    {/* Bot Type Badge */}
                     <Badge
                       variant="secondary"
                       className={`text-xs ${bot.isVideoBot ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}
@@ -834,22 +884,18 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       )}
                     </Badge>
 
-                    {/* Primary Purpose Badge */}
                     <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 border-amber-200">
                       {bot.primaryPurpose}
                     </Badge>
 
-                    {/* Tone Badge */}
                     <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-700 border-pink-200">
                       {bot.conversationalTone}
                     </Badge>
 
-                    {/* Languages Badge */}
                     <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200">
                       {bot.languages.join(", ")}
                     </Badge>
 
-                    {/* Mode Badge - Q&A or Flow */}
                     {flowFinished ? (
                       <Badge variant="secondary" className="text-xs bg-teal-100 text-teal-700 border-teal-200">
                         Q&A Mode
@@ -866,6 +912,12 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     {bot.description}
                   </p>
                 )}
+                {handoffRequested && assignedAgentEmail && (
+                  <p className="text-xs text-white/80 mt-1">
+                    <Clock className="inline h-3 w-3 mr-1" />
+                    Agent: {assignedAgentEmail}
+                  </p>
+                )}
               </div>
             </div>
             <Button
@@ -879,10 +931,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           </div>
         </DialogHeader>
 
-        {/* Video Bot View - Split Screen */}
         {bot.isVideoBot ? (
           <div className="flex-1 flex overflow-hidden">
-            {/* Left Side - Video Bot Avatar (Conditional) */}
             {showVideoAvatar && (
               <div className="w-1/2 relative overflow-hidden flex items-center justify-center">
                 {videoBotAvatarUrl ? (
@@ -893,7 +943,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       className="relative z-0 w-full h-full object-cover"
                     />
 
-                    {/* Speaking/Loading indicator */}
                     {(isLoading || isSpeaking) && (
                       <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-20 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -901,11 +950,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       </div>
                     )}
 
-                    {/* Call Control Buttons Overlay (only show in Q&A mode) */}
                     {flowFinished && (
                       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-none">
                         <div className="flex gap-3 pointer-events-auto">
-                          {/* TTS Toggle Button */}
                           <Button
                             onClick={ttsEnabled ? disableTTS : enableTTS}
                             size="lg"
@@ -923,7 +970,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                             )}
                           </Button>
 
-                          {/* Mute/Unmute Button */}
                           <Button
                             onClick={handleMicToggle}
                             size="lg"
@@ -945,7 +991,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                             )}
                           </Button>
 
-                          {/* End Call Button */}
                           <Button
                             onClick={handleEndCall}
                             size="lg"
@@ -982,11 +1027,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       No avatar configured for this video bot
                     </p>
 
-                    {/* Call Control Buttons for no avatar (only in Q&A mode) */}
                     {flowFinished && (
                       <>
                         <div className="flex gap-3 justify-center">
-                          {/* TTS Toggle Button */}
                           <Button
                             onClick={ttsEnabled ? disableTTS : enableTTS}
                             size="lg"
@@ -1055,9 +1098,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               </div>
             )}
 
-            {/* Right Side - Chat Interface */}
             <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-white dark:bg-gray-900 transition-all duration-300`}>
-              {/* Chat Messages */}
               <ScrollArea className="flex-1 p-4">
                 {messages.length === 0 && (
                   <div className="text-center text-gray-400 py-8">
@@ -1068,30 +1109,38 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 {messages.map(msg => (
                   <div
                     key={msg.id}
-                    className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"
-                      }`}
+                    className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    {msg.sender === "bot" && (
+                    {(msg.sender === "bot" || msg.sender === "agent") && (
                       <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                          <Bot className="h-5 w-5" />
+                        <AvatarFallback className={msg.sender === "agent" 
+                          ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                          : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                        }>
+                          {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                         </AvatarFallback>
                       </Avatar>
                     )}
                     <div className={`flex flex-col gap-1 ${msg.sender === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
                       {msg.content && (
                         <div
-                          className={`rounded-lg p-3 ${msg.sender === "user"
-                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                            : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                            }`}
+                          className={`rounded-lg p-3 ${
+                            msg.sender === "user"
+                              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                              : msg.sender === "agent"
+                              ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                              : msg.isSystemMessage
+                              ? "bg-orange-100 text-orange-900 border border-orange-200"
+                              : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                          }`}
                         >
                           {typeof msg.content === "string"
                             ? msg.content
                             : JSON.stringify(msg.content)}
                         </div>
                       )}
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        {msg.sender === "agent" && <Headphones className="h-3 w-3" />}
                         {msg.timestamp.toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit"
@@ -1151,8 +1200,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 {isLoading && (
                   <div className="flex gap-3 mb-4">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                        <Bot className="h-5 w-5" />
+                      <AvatarFallback className={handoffRequested 
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                        : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                      }>
+                        {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                       </AvatarFallback>
                     </Avatar>
                     <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
@@ -1163,9 +1215,25 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 <div ref={messagesEndRef} />
               </ScrollArea>
 
-              {/* Input Area for Video Bot */}
               <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
-                {/* TTS Permission Prompt */}
+                {handoffRequested && !isConnectedToAgent && (
+                  <Alert className="mb-2 bg-yellow-50 border-yellow-200">
+                    <Clock className="h-4 w-4 text-yellow-600" />
+                    <AlertDescription className="text-yellow-800">
+                      Waiting for an agent to respond. You can continue sending messages.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {handoffRequested && isConnectedToAgent && (
+                  <Alert className="mb-2 bg-green-50 border-green-200">
+                    <Headphones className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800">
+                      Connected to agent: {assignedAgentEmail}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 {showTtsPrompt && bot.isVideoBot && (
                   <Alert className="mb-2 bg-amber-50 border-amber-200">
                     <Volume2 className="h-4 w-4 text-amber-600" />
@@ -1183,7 +1251,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   </Alert>
                 )}
 
-                {/* REMOVED: Voice Waveform - replaced with simple status message */}
                 {flowFinished && isListening && (
                   <Alert className="mb-2 bg-blue-50 border-blue-200">
                     <Mic className="h-4 w-4 text-blue-600" />
@@ -1191,7 +1258,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   </Alert>
                 )}
 
-                {/* Processing indicator */}
                 {isProcessing && (
                   <Alert className="mb-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1199,7 +1265,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   </Alert>
                 )}
 
-                {/* Show Avatar Button (when avatar is hidden) */}
                 {!showVideoAvatar && (
                   <div className="mb-3">
                     <Button
@@ -1220,21 +1285,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder={
-                        isListening
-                          ? "Listening... Speak now"
-                          : isProcessing
-                            ? "Processing speech..."
-                            : flowFinished
-                              ? "Ask me anything..."
-                              : (canSendText
-                                ? "Type your message..."
-                                : "Select an option above...")
-                      }
-                      disabled={isLoading || !canSendText || isProcessing}
+                      placeholder={getPlaceholderText()}
+                      disabled={isLoading || (!canSendText && !handoffRequested) || isProcessing}
                       className="pr-12"
                     />
-                    {shouldShowMicButton && (
+                    {shouldShowMicButton && !handoffRequested && (
                       <Button
                         type="button"
                         size="icon"
@@ -1255,15 +1310,17 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   </div>
                   <Button
                     onClick={() => handleSendMessage()}
-                    disabled={!inputMessage.trim() || isLoading || !canSendText || isListening || isProcessing}
+                    disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || isListening || isProcessing}
                     size="icon"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                    className={handoffRequested 
+                      ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
+                      : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                    }
                   >
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
 
-                {/* Footer Branding */}
                 <div className="text-center py-2 border-t mt-2">
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Powered by{" "}
@@ -1276,36 +1333,43 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             </div>
           </div>
         ) : (
-          /* Regular Chat View */
           <>
             <ScrollArea className="flex-1 p-4">
               {messages.map(msg => (
                 <div
                   key={msg.id}
-                  className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"
-                    }`}
+                  className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  {msg.sender === "bot" && (
+                  {(msg.sender === "bot" || msg.sender === "agent") && (
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                        <Bot className="h-5 w-5" />
+                      <AvatarFallback className={msg.sender === "agent" 
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                        : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                      }>
+                        {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                       </AvatarFallback>
                     </Avatar>
                   )}
                   <div className={`flex flex-col gap-1 ${msg.sender === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
                     {msg.content && (
                       <div
-                        className={`rounded-lg p-3 ${msg.sender === "user"
-                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                          }`}
+                        className={`rounded-lg p-3 ${
+                          msg.sender === "user"
+                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                            : msg.sender === "agent"
+                            ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                            : msg.isSystemMessage
+                            ? "bg-orange-100 text-orange-900 border border-orange-200"
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                        }`}
                       >
                         {typeof msg.content === "string"
                           ? msg.content
                           : JSON.stringify(msg.content)}
                       </div>
                     )}
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      {msg.sender === "agent" && <Headphones className="h-3 w-3" />}
                       {msg.timestamp.toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit"
@@ -1365,8 +1429,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               {isLoading && (
                 <div className="flex gap-3 mb-4">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                      <Bot className="h-5 w-5" />
+                    <AvatarFallback className={handoffRequested 
+                      ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                      : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                    }>
+                      {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                     </AvatarFallback>
                   </Avatar>
                   <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
@@ -1377,9 +1444,25 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               <div ref={messagesEndRef} />
             </ScrollArea>
 
-            {/* Input Area - For non-video bots */}
             <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
-              {/* REMOVED: Voice Waveform - replaced with simple status message */}
+              {handoffRequested && !isConnectedToAgent && (
+                <Alert className="mb-2 bg-yellow-50 border-yellow-200">
+                  <Clock className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-800">
+                    Waiting for an agent to respond. You can continue sending messages.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {handoffRequested && isConnectedToAgent && (
+                <Alert className="mb-2 bg-green-50 border-green-200">
+                  <Headphones className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800">
+                    Connected to agent: {assignedAgentEmail}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {isListening && (
                 <Alert className="mb-2 bg-blue-50 border-blue-200">
                   <Mic className="h-4 w-4 text-blue-600" />
@@ -1387,7 +1470,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 </Alert>
               )}
 
-              {/* Processing indicator */}
               {isProcessing && (
                 <Alert className="mb-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1402,21 +1484,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder={
-                      isListening
-                        ? "Listening... Speak now"
-                        : isProcessing
-                          ? "Processing speech..."
-                          : flowFinished
-                            ? "Ask me anything..."
-                            : (canSendText
-                              ? "Type your message..."
-                              : "Select an option above...")
-                    }
-                    disabled={isLoading || !canSendText || isProcessing}
+                    placeholder={getPlaceholderText()}
+                    disabled={isLoading || (!canSendText && !handoffRequested) || isProcessing}
                     className="pr-12"
                   />
-                  {bot.voiceEnabled && canSendText && (
+                  {bot.voiceEnabled && canSendText && !handoffRequested && (
                     <Button
                       type="button"
                       size="icon"
@@ -1437,14 +1509,16 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 </div>
                 <Button
                   onClick={() => handleSendMessage()}
-                  disabled={!inputMessage.trim() || isLoading || !canSendText || isListening || isProcessing}
+                  disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || isListening || isProcessing}
                   size="icon"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                  className={handoffRequested 
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
+                    : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                  }
                 >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
-              {/* Footer Branding */}
               <div className="text-center py-2 border-t mt-2">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Powered by{" "}
@@ -1456,9 +1530,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             </div>
           </>
         )}
-
-        {/* Hidden audio element for playing TTS */}
-        {/* <audio ref={audioRef} className="hidden" /> */}
       </DialogContent>
     </Dialog>
   );

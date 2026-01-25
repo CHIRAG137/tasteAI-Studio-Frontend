@@ -132,6 +132,7 @@ export const BotBuilder = () => {
           videoBotImageUrl: bot.video_bot_image_url,
           videoBotImagePublicId: bot.video_bot_image_public_id,
           voiceId: bot.voice_id,
+          humanHandoffEnabled: bot.human_handoff_enabled,
         }));
 
         setSavedBots(bots.reverse());
@@ -212,6 +213,7 @@ export const BotBuilder = () => {
         isVideoBot: botConfig.isVideoBot,
         voiceId: botConfig.voiceId,
         isLoading: true,
+        humanHandoffEnabled: botConfig.humanHandoffEnabled,
       };
 
       setCreatingBot(tempBot);
