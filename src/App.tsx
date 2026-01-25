@@ -20,6 +20,7 @@ import AgentDashboard from "./pages/agent/AgentDashboard";
 import AgentChat from "./pages/agent/AgentChat";
 import AgentConversationLink from "./pages/agent/AgentConversationLink";
 import AgentSetPassword from "./pages/agent/AgentSetPassword";
+import AgentProfile from "./pages/agent/AgentProfile";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +103,14 @@ const App = () => (
             element={
               <AgentProtectedRoute>
                 <AgentDashboard />
+              </AgentProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/agent/profile" 
+            element={
+              <AgentProtectedRoute>
+                <AgentProfile />
               </AgentProtectedRoute>
             } 
           />
