@@ -91,6 +91,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       'speak to someone',
       'human help',
       'agent',
+      'representative',
     ];
 
     const lowerMessage = message.toLowerCase();
@@ -174,7 +175,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, sender: "user" }),
+          body: JSON.stringify({ 
+            message, 
+            flowSessionId: sessionId 
+          }),
         }
       );
     } catch (error) {
@@ -189,12 +193,12 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
   // Poll for agent messages when handoff is active
   useEffect(() => {
-    if (!handoffSessionId || !isConnectedToAgent) return;
+    if (!handoffSessionId) return;
 
     const pollInterval = setInterval(async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-messages`
+          `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-messages?flowSessionId=${sessionId}`
         );
         const data = await response.json();
 
@@ -220,7 +224,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     }, 3000);
 
     return () => clearInterval(pollInterval);
-  }, [handoffSessionId, isConnectedToAgent]);
+  }, [handoffSessionId, sessionId]);
 
   // Initialize browser's Speech Recognition API
   useEffect(() => {
@@ -325,7 +329,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       if (!text) continue;
 
       try {
-        await new Promise<void>((resolve) => {
+        await new Promise<void>((resolve, reject) => {
           const utterance = new SpeechSynthesisUtterance(text);
           utterance.lang = 'en-US';
           utterance.rate = 1.0;
@@ -450,6 +454,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
+
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
@@ -481,6 +486,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       audioUrl,
     };
     setMessages((prev) => [...prev, botMessage]);
+
     return botMessage;
   };
 
@@ -547,6 +553,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         }
 
         setMessages(botMessages);
+
         textsToSpeak.forEach(text => queueTextToSpeech(text));
 
       } catch (err) {
@@ -618,6 +625,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
+
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
@@ -735,6 +743,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       }
 
       setMessages((prev) => [...prev, ...botMessages]);
+
       textsToSpeak.forEach(text => queueTextToSpeech(text));
 
     } catch (err: any) {
@@ -818,6 +827,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
   const videoBotAvatarUrl = bot.videoBotImageUrl || null;
 
+  // Get appropriate placeholder text
   const getPlaceholderText = () => {
     if (isListening) return "Listening... Speak now";
     if (isProcessing) return "Processing speech...";
@@ -843,6 +853,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 <div className="flex items-center gap-2 flex-wrap">
                   <DialogTitle className="text-xl text-white">{bot.name}</DialogTitle>
                   <div className="flex gap-1.5 flex-wrap">
+                    {/* Handoff Status Badge */}
                     {handoffRequested && (
                       <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 border-orange-200 animate-pulse">
                         <Headphones className="h-3 w-3 mr-1" />
@@ -931,8 +942,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           </div>
         </DialogHeader>
 
+        {/* Continue with rest of your existing JSX - I'll show key changes for messages rendering */}
+        
         {bot.isVideoBot ? (
           <div className="flex-1 flex overflow-hidden">
+            {/* Your existing video bot layout */}
             {showVideoAvatar && (
               <div className="w-1/2 relative overflow-hidden flex items-center justify-center">
                 {videoBotAvatarUrl ? (
@@ -1147,6 +1161,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                         })}
                       </span>
 
+                      {/* Your existing confirmation and branch option buttons */}
                       {msg.showConfirmationButtons &&
                         isAwaitingInput &&
                         msg.sender === "bot" &&
@@ -1333,6 +1348,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             </div>
           </div>
         ) : (
+          /* Your existing regular chat view with same message rendering changes */
           <>
             <ScrollArea className="flex-1 p-4">
               {messages.map(msg => (
