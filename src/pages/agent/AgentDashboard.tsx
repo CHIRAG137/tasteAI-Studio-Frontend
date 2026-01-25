@@ -21,7 +21,8 @@ import {
   Star,
   Zap,
   Circle,
-  ArrowRight
+  ArrowRight,
+  Settings
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { removeAgentAuthToken, removeAgentEmail, getAgentEmail, getAgentAuthHeaders } from "@/utils/agentAuth";
@@ -271,6 +272,14 @@ const AgentDashboard = () => {
                 className="text-slate-500 hover:text-slate-700 dark:text-slate-400"
               >
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => navigate("/agent/profile")}
+                className="text-slate-500 hover:text-slate-700 dark:text-slate-400"
+              >
+                <Settings className="w-4 h-4" />
               </Button>
               <Separator orientation="vertical" className="h-6" />
               <Button 
