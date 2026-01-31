@@ -241,7 +241,7 @@ export default function Sessions() {
 
         const data = await res.json();
         if (data.status === "success") {
-          setSummary(data.summary);
+          setSummary(data.result.summary);
         } else {
           throw new Error(data.message || "Gemini summarization failed");
         }

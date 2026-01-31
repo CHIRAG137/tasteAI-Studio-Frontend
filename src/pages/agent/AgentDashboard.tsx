@@ -6,24 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Headphones, 
-  MessageSquare, 
-  Clock, 
-  User, 
-  LogOut, 
-  RefreshCw,
-  Bot,
-  CheckCircle,
-  AlertCircle,
-  BarChart3,
-  TrendingUp,
-  Star,
-  Zap,
-  Circle,
-  ArrowRight,
-  Settings
-} from "lucide-react";
+import { Headphones, MessageSquare, Clock, User, LogOut, RefreshCw, Bot, CheckCircle, AlertCircle, BarChart3, TrendingUp, Star, Zap, Circle, ArrowRight, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { removeAgentAuthToken, removeAgentEmail, getAgentEmail, getAgentAuthHeaders } from "@/utils/agentAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -71,13 +54,24 @@ interface AgentStats {
   };
 }
 
+interface BotInfo {
+  _id: string;
+  name: string;
+  description?: string;
+  isActive?: boolean;
+  category?: string;
+}
+
 const AgentDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [sessions, setSessions] = useState<HandoffSession[]>([]);
   const [stats, setStats] = useState<AgentStats | null>(null);
+  const [bots, setBots] = useState<BotInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingBots, setIsLoadingBots] = useState(true);
   const [activeTab, setActiveTab] = useState("active");
+
   const agentEmail = getAgentEmail();
 
   // Auto-refresh every 5 seconds
@@ -85,6 +79,11 @@ const AgentDashboard = () => {
     fetchData();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Fetch bots on mount
+  useEffect(() => {
+    fetchBots();
   }, []);
 
   const fetchData = async () => {
@@ -102,13 +101,10 @@ const AgentDashboard = () => {
           },
         }
       );
-
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.message || "Failed to fetch sessions");
       }
-
       setSessions(data.result?.sessions || []);
     } catch (error: any) {
       console.error("Error fetching sessions:", error);
@@ -133,18 +129,44 @@ const AgentDashboard = () => {
           },
         }
       );
-
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.message || "Failed to fetch stats");
       }
-
       setStats(data.result);
     } catch (error: any) {
       console.error("Error fetching stats:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchBots = async () => {
+    try {
+      setIsLoadingBots(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/human-agent/bots`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            ...getAgentAuthHeaders(),
+          },
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch bots");
+      }
+      setBots(data.result?.bots || []);
+    } catch (error: any) {
+      console.error("Error fetching bots:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load bots",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingBots(false);
     }
   };
 
@@ -223,284 +245,337 @@ const AgentDashboard = () => {
   const isOnline = stats?.agent.isOnline && stats?.agent.availabilityStatus === "available";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-zinc-100 dark:from-slate-950 dark:via-gray-950 dark:to-zinc-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <header className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/25">
-                  <Headphones className="w-6 h-6 text-white" />
-                </div>
-                <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 ${isOnline ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+      <div className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20">
+                <Headphones className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                   Agent Portal
                 </h1>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-sm text-slate-500 dark:text-slate-400">{agentEmail}</span>
-                  <span className="text-slate-300 dark:text-slate-600">•</span>
-                  <span className={`text-xs font-medium ${isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
-                    {isOnline ? 'Online' : 'Offline'}
-                  </span>
-                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {agentEmail} • {isOnline ? 'Online' : 'Offline'}
+                </p>
               </div>
             </div>
-            
-            <div className="flex items-center gap-3">
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={fetchData}
+                className="text-slate-600 hover:text-slate-900 dark:text-slate-400"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+
               {stats && (
-                <Button 
-                  variant={isOnline ? "outline" : "default"}
-                  size="sm" 
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => updateStatus(!stats.agent.isOnline)}
-                  className={isOnline 
-                    ? "border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400" 
+                  className={isOnline
+                    ? "border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400"
                     : "bg-emerald-600 hover:bg-emerald-700 text-white"
                   }
                 >
-                  <Circle className={`w-2 h-2 mr-2 fill-current ${isOnline ? 'text-red-500' : 'text-emerald-300'}`} />
                   {isOnline ? "Go Offline" : "Go Online"}
                 </Button>
               )}
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={fetchData}
-                disabled={isLoading}
-                className="text-slate-500 hover:text-slate-700 dark:text-slate-400"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon"
+
+              <Button
+                size="sm"
+                variant="ghost"
                 onClick={() => navigate("/agent/profile")}
                 className="text-slate-500 hover:text-slate-700 dark:text-slate-400"
               >
                 <Settings className="w-4 h-4" />
               </Button>
-              <Separator orientation="vertical" className="h-6" />
-              <Button 
-                variant="ghost" 
-                size="sm" 
+
+              <Button
+                size="sm"
+                variant="ghost"
                 onClick={handleLogout}
-                className="text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50"
+                className="text-slate-500 hover:text-slate-700 dark:text-slate-400"
               >
-                <LogOut className="w-4 h-4 mr-2" />
+                <LogOut className="w-4 h-4" />
                 Logout
               </Button>
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Quick Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <QuickStatCard 
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <QuickStatCard
+            icon={MessageSquare}
+            label="Active Chats"
+            value={stats?.agent.currentActiveChats || 0}
+            color="blue"
+            pulse={stats && stats.agent.currentActiveChats > 0}
+          />
+          <QuickStatCard
             icon={Clock}
-            label="Pending"
+            label="Pending Requests"
             value={pendingSessions.length}
             color="amber"
             pulse={pendingSessions.length > 0}
           />
-          <QuickStatCard 
-            icon={MessageSquare}
-            label="Active Chats"
-            value={activeSessions.length}
-            color="emerald"
-          />
-          <QuickStatCard 
+          <QuickStatCard
             icon={CheckCircle}
             label="Resolved Today"
             value={stats?.sessions.today || 0}
-            color="blue"
+            color="emerald"
           />
-          <QuickStatCard 
+          <QuickStatCard
             icon={Zap}
-            label="Capacity"
+            label="Current Load"
             value={`${stats?.agent.loadPercentage || 0}%`}
             color="purple"
-            showProgress
+            showProgress={true}
             progress={stats?.agent.loadPercentage || 0}
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Performance Metrics */}
-          <Card className="lg:col-span-1 bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-slate-200/50 dark:border-slate-800/50 shadow-xl shadow-slate-200/50 dark:shadow-none">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
-                <TrendingUp className="w-5 h-5 text-emerald-600" />
-                Performance
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <MetricItem 
-                label="Total Handled"
-                value={stats?.metrics.totalChatsHandled || 0}
-                icon={MessageSquare}
-              />
-              <MetricItem 
-                label="Avg Response"
-                value={formatDuration(stats?.metrics.averageResponseTime || 0)}
-                icon={Clock}
-              />
-              <MetricItem 
-                label="Avg Resolution"
-                value={formatDuration(stats?.metrics.averageResolutionTime || 0)}
-                icon={CheckCircle}
-              />
-              <MetricItem 
-                label="Rating"
-                value={stats?.metrics.averageRating ? `${stats.metrics.averageRating.toFixed(1)}/5` : "N/A"}
-                icon={Star}
-                highlight={stats?.metrics.averageRating ? stats.metrics.averageRating >= 4 : false}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Sessions List */}
-          <Card className="lg:col-span-2 bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-slate-200/50 dark:border-slate-800/50 shadow-xl shadow-slate-200/50 dark:shadow-none">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">
-                    Support Queue
-                  </CardTitle>
-                  <CardDescription className="text-slate-500 dark:text-slate-400">
-                    Manage incoming support requests
-                  </CardDescription>
+        {/* My Bots Section */}
+        <Card className="border-slate-200 dark:border-slate-800 shadow-lg bg-white/50 dark:bg-slate-900/50 backdrop-blur">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30">
+                  <Bot className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 </div>
-                {pendingSessions.length > 0 && (
-                  <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800 animate-pulse">
-                    {pendingSessions.length} waiting
-                  </Badge>
-                )}
+                <div>
+                  <CardTitle className="text-lg">My Bots</CardTitle>
+                  <CardDescription>Bots where you provide support</CardDescription>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-3 mb-4 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg">
-                  <TabsTrigger 
-                    value="active" 
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-md text-sm"
+              <Badge variant="secondary" className="text-xs">
+                {bots.length} {bots.length === 1 ? 'bot' : 'bots'}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoadingBots ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
+                <span className="ml-2 text-sm text-slate-500">Loading bots...</span>
+              </div>
+            ) : bots.length === 0 ? (
+              <div className="text-center py-8">
+                <Bot className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-700 mb-3" />
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">No bots assigned</p>
+                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                  You haven't been assigned to any bots yet
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {bots.map((bot) => (
+                  <div
+                    key={bot._id}
+                    className="group p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all"
                   >
-                    Active
-                    {(pendingSessions.length + activeSessions.length) > 0 && (
-                      <span className="ml-2 px-1.5 py-0.5 text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full">
-                        {pendingSessions.length + activeSessions.length}
-                      </span>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="resolved"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-md text-sm"
-                  >
-                    Resolved
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="all"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-md text-sm"
-                  >
-                    All
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="active" className="mt-0">
-                  {isLoading ? (
-                    <LoadingState />
-                  ) : (pendingSessions.length + activeSessions.length) === 0 ? (
-                    <EmptyState 
-                      icon={MessageSquare}
-                      title="No active sessions"
-                      description="New support requests will appear here"
-                    />
-                  ) : (
-                    <ScrollArea className="h-[420px] pr-4">
-                      <div className="space-y-3">
-                        {[...pendingSessions, ...activeSessions].map((session) => (
-                          <SessionCard 
-                            key={session._id}
-                            session={session}
-                            onClick={handleSessionClick}
-                            formatTime={formatTime}
-                          />
-                        ))}
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 group-hover:from-indigo-100 group-hover:to-purple-100 dark:group-hover:from-indigo-900/50 dark:group-hover:to-purple-900/50 transition-colors">
+                        <Bot className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                       </div>
-                    </ScrollArea>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="resolved" className="mt-0">
-                  {resolvedSessions.length === 0 ? (
-                    <EmptyState 
-                      icon={CheckCircle}
-                      title="No resolved sessions"
-                      description="Completed conversations will appear here"
-                    />
-                  ) : (
-                    <ScrollArea className="h-[420px] pr-4">
-                      <div className="space-y-3">
-                        {resolvedSessions.map((session) => (
-                          <SessionCard 
-                            key={session._id}
-                            session={session}
-                            onClick={handleSessionClick}
-                            formatTime={formatTime}
-                          />
-                        ))}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="font-semibold text-sm text-slate-900 dark:text-white truncate">
+                            {bot.name}
+                          </h4>
+                          {bot.isActive && (
+                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 text-xs">
+                              Active
+                            </Badge>
+                          )}
+                        </div>
+                        {bot.description && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                            {bot.description}
+                          </p>
+                        )}
+                        {bot.category && (
+                          <div className="flex items-center gap-1 mt-2">
+                            <Badge variant="outline" className="text-xs">
+                              {bot.category}
+                            </Badge>
+                          </div>
+                        )}
                       </div>
-                    </ScrollArea>
-                  )}
-                </TabsContent>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-                <TabsContent value="all" className="mt-0">
-                  {sessions.length === 0 ? (
-                    <EmptyState 
-                      icon={AlertCircle}
-                      title="No sessions yet"
-                      description="All support sessions will appear here"
-                    />
-                  ) : (
-                    <ScrollArea className="h-[420px] pr-4">
-                      <div className="space-y-3">
-                        {sessions.map((session) => (
-                          <SessionCard 
-                            key={session._id}
-                            session={session}
-                            onClick={handleSessionClick}
-                            formatTime={formatTime}
-                          />
-                        ))}
-                      </div>
-                    </ScrollArea>
+        {/* Performance Metrics */}
+        <Card className="border-slate-200 dark:border-slate-800 shadow-lg bg-white/50 dark:bg-slate-900/50 backdrop-blur">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30">
+                <BarChart3 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Performance</CardTitle>
+                <CardDescription>Your support metrics</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricItem
+              label="Total Chats"
+              value={stats?.metrics.totalChatsHandled || 0}
+              icon={MessageSquare}
+            />
+            <MetricItem
+              label="Avg Response"
+              value={stats?.metrics.averageResponseTime ? formatDuration(stats.metrics.averageResponseTime) : '0s'}
+              icon={Clock}
+            />
+            <MetricItem
+              label="Avg Resolution"
+              value={stats?.metrics.averageResolutionTime ? formatDuration(stats.metrics.averageResolutionTime) : '0s'}
+              icon={TrendingUp}
+            />
+            <MetricItem
+              label="Rating"
+              value={stats?.metrics.averageRating ? `${stats.metrics.averageRating.toFixed(1)}★` : 'N/A'}
+              icon={Star}
+              highlight={stats?.metrics.averageRating >= 4}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Sessions List */}
+        <Card className="border-slate-200 dark:border-slate-800 shadow-lg bg-white/50 dark:bg-slate-900/50 backdrop-blur">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30">
+                <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Support Queue</CardTitle>
+                <CardDescription>Manage incoming support requests</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsTrigger value="active" className="relative">
+                  Active
+                  {(pendingSessions.length + activeSessions.length) > 0 && (
+                    <Badge className="ml-2 h-5 px-1.5 text-xs bg-blue-500 hover:bg-blue-600">
+                      {pendingSessions.length + activeSessions.length}
+                    </Badge>
                   )}
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
+                </TabsTrigger>
+                <TabsTrigger value="resolved">Resolved</TabsTrigger>
+                <TabsTrigger value="all">All</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="active" className="mt-0">
+                {isLoading ? (
+                  <LoadingState />
+                ) : (pendingSessions.length + activeSessions.length) === 0 ? (
+                  <EmptyState
+                    icon={MessageSquare}
+                    title="No active sessions"
+                    description="You don't have any active support sessions at the moment"
+                  />
+                ) : (
+                  <ScrollArea className="h-[400px] pr-4">
+                    <div className="space-y-3">
+                      {[...pendingSessions, ...activeSessions].map((session) => (
+                        <SessionCard
+                          key={session._id}
+                          session={session}
+                          onClick={handleSessionClick}
+                          formatTime={formatTime}
+                        />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </TabsContent>
+
+              <TabsContent value="resolved" className="mt-0">
+                {resolvedSessions.length === 0 ? (
+                  <EmptyState
+                    icon={CheckCircle}
+                    title="No resolved sessions"
+                    description="You haven't resolved any support sessions yet"
+                  />
+                ) : (
+                  <ScrollArea className="h-[400px] pr-4">
+                    <div className="space-y-3">
+                      {resolvedSessions.map((session) => (
+                        <SessionCard
+                          key={session._id}
+                          session={session}
+                          onClick={handleSessionClick}
+                          formatTime={formatTime}
+                        />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </TabsContent>
+
+              <TabsContent value="all" className="mt-0">
+                {sessions.length === 0 ? (
+                  <EmptyState
+                    icon={MessageSquare}
+                    title="No sessions"
+                    description="You don't have any support sessions yet"
+                  />
+                ) : (
+                  <ScrollArea className="h-[400px] pr-4">
+                    <div className="space-y-3">
+                      {sessions.map((session) => (
+                        <SessionCard
+                          key={session._id}
+                          session={session}
+                          onClick={handleSessionClick}
+                          formatTime={formatTime}
+                        />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        {/* Footer */}
+        <div className="text-center py-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Powered by TasteAI Studio
+          </p>
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="py-6 text-center">
-        <p className="text-xs text-slate-400 dark:text-slate-600">
-          Powered by <span className="font-medium text-slate-500 dark:text-slate-500">TasteAI Studio</span>
-        </p>
-      </footer>
+      </div>
     </div>
   );
 };
 
 // Quick Stat Card Component
-const QuickStatCard = ({ 
-  icon: Icon, 
-  label, 
-  value, 
+const QuickStatCard = ({
+  icon: Icon,
+  label,
+  value,
   color,
   pulse = false,
   showProgress = false,
@@ -544,80 +619,84 @@ const QuickStatCard = ({
   const colors = colorMap[color];
 
   return (
-    <div className={`${colors.bg} ${colors.border} border rounded-xl p-4 transition-all hover:scale-[1.02]`}>
-      <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 ${colors.icon} rounded-lg flex items-center justify-center ${pulse ? 'animate-pulse' : ''}`}>
-          <Icon className="w-5 h-5" />
+    <Card className={`${colors.bg} border ${colors.border} relative overflow-hidden`}>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-lg ${colors.icon} ${pulse ? 'animate-pulse' : ''}`}>
+            <Icon className="w-4 h-4" />
+          </div>
+          <div className="flex-1">
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+              {value}
+            </p>
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              {label}
+            </p>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{label}</p>
-        </div>
-      </div>
-      {showProgress && (
-        <Progress value={progress} className="mt-3 h-1.5" />
-      )}
-    </div>
+        {showProgress && (
+          <Progress value={progress} className={`mt-3 h-1.5 ${colors.progress}`} />
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
 // Metric Item Component
-const MetricItem = ({ 
-  label, 
-  value, 
+const MetricItem = ({
+  label,
+  value,
   icon: Icon,
-  highlight = false 
+  highlight = false
 }: {
   label: string;
   value: string | number;
   icon: any;
   highlight?: boolean;
 }) => (
-  <div className="flex items-center justify-between">
-    <div className="flex items-center gap-3">
-      <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
-        <Icon className={`w-4 h-4 ${highlight ? 'text-amber-500' : 'text-slate-500 dark:text-slate-400'}`} />
-      </div>
-      <span className="text-sm text-slate-600 dark:text-slate-400">{label}</span>
+  <div className="flex flex-col gap-2">
+    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+      <Icon className="w-4 h-4" />
+      <span className="text-xs">{label}</span>
     </div>
-    <span className={`text-sm font-semibold ${highlight ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
+    <p className={`text-xl font-bold ${highlight ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
       {value}
-    </span>
+    </p>
   </div>
 );
 
 // Loading State Component
 const LoadingState = () => (
-  <div className="flex flex-col items-center justify-center py-16">
-    <RefreshCw className="w-8 h-8 text-slate-400 animate-spin mb-3" />
-    <p className="text-sm text-slate-500">Loading sessions...</p>
+  <div className="flex items-center justify-center py-12">
+    <div className="text-center">
+      <RefreshCw className="w-8 h-8 animate-spin text-slate-400 mx-auto mb-3" />
+      <p className="text-sm text-slate-500">Loading sessions...</p>
+    </div>
   </div>
 );
 
 // Empty State Component
-const EmptyState = ({ 
-  icon: Icon, 
-  title, 
-  description 
+const EmptyState = ({
+  icon: Icon,
+  title,
+  description
 }: {
   icon: any;
   title: string;
   description: string;
 }) => (
-  <div className="flex flex-col items-center justify-center py-16 text-center">
-    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
-      <Icon className="w-8 h-8 text-slate-400" />
-    </div>
-    <h3 className="font-medium text-slate-900 dark:text-white mb-1">{title}</h3>
-    <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>
+  <div className="text-center py-12">
+    <Icon className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-700 mb-3" />
+    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">{title}</p>
+    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">{description}</p>
   </div>
 );
 
 // Session Card Component
-const SessionCard = ({ 
-  session, 
-  onClick, 
-  formatTime 
+const SessionCard = ({
+  session,
+  onClick,
+  formatTime
 }: {
   session: HandoffSession;
   onClick: (id: string) => void;
@@ -644,45 +723,55 @@ const SessionCard = ({
   const styles = statusStyles[session.status];
 
   return (
-    <div
-      className={`group p-4 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer transition-all hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-none ${session.status === 'pending' ? `ring-2 ${styles.ring}` : ''}`}
+    <Card
+      className={`border-slate-200 dark:border-slate-800 hover:shadow-md transition-all cursor-pointer group ${styles.ring ? 'hover:ring-2 ' + styles.ring : ''}`}
       onClick={() => onClick(session._id)}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 rounded-lg flex items-center justify-center">
-              <Bot className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${styles.indicator} ${session.status === 'active' ? 'animate-pulse' : ''}`} />
+                <span className="font-semibold text-sm text-slate-900 dark:text-white">
+                  {session.bot.name}
+                </span>
+              </div>
+              <Badge className={`${styles.badge} text-xs`}>
+                {session.status}
+              </Badge>
             </div>
-            <span className="font-medium text-slate-900 dark:text-white truncate">{session.bot.name}</span>
-            <Badge className={`${styles.badge} text-xs border`}>
-              {session.status}
-            </Badge>
+
+            {session.userQuestion && (
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-2 line-clamp-2">
+                "{session.userQuestion}"
+              </p>
+            )}
+
+            <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-500">
+              <span className="flex items-center gap-1">
+                <MessageSquare className="w-3 h-3" />
+                {session.messages.length} messages
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatTime(session.requestedAt)}
+              </span>
+            </div>
           </div>
-          {session.userQuestion && (
-            <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-2 pl-10">
-              "{session.userQuestion}"
-            </p>
-          )}
-          <div className="flex items-center gap-3 pl-10 text-xs text-slate-500 dark:text-slate-500">
-            <span className="flex items-center gap-1">
-              <MessageSquare className="w-3 h-3" />
-              {session.messages.length} messages
-            </span>
-            <span>•</span>
-            <span>{formatTime(session.requestedAt)}</span>
+
+          <div className="flex items-center gap-2">
+            {session.status === "pending" && (
+              <Badge className="bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 text-xs animate-pulse">
+                New
+              </Badge>
+            )}
+            <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {session.status === "pending" && (
-            <Badge className="bg-amber-500 text-white border-0 text-xs animate-pulse">
-              New
-            </Badge>
-          )}
-          <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 group-hover:translate-x-1 transition-all" />
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

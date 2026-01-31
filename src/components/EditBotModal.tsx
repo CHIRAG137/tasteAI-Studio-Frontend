@@ -29,7 +29,6 @@ interface BotConfig {
   keywords: string;
   customInstructions: string;
   isSlackEnabled: boolean;
-  slackCommand: string;
   slackChannelId: string;
   conversationFlow: {
     nodes: any[];
@@ -63,7 +62,6 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
     keywords: "",
     customInstructions: "",
     isSlackEnabled: false,
-    slackCommand: "",
     slackChannelId: "",
     conversationFlow: { nodes: [], edges: [] },
     isVideoBot: false,
@@ -88,7 +86,6 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
         keywords: bot.keywords || "",
         customInstructions: bot.customInstructions || "",
         isSlackEnabled: bot.isSlackEnabled || false,
-        slackCommand: bot.slackCommand || "",
         slackChannelId: bot.slackChannelId || "",
         conversationFlow: bot.conversationFlow || { nodes: [], edges: [] },
         isVideoBot: bot.isVideoBot
@@ -109,7 +106,6 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
       formData.append("website_url", botConfig.websiteUrl);
       formData.append("description", botConfig.description);
       formData.append("is_voice_enabled", botConfig.voiceEnabled.toString());
-      formData.append("is_auto_translate", "false");
       formData.append("supported_languages", JSON.stringify(botConfig.languages));
       formData.append("primary_purpose", botConfig.primaryPurpose);
       formData.append("specialisation_area", botConfig.specializationArea);
@@ -120,7 +116,6 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
       formData.append("keywords", botConfig.keywords);
       formData.append("custom_instructions", botConfig.customInstructions);
       formData.append("is_slack_enabled", botConfig.isSlackEnabled.toString());
-      formData.append("slack_command", botConfig.slackCommand);
       formData.append("slack_channel_id", botConfig.slackChannelId);
       formData.append("conversationFlow", JSON.stringify(botConfig.conversationFlow));
       formData.append("is_video_bot", botConfig.isVideoBot.toString());

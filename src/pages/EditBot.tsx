@@ -57,7 +57,6 @@ interface BotConfig {
   customInstructions: string;
 
   isSlackEnabled: boolean;
-  slackCommand: string;
   slackChannelId: string;
 
   conversationFlow: {
@@ -106,7 +105,6 @@ const EditBot = () => {
     customInstructions: "",
 
     isSlackEnabled: false,
-    slackCommand: "",
     slackChannelId: "",
 
     conversationFlow: { nodes: [], edges: [] },
@@ -157,7 +155,6 @@ const EditBot = () => {
           customInstructions: bot.custom_instructions || "",
 
           isSlackEnabled: bot.is_slack_enabled || false,
-          slackCommand: bot.slack_command || "",
           slackChannelId: bot.slack_channel_id || "",
 
           conversationFlow: bot.conversationFlow || { nodes: [], edges: [] },
@@ -237,7 +234,6 @@ const EditBot = () => {
       formData.append("custom_instructions", botConfig.customInstructions);
 
       formData.append("is_slack_enabled", botConfig.isSlackEnabled.toString());
-      formData.append("slack_command", botConfig.slackCommand);
       formData.append("slack_channel_id", botConfig.slackChannelId);
 
       formData.append("conversationFlow", JSON.stringify(botConfig.conversationFlow));

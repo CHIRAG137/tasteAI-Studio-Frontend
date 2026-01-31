@@ -323,12 +323,12 @@ export const VideoBotSection = ({
 
       const data = await response.json();
 
-      if (!response.ok || !data.success) {
+      if (data.status !== "success") {
         throw new Error(data.message || "Failed to generate image");
       }
 
       // Convert base64 to data URL
-      const { video_bot_image_base64, video_bot_image_mime_type } = data;
+      const { video_bot_image_base64, video_bot_image_mime_type } = data.result;
       const imageDataUrl = `data:${video_bot_image_mime_type};base64,${video_bot_image_base64}`;
 
       // Store the generated image data URL for cropping
@@ -420,12 +420,12 @@ export const VideoBotSection = ({
 
       const data = await response.json();
 
-      if (!response.ok || !data.success) {
+      if (data.success !== "success") {
         throw new Error(data.message || "Failed to save cropped image");
       }
 
-      updateConfig("videoBotImageUrl", data.video_bot_image_url);
-      updateConfig("videoBotImagePublicId", data.video_bot_image_public_id);
+      updateConfig("videoBotImageUrl", data.result.video_bot_image_url);
+      updateConfig("videoBotImagePublicId", data.result.video_bot_image_public_id);
 
       toast({
         title: "Success",

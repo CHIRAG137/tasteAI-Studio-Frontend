@@ -55,18 +55,19 @@ export const BotBuilder = () => {
   const { toast } = useToast();
   const [savedBots, setSavedBots] = useState<any[]>([]);
   const [selectedBotForTest, setSelectedBotForTest] = useState<any | null>(null);
-  const [visibleBotCount, setVisibleBotCount] = useState(3);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(6);
+  const [hasNextPage, setHasNextPage] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isCreatingBot, setIsCreatingBot] = useState(false);
   const [creatingBot, setCreatingBot] = useState<any | null>(null);
   const [progress, setProgress] = useState(0);
   const [isFetchingBots, setIsFetchingBots] = useState(true);
 
-  const handleShowMore = () => {
-    setVisibleBotCount(prev => Math.min(prev + 3, savedBots.length));
-  };
-
-  const handleShowLess = () => {
-    setVisibleBotCount(3);
+  const handleLoadMore = () => {
+    if (hasNextPage && !isLoadingMore) {
+      fetchBots(page + 1, true);
+    }
   };
 
   const [botConfig, setBotConfig] = useState<BotConfig>({
@@ -109,43 +110,54 @@ export const BotBuilder = () => {
     humanHandoffEmails: "",
   });
 
-  const fetchBots = async () => {
+  const fetchBots = async (pageNumber = 1, append = false) => {
     try {
-      setIsFetchingBots(true);
+      pageNumber === 1 ? setIsFetchingBots(true) : setIsLoadingMore(true);
 
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots`, {
-        headers: getAuthHeaders(),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/bots?page=${pageNumber}&limit=${limit}`,
+        { headers: getAuthHeaders() }
+      );
 
-      if (res.ok) {
-        const data = await res.json();
-        const bots = data.result.bots.map((bot: any) => ({
-          id: bot._id,
-          name: bot.name,
-          description: bot.description,
-          websiteUrl: bot.website_url,
-          voiceEnabled: bot.is_voice_enabled,
-          languages: Array.isArray(bot.supported_languages) ? bot.supported_languages : ["English"],
-          primaryPurpose: bot.primary_purpose,
-          conversationalTone: bot.conversation_tone,
-          isVideoBot: bot.is_video_bot,
-          videoBotImageUrl: bot.video_bot_image_url,
-          videoBotImagePublicId: bot.video_bot_image_public_id,
-          voiceId: bot.voice_id,
-          humanHandoffEnabled: bot.human_handoff_enabled,
-        }));
+      if (!res.ok) throw new Error("Failed to fetch bots");
 
-        setSavedBots(bots.reverse());
-      }
+      const data = await res.json();
+      const { bots, pagination } = data.result;
+
+      const mappedBots = bots.map((bot: any) => ({
+        id: bot._id,
+        name: bot.name,
+        description: bot.description,
+        websiteUrl: bot.website_url,
+        voiceEnabled: bot.is_voice_enabled,
+        languages: Array.isArray(bot.supported_languages)
+          ? bot.supported_languages
+          : ["English"],
+        primaryPurpose: bot.primary_purpose,
+        conversationalTone: bot.conversation_tone,
+        isVideoBot: bot.is_video_bot,
+        videoBotImageUrl: bot.video_bot_image_url,
+        videoBotImagePublicId: bot.video_bot_image_public_id,
+        voiceId: bot.voice_id,
+        humanHandoffEnabled: bot.human_handoff_enabled,
+      }));
+
+      setSavedBots(prev =>
+        append ? [...prev, ...mappedBots] : mappedBots
+      );
+
+      setHasNextPage(pagination.hasNextPage);
+      setPage(pagination.page);
     } catch (err) {
       console.error("Error fetching bots:", err);
     } finally {
       setIsFetchingBots(false);
+      setIsLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    fetchBots();
+    fetchBots(1);
   }, []);
 
   const updateConfig = (field: keyof BotConfig, value: any) => {
@@ -230,7 +242,6 @@ export const BotBuilder = () => {
         website_url: botConfig.websiteUrl,
         description: botConfig.description,
         is_voice_enabled: botConfig.voiceEnabled.toString(),
-        is_auto_translate: "false",
         supported_languages: JSON.stringify(botConfig.languages),
         primary_purpose: botConfig.primaryPurpose,
         specialisation_area: botConfig.specializationArea,
@@ -449,7 +460,7 @@ export const BotBuilder = () => {
                 ? Array.from({ length: 6 }).map((_, i) => (
                   <BotCardSkeleton key={i} />
                 ))
-                : savedBots.slice(0, visibleBotCount).map(bot => (
+                : savedBots.map(bot => (
                   <BotCard
                     key={bot.id}
                     bot={bot.id === "temp" ? { ...bot, progress } : bot}
@@ -460,19 +471,19 @@ export const BotBuilder = () => {
                     onDelete={handleDelete}
                     onSessions={handleSessions}
                   />
-                ))}
+                ))
+              }
             </div>
 
             {!isFetchingBots && (
               <div className="flex justify-center gap-4 pt-6">
-                {visibleBotCount < savedBots.length && (
-                  <Button onClick={handleShowMore} variant="outline">
-                    Show More
-                  </Button>
-                )}
-                {visibleBotCount > 3 && (
-                  <Button onClick={handleShowLess} variant="ghost">
-                    Show Less
+                {hasNextPage && (
+                  <Button
+                    onClick={handleLoadMore}
+                    variant="outline"
+                    disabled={isLoadingMore}
+                  >
+                    {isLoadingMore ? "Loading..." : "Load More"}
                   </Button>
                 )}
               </div>
