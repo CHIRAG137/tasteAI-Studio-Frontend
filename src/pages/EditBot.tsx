@@ -35,7 +35,6 @@ import { HumanHandoffSection } from "@/components/BotBuilder/HumanHandoffSection
 
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
-import { Navbar } from "@/components/Navbar";
 
 interface BotConfig {
   name: string;
@@ -296,23 +295,47 @@ const EditBot = () => {
   }
 
   return (
-    <>
-      <Navbar />
-      <div className="min-h-screen bg-background py-8 px-4">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <Button variant="ghost" onClick={() => navigate("/")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="border-b bg-card">
+        <div className="container mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/")}
+                className="gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
+              </Button>
+              <div className="h-6 w-px bg-border" />
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Bot className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-semibold">Edit Bot</h1>
+                  <p className="text-sm text-muted-foreground">{botConfig.name || "Loading..."}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
+      {/* Main Content */}
+      <div className="container mx-auto px-6 py-6">
+        <div className="max-w-4xl mx-auto">
           <Card className="shadow-strong border-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
                 <Sparkles className="w-6 h-6 text-primary" />
-                Edit Bot
+                Bot Configuration
               </CardTitle>
               <CardDescription>
-                Update your bot exactly like BotBuilder
+                Update your bot settings and configuration
               </CardDescription>
             </CardHeader>
 
@@ -375,7 +398,7 @@ const EditBot = () => {
           </Card>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
