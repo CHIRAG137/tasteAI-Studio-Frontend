@@ -5,10 +5,22 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Headphones, MessageSquare, Clock, LogOut, RefreshCw, Bot, CheckCircle, BarChart3, TrendingUp, Star, Zap, ArrowRight, Settings, Activity, Users, Timer } from "lucide-react";
+import {
+  Headphones, MessageSquare, Clock, LogOut, RefreshCw, Bot, CheckCircle,
+  BarChart3, TrendingUp, Star, Zap, ArrowRight, Settings, Activity, Users,
+  Timer, AlertTriangle, ArrowUpRight, History, X, ArrowDownRight, Bell
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { removeAgentAuthToken, removeAgentEmail, getAgentEmail, getAgentAuthHeaders } from "@/utils/agentAuth";
 import { useToast } from "@/hooks/use-toast";
+
+interface EscalationInfo {
+  wasEscalated: boolean;
+  escalatedFrom: string;
+  escalatedTo: string;
+  escalatedAt: string;
+  reason: string;
+}
 
 interface HandoffSession {
   _id: string;
@@ -17,11 +29,13 @@ interface HandoffSession {
     name: string;
     description?: string;
   };
-  status: "pending" | "active" | "resolved";
+  status: "pending" | "active" | "resolved" | "abandoned";
   userQuestion: string;
   requestedAt: string;
   acceptedAt?: string;
   resolvedAt?: string;
+  isCurrentAssignee: boolean;
+  escalationInfo?: EscalationInfo;
   messages: Array<{
     sender: string;
     message: string;
@@ -51,6 +65,16 @@ interface AgentStats {
     resolved: number;
     today: number;
   };
+  escalations: {
+    totalAssigned: number;
+    currentlyActive: number;
+    escalatedAway: number;
+    escalatedTo: number;
+    resolvedByAgent: number;
+    byReason: {
+      [key: string]: number;
+    };
+  };
 }
 
 interface BotInfo {
@@ -59,19 +83,48 @@ interface BotInfo {
   description?: string;
   isActive?: boolean;
   category?: string;
+  enabled?: boolean;
+  primary_purpose?: string;
 }
+
+interface EscalationNotification {
+  id: string;
+  type: 'escalated_away' | 'escalated_to';
+  sessions: HandoffSession[];
+  timestamp: string;
+}
+
+const ESCALATION_STORAGE_KEY = 'agent_escalation_notifications';
 
 const AgentDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [sessions, setSessions] = useState<HandoffSession[]>([]);
   const [stats, setStats] = useState<AgentStats | null>(null);
-  const [bots, setBots] = useState<BotInfo[]>([]);
+  const [enabledBots, setEnabledBots] = useState<BotInfo[]>([]);
+  const [disabledBots, setDisabledBots] = useState<BotInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingBots, setIsLoadingBots] = useState(true);
   const [activeTab, setActiveTab] = useState("active");
+  const [botFilterTab, setBotFilterTab] = useState("enabled");
+  const [escalationNotifications, setEscalationNotifications] = useState<EscalationNotification[]>([]);
+  const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set());
 
   const agentEmail = getAgentEmail();
+
+  // Load dismissed notifications from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem(ESCALATION_STORAGE_KEY);
+    if (stored) {
+      try {
+        const dismissedArray = JSON.parse(stored) as string[];
+        const dismissed = new Set<string>(dismissedArray);
+        setDismissedNotifications(dismissed);
+      } catch (e) {
+        console.error('Error loading dismissed notifications:', e);
+      }
+    }
+  }, []);
 
   // Auto-refresh every 5 seconds
   useEffect(() => {
@@ -85,6 +138,76 @@ const AgentDashboard = () => {
     fetchBots();
   }, []);
 
+  // Check for new escalations and create notifications
+  useEffect(() => {
+    if (sessions.length > 0) {
+      checkForNewEscalations();
+    }
+  }, [sessions]);
+
+  const checkForNewEscalations = () => {
+    const now = new Date();
+    const notifications: EscalationNotification[] = [];
+
+    // Find sessions escalated away (not current assignee but in escalation history)
+    const escalatedAwaySessions = sessions.filter(s =>
+      !s.isCurrentAssignee && s.escalationInfo?.wasEscalated
+    );
+
+    // Find sessions escalated to this agent (current assignee with escalation info)
+    const escalatedToSessions = sessions.filter(s =>
+      s.isCurrentAssignee &&
+      s.escalationInfo?.wasEscalated &&
+      (s.status === 'pending' || s.status === 'active')
+    );
+
+    // Group escalated away sessions by time (within 1 minute)
+    if (escalatedAwaySessions.length > 0) {
+      const notificationId = `away_${escalatedAwaySessions.map(s => s._id).join('_')}`;
+      if (!dismissedNotifications.has(notificationId)) {
+        notifications.push({
+          id: notificationId,
+          type: 'escalated_away',
+          sessions: escalatedAwaySessions,
+          timestamp: now.toISOString()
+        });
+      }
+    }
+
+    // Group escalated to sessions
+    if (escalatedToSessions.length > 0) {
+      const notificationId = `to_${escalatedToSessions.map(s => s._id).join('_')}`;
+      if (!dismissedNotifications.has(notificationId)) {
+        notifications.push({
+          id: notificationId,
+          type: 'escalated_to',
+          sessions: escalatedToSessions,
+          timestamp: now.toISOString()
+        });
+      }
+    }
+
+    setEscalationNotifications(notifications);
+  };
+
+  const dismissNotification = (notificationId: string) => {
+    const newDismissed = new Set(dismissedNotifications);
+    newDismissed.add(notificationId);
+    setDismissedNotifications(newDismissed);
+    localStorage.setItem(ESCALATION_STORAGE_KEY, JSON.stringify([...newDismissed]));
+
+    setEscalationNotifications(prev =>
+      prev.filter(n => n.id !== notificationId)
+    );
+  };
+
+  const handleNotificationClick = (notification: EscalationNotification) => {
+    // Navigate to escalated tab
+    setActiveTab('escalated');
+    // Dismiss after clicking
+    dismissNotification(notification.id);
+  };
+
   const fetchData = async () => {
     await Promise.all([fetchSessions(), fetchStats()]);
   };
@@ -92,7 +215,7 @@ const AgentDashboard = () => {
   const fetchSessions = async () => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/handoff/sessions?status=all`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/handoff/sessions?includeEscalated=true&status=all`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -104,7 +227,7 @@ const AgentDashboard = () => {
       if (!response.ok) {
         throw new Error(data.message || "Failed to fetch sessions");
       }
-      setSessions(data.result?.sessions || []);
+      setSessions(data.result.sessions || []);
     } catch (error: any) {
       console.error("Error fetching sessions:", error);
       if (!isLoading) {
@@ -156,7 +279,23 @@ const AgentDashboard = () => {
       if (!response.ok) {
         throw new Error(data.message || "Failed to fetch bots");
       }
-      setBots(data.result?.bots || []);
+
+      const botsData = data.result?.bots;
+      if (botsData) {
+        const enabled = (botsData.enabledBots || []).map((bot: any) => ({
+          ...bot,
+          enabled: true,
+          category: bot.primary_purpose
+        }));
+        const disabled = (botsData.disabledBots || []).map((bot: any) => ({
+          ...bot,
+          enabled: false,
+          category: bot.primary_purpose
+        }));
+
+        setEnabledBots(enabled);
+        setDisabledBots(disabled);
+      }
     } catch (error: any) {
       console.error("Error fetching bots:", error);
       toast({
@@ -237,11 +376,41 @@ const AgentDashboard = () => {
     return `${mins}m ${secs}s`;
   };
 
-  const pendingSessions = sessions.filter(s => s.status === "pending");
-  const activeSessions = sessions.filter(s => s.status === "active");
-  const resolvedSessions = sessions.filter(s => s.status === "resolved");
+  const formatEscalationReason = (reason: string) => {
+    const reasons: { [key: string]: string } = {
+      'agent_removed_from_bot': 'Agent Removed',
+      'no_response': 'No Response',
+      'manual_transfer': 'Manual Transfer',
+      'agent_offline': 'Agent Offline'
+    };
+    return reasons[reason] || reason;
+  };
+
+  // Filter sessions
+  const activeSessions = sessions.filter(s =>
+    s.isCurrentAssignee && (s.status === "pending" || s.status === "active")
+  );
+  const resolvedSessions = sessions.filter(s =>
+    s.isCurrentAssignee && s.status === "resolved"
+  );
+  const escalatedAwaySessions = sessions.filter(s =>
+    !s.isCurrentAssignee && s.escalationInfo?.wasEscalated
+  );
+  const escalatedToMeSessions = sessions.filter(s =>
+    s.isCurrentAssignee && s.escalationInfo?.wasEscalated
+  );
+  const pendingSessions = sessions.filter(s =>
+    s.isCurrentAssignee && s.status === "pending"
+  );
 
   const isOnline = stats?.agent.isOnline && stats?.agent.availabilityStatus === "available";
+
+  // Get current bots to display based on filter
+  const displayBots = botFilterTab === "enabled" ? enabledBots :
+    botFilterTab === "disabled" ? disabledBots :
+      [...enabledBots, ...disabledBots];
+
+  const totalBots = enabledBots.length + disabledBots.length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -269,6 +438,15 @@ const AgentDashboard = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              {escalationNotifications.length > 0 && (
+                <div className="relative">
+                  <Bell className="w-5 h-5 text-primary animate-pulse" />
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-white text-xs rounded-full flex items-center justify-center">
+                    {escalationNotifications.length}
+                  </span>
+                </div>
+              )}
+
               <Button
                 size="sm"
                 variant="ghost"
@@ -283,8 +461,8 @@ const AgentDashboard = () => {
                   size="sm"
                   onClick={() => updateStatus(!stats.agent.isOnline)}
                   variant={isOnline ? "outline" : "default"}
-                  className={isOnline 
-                    ? "border-destructive/50 text-destructive hover:bg-destructive/10" 
+                  className={isOnline
+                    ? "border-destructive/50 text-destructive hover:bg-destructive/10"
                     : "bg-success hover:bg-success/90 text-success-foreground"
                   }
                 >
@@ -333,8 +511,18 @@ const AgentDashboard = () => {
           </div>
         </div>
 
+        {/* Escalation Notifications */}
+        {escalationNotifications.map((notification) => (
+          <EscalationNotificationBanner
+            key={notification.id}
+            notification={notification}
+            onDismiss={dismissNotification}
+            onClick={handleNotificationClick}
+          />
+        ))}
+
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard
             icon={MessageSquare}
             label="Active Chats"
@@ -354,6 +542,13 @@ const AgentDashboard = () => {
             label="Resolved Today"
             value={stats?.sessions.today || 0}
             variant="success"
+          />
+          <StatCard
+            icon={ArrowUpRight}
+            label="Escalated To Me"
+            value={stats?.escalations.escalatedTo || 0}
+            variant="info"
+            animate={escalatedToMeSessions.length > 0}
           />
           <StatCard
             icon={Zap}
@@ -381,21 +576,29 @@ const AgentDashboard = () => {
                       <CardDescription>Manage incoming requests</CardDescription>
                     </div>
                   </div>
-                  {(pendingSessions.length + activeSessions.length) > 0 && (
+                  {activeSessions.length > 0 && (
                     <Badge variant="default" className="text-xs">
-                      {pendingSessions.length + activeSessions.length} active
+                      {activeSessions.length} active
                     </Badge>
                   )}
                 </div>
               </CardHeader>
               <CardContent>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="w-full grid grid-cols-3 mb-4">
+                  <TabsList className="w-full grid grid-cols-4 mb-4">
                     <TabsTrigger value="active" className="text-sm">
                       Active
-                      {(pendingSessions.length + activeSessions.length) > 0 && (
+                      {activeSessions.length > 0 && (
                         <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs bg-primary text-primary-foreground">
-                          {pendingSessions.length + activeSessions.length}
+                          {activeSessions.length}
+                        </span>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="escalated" className="text-sm">
+                      Escalated
+                      {(escalatedAwaySessions.length + escalatedToMeSessions.length) > 0 && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs bg-amber-500 text-white">
+                          {escalatedAwaySessions.length + escalatedToMeSessions.length}
                         </span>
                       )}
                     </TabsTrigger>
@@ -406,7 +609,7 @@ const AgentDashboard = () => {
                   <TabsContent value="active" className="mt-0">
                     {isLoading ? (
                       <LoadingState />
-                    ) : (pendingSessions.length + activeSessions.length) === 0 ? (
+                    ) : activeSessions.length === 0 ? (
                       <EmptyState
                         icon={MessageSquare}
                         title="No active sessions"
@@ -415,14 +618,81 @@ const AgentDashboard = () => {
                     ) : (
                       <ScrollArea className="h-[380px]">
                         <div className="space-y-3 pr-4">
-                          {[...pendingSessions, ...activeSessions].map((session) => (
+                          {activeSessions.map((session) => (
                             <SessionCard
                               key={session._id}
                               session={session}
                               onClick={handleSessionClick}
                               formatTime={formatTime}
+                              formatEscalationReason={formatEscalationReason}
+                              showEscalationTag={true}
+                              showInlineEscalation={true}
                             />
                           ))}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="escalated" className="mt-0">
+                    {(escalatedAwaySessions.length + escalatedToMeSessions.length) === 0 ? (
+                      <EmptyState
+                        icon={History}
+                        title="No escalated sessions"
+                        description="Sessions escalated from or to other agents will appear here"
+                      />
+                    ) : (
+                      <ScrollArea className="h-[380px]">
+                        <div className="space-y-4 pr-4">
+                          {/* Sessions Escalated Away */}
+                          {escalatedAwaySessions.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-2 mb-3">
+                                <ArrowDownRight className="w-4 h-4 text-rose-500" />
+                                <h3 className="text-sm font-semibold text-foreground">
+                                  Escalated Away ({escalatedAwaySessions.length})
+                                </h3>
+                              </div>
+                              <div className="space-y-3">
+                                {escalatedAwaySessions.map((session) => (
+                                  <SessionCard
+                                    key={session._id}
+                                    session={session}
+                                    onClick={handleSessionClick}
+                                    formatTime={formatTime}
+                                    formatEscalationReason={formatEscalationReason}
+                                    showEscalationDetails={true}
+                                    escalationType="away"
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Sessions Escalated To Me */}
+                          {escalatedToMeSessions.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-2 mb-3">
+                                <ArrowUpRight className="w-4 h-4 text-blue-500" />
+                                <h3 className="text-sm font-semibold text-foreground">
+                                  Escalated To Me ({escalatedToMeSessions.length})
+                                </h3>
+                              </div>
+                              <div className="space-y-3">
+                                {escalatedToMeSessions.map((session) => (
+                                  <SessionCard
+                                    key={session._id}
+                                    session={session}
+                                    onClick={handleSessionClick}
+                                    formatTime={formatTime}
+                                    formatEscalationReason={formatEscalationReason}
+                                    showEscalationDetails={true}
+                                    escalationType="to"
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </ScrollArea>
                     )}
@@ -444,6 +714,7 @@ const AgentDashboard = () => {
                               session={session}
                               onClick={handleSessionClick}
                               formatTime={formatTime}
+                              formatEscalationReason={formatEscalationReason}
                             />
                           ))}
                         </div>
@@ -467,6 +738,7 @@ const AgentDashboard = () => {
                               session={session}
                               onClick={handleSessionClick}
                               formatTime={formatTime}
+                              formatEscalationReason={formatEscalationReason}
                             />
                           ))}
                         </div>
@@ -515,6 +787,14 @@ const AgentDashboard = () => {
                   value={stats?.metrics.averageRating ? `${stats.metrics.averageRating.toFixed(1)} ★` : 'N/A'}
                   highlight={stats?.metrics.averageRating >= 4}
                 />
+                <div className="pt-3 border-t">
+                  <MetricRow
+                    icon={ArrowDownRight}
+                    label="Escalated Away"
+                    value={stats?.escalations.escalatedAway || 0}
+                    variant="warning"
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -532,7 +812,7 @@ const AgentDashboard = () => {
                     </div>
                   </div>
                   <Badge variant="secondary" className="text-xs">
-                    {bots.length}
+                    {totalBots}
                   </Badge>
                 </div>
               </CardHeader>
@@ -541,42 +821,87 @@ const AgentDashboard = () => {
                   <div className="flex items-center justify-center py-8">
                     <RefreshCw className="w-5 h-5 animate-spin text-muted-foreground" />
                   </div>
-                ) : bots.length === 0 ? (
+                ) : totalBots === 0 ? (
                   <div className="text-center py-8">
                     <Bot className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
                     <p className="text-sm text-muted-foreground">No bots assigned</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {bots.slice(0, 4).map((bot) => (
-                      <div
-                        key={bot._id}
-                        className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
-                            {bot.name.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {bot.name}
-                          </p>
-                          {bot.category && (
-                            <p className="text-xs text-muted-foreground">{bot.category}</p>
+                  <>
+                    <Tabs value={botFilterTab} onValueChange={setBotFilterTab} className="w-full mb-4">
+                      <TabsList className="w-full grid grid-cols-3">
+                        <TabsTrigger value="enabled" className="text-xs">
+                          Enabled
+                          {enabledBots.length > 0 && (
+                            <span className="ml-1 text-xs">({enabledBots.length})</span>
                           )}
-                        </div>
-                        {bot.isActive && (
-                          <div className="w-2 h-2 rounded-full bg-success" />
+                        </TabsTrigger>
+                        <TabsTrigger value="disabled" className="text-xs">
+                          Disabled
+                          {disabledBots.length > 0 && (
+                            <span className="ml-1 text-xs">({disabledBots.length})</span>
+                          )}
+                        </TabsTrigger>
+                        <TabsTrigger value="all" className="text-xs">
+                          All
+                          <span className="ml-1 text-xs">({totalBots})</span>
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+
+                    <ScrollArea className="max-h-[320px]">
+                      <div className="space-y-2 pr-4">
+                        {displayBots.length === 0 ? (
+                          <div className="text-center py-8">
+                            <Bot className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
+                            <p className="text-sm text-muted-foreground">
+                              {botFilterTab === "enabled" ? "No enabled bots" : "No disabled bots"}
+                            </p>
+                          </div>
+                        ) : (
+                          displayBots.map((bot) => (
+                            <div
+                              key={bot._id}
+                              className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
+                            >
+                              <Avatar className="h-8 w-8 shrink-0">
+                                <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                                  {bot.name.slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                  {bot.name}
+                                </p>
+                                {bot.category && (
+                                  <p className="text-xs text-muted-foreground capitalize">
+                                    {bot.category.replace('-', ' ')}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {bot.isActive && (
+                                  <div
+                                    className="w-2 h-2 rounded-full bg-success"
+                                    title="Bot is active"
+                                  />
+                                )}
+                                <Badge
+                                  variant={bot.enabled ? "default" : "secondary"}
+                                  className={`text-xs ${bot.enabled
+                                    ? "bg-success/10 text-success border-success/20"
+                                    : "bg-muted text-muted-foreground"
+                                    }`}
+                                >
+                                  {bot.enabled ? "Enabled" : "Disabled"}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))
                         )}
                       </div>
-                    ))}
-                    {bots.length > 4 && (
-                      <p className="text-xs text-center text-muted-foreground pt-2">
-                        +{bots.length - 4} more bots
-                      </p>
-                    )}
-                  </div>
+                    </ScrollArea>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -594,6 +919,119 @@ const AgentDashboard = () => {
   );
 };
 
+// Escalation Notification Banner Component
+const EscalationNotificationBanner = ({
+  notification,
+  onDismiss,
+  onClick
+}: {
+  notification: EscalationNotification;
+  onDismiss: (id: string) => void;
+  onClick: (notification: EscalationNotification) => void;
+}) => {
+  const isEscalatedAway = notification.type === 'escalated_away';
+  const sessionCount = notification.sessions.length;
+
+  return (
+    <Card
+      className={`cursor-pointer transition-all hover:shadow-md ${isEscalatedAway
+        ? 'border-rose-500/50 bg-rose-500/5'
+        : 'border-blue-500/50 bg-blue-500/5'
+        }`}
+      onClick={() => onClick(notification)}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <div className={`p-2 rounded-lg mt-0.5 ${isEscalatedAway
+            ? 'bg-rose-500/10'
+            : 'bg-blue-500/10'
+            }`}>
+            {isEscalatedAway ? (
+              <ArrowDownRight className="w-5 h-5 text-rose-600" />
+            ) : (
+              <ArrowUpRight className="w-5 h-5 text-blue-600" />
+            )}
+          </div>
+          <div className="flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className={`font-semibold text-sm mb-1 ${isEscalatedAway ? 'text-rose-700' : 'text-blue-700'
+                  }`}>
+                  {isEscalatedAway
+                    ? `${sessionCount} Session${sessionCount > 1 ? 's' : ''} Escalated Away`
+                    : `${sessionCount} New Escalated Session${sessionCount > 1 ? 's' : ''}`
+                  }
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {isEscalatedAway ? (
+                    <>
+                      Your session{sessionCount > 1 ? 's have' : ' has'} been reassigned to{' '}
+                      {notification.sessions.length === 1
+                        ? notification.sessions[0].escalationInfo?.escalatedTo || 'another agent'
+                        : `${sessionCount} other agents`
+                      }
+                      {'. '}
+                      <span className="text-rose-600 font-medium">
+                        Reason: {formatEscalationReason(notification.sessions[0].escalationInfo?.reason || '')}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      You've been assigned {sessionCount} session{sessionCount > 1 ? 's' : ''} from{' '}
+                      {notification.sessions.length === 1
+                        ? notification.sessions[0].escalationInfo?.escalatedTo || 'another agent'
+                        : 'other agents'
+                      }
+                      {'. '}
+                      <span className="text-blue-600 font-medium">
+                        Click to view
+                      </span>
+                    </>
+                  )}
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {notification.sessions.slice(0, 3).map(session => (
+                    <Badge key={session._id} variant="outline" className="text-xs">
+                      {session.bot.name}
+                    </Badge>
+                  ))}
+                  {notification.sessions.length > 3 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{notification.sessions.length - 3} more
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDismiss(notification.id);
+                }}
+                className="h-7 w-7 p-0 shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Helper function for formatting escalation reasons
+const formatEscalationReason = (reason: string) => {
+  const reasons: { [key: string]: string } = {
+    'agent_removed_from_bot': 'Agent Removed from Bot',
+    'no_response': 'No Response',
+    'manual_transfer': 'Manual Transfer',
+    'agent_offline': 'Agent Offline'
+  };
+  return reasons[reason] || reason;
+};
+
 // Stat Card Component
 const StatCard = ({
   icon: Icon,
@@ -606,7 +1044,7 @@ const StatCard = ({
   icon: any;
   label: string;
   value: string | number;
-  variant: 'primary' | 'success' | 'warning' | 'accent';
+  variant: 'primary' | 'success' | 'warning' | 'accent' | 'info';
   animate?: boolean;
   progress?: number;
 }) => {
@@ -614,7 +1052,8 @@ const StatCard = ({
     primary: 'bg-primary/10 text-primary',
     success: 'bg-success/10 text-success',
     warning: 'bg-amber-500/10 text-amber-600',
-    accent: 'bg-accent/10 text-accent'
+    accent: 'bg-accent/10 text-accent',
+    info: 'bg-blue-500/10 text-blue-600'
   };
 
   return (
@@ -629,7 +1068,7 @@ const StatCard = ({
         <p className="text-sm text-muted-foreground mt-2">{label}</p>
         {progress !== undefined && (
           <div className="mt-3 h-1.5 rounded-full bg-muted overflow-hidden">
-            <div 
+            <div
               className="h-full bg-accent rounded-full transition-all duration-500"
               style={{ width: `${Math.min(progress, 100)}%` }}
             />
@@ -645,19 +1084,24 @@ const MetricRow = ({
   icon: Icon,
   label,
   value,
-  highlight = false
+  highlight = false,
+  variant
 }: {
   icon: any;
   label: string;
   value: string | number;
   highlight?: boolean;
+  variant?: 'warning';
 }) => (
   <div className="flex items-center justify-between py-2">
     <div className="flex items-center gap-2 text-muted-foreground">
       <Icon className="w-4 h-4" />
       <span className="text-sm">{label}</span>
     </div>
-    <span className={`text-sm font-semibold ${highlight ? 'text-success' : 'text-foreground'}`}>
+    <span className={`text-sm font-semibold ${highlight ? 'text-success' :
+      variant === 'warning' ? 'text-amber-600' :
+        'text-foreground'
+      }`}>
       {value}
     </span>
   </div>
@@ -694,11 +1138,21 @@ const EmptyState = ({
 const SessionCard = ({
   session,
   onClick,
-  formatTime
+  formatTime,
+  formatEscalationReason,
+  showEscalationTag = false,
+  showEscalationDetails = false,
+  showInlineEscalation = false,
+  escalationType
 }: {
   session: HandoffSession;
   onClick: (id: string) => void;
   formatTime: (date: string) => string;
+  formatEscalationReason: (reason: string) => string;
+  showEscalationTag?: boolean;
+  showEscalationDetails?: boolean;
+  showInlineEscalation?: boolean;
+  escalationType?: 'away' | 'to';
 }) => {
   const statusConfig = {
     pending: {
@@ -715,14 +1169,24 @@ const SessionCard = ({
       badge: 'bg-muted text-muted-foreground border-border',
       dot: 'bg-muted-foreground',
       label: 'Resolved'
+    },
+    abandoned: {
+      badge: 'bg-destructive/10 text-destructive border-destructive/20',
+      dot: 'bg-destructive',
+      label: 'Abandoned'
     }
   };
 
   const config = statusConfig[session.status];
+  const isEscalated = session.escalationInfo?.wasEscalated;
+  const isEscalatedToMe = session.isCurrentAssignee && isEscalated;
 
   return (
     <Card
-      className="group cursor-pointer border hover:border-primary/30 hover:shadow-soft transition-all"
+      className={`group cursor-pointer border hover:border-primary/30 hover:shadow-soft transition-all ${escalationType === 'away' ? 'border-rose-500/30 bg-rose-500/5' :
+        escalationType === 'to' ? 'border-blue-500/30 bg-blue-500/5' :
+          (isEscalatedToMe && showInlineEscalation) ? 'border-blue-500/20 bg-blue-500/5' : ''
+        }`}
       onClick={() => onClick(session._id)}
     >
       <CardContent className="p-4">
@@ -732,9 +1196,9 @@ const SessionCard = ({
               {session.bot.name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          
+
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="font-semibold text-sm text-foreground truncate">
                 {session.bot.name}
               </span>
@@ -742,9 +1206,15 @@ const SessionCard = ({
                 <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${config.dot} ${session.status === 'active' ? 'animate-pulse' : ''}`} />
                 {config.label}
               </Badge>
-              {session.status === "pending" && (
+              {session.status === "pending" && session.isCurrentAssignee && !isEscalatedToMe && (
                 <Badge className="bg-destructive text-destructive-foreground text-xs animate-pulse">
                   New
+                </Badge>
+              )}
+              {isEscalatedToMe && showEscalationTag && (
+                <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-xs">
+                  <ArrowUpRight className="w-3 h-3 mr-1" />
+                  From Escalation
                 </Badge>
               )}
             </div>
@@ -753,6 +1223,48 @@ const SessionCard = ({
               <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                 "{session.userQuestion}"
               </p>
+            )}
+
+            {/* Show escalation details inline for active/pending escalated sessions */}
+            {showInlineEscalation && isEscalatedToMe && session.escalationInfo && (
+              <div className="mb-2 p-2 rounded-md bg-blue-500/10 border border-blue-500/20">
+                <p className="text-xs text-blue-700">
+                  <span className="font-medium">⚡ Escalated from:</span> {session.escalationInfo.escalatedTo}
+                  {' • '}
+                  <span className="font-medium">Previous status:</span> {session.escalationInfo.escalatedFrom}
+                  {' • '}
+                  <span className="font-medium">Reason:</span> {formatEscalationReason(session.escalationInfo.reason)}
+                </p>
+              </div>
+            )}
+
+            {/* Show escalation details for escalated tab */}
+            {showEscalationDetails && isEscalated && session.escalationInfo && (
+              <div className={`mb-2 p-2 rounded-md border ${escalationType === 'away'
+                ? 'bg-rose-500/10 border-rose-500/20'
+                : 'bg-blue-500/10 border-blue-500/20'
+                }`}>
+                <p className={`text-xs ${escalationType === 'away' ? 'text-rose-700' : 'text-blue-700'
+                  }`}>
+                  {escalationType === 'away' ? (
+                    <>
+                      <span className="font-medium">Escalated to:</span> {session.escalationInfo.escalatedTo}
+                      {' • '}
+                      <span className="font-medium">From status:</span> {session.escalationInfo.escalatedFrom}
+                      {' • '}
+                      <span className="font-medium">Reason:</span> {formatEscalationReason(session.escalationInfo.reason)}
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium">Escalated from:</span> {session.escalationInfo.escalatedTo}
+                      {' • '}
+                      <span className="font-medium">Previous status:</span> {session.escalationInfo.escalatedFrom}
+                      {' • '}
+                      <span className="font-medium">Reason:</span> {formatEscalationReason(session.escalationInfo.reason)}
+                    </>
+                  )}
+                </p>
+              </div>
             )}
 
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -764,6 +1276,11 @@ const SessionCard = ({
                 <Clock className="w-3 h-3" />
                 {formatTime(session.requestedAt)}
               </span>
+              {!session.isCurrentAssignee && (
+                <Badge variant="outline" className="text-xs bg-muted">
+                  Not Assigned
+                </Badge>
+              )}
             </div>
           </div>
 
