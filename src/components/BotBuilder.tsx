@@ -537,8 +537,20 @@ export const BotBuilder = () => {
               }
             </div>
 
-            {!isFetchingBots && (
+            {!isFetchingBots && (page > 1 || hasNextPage) && (
               <div className="flex justify-center gap-4 pt-6">
+                {page > 1 && (
+                  <Button
+                    onClick={() => {
+                      setPage(1);
+                      setSavedBots(prev => prev.slice(0, limit));
+                      setHasNextPage(true);
+                    }}
+                    variant="outline"
+                  >
+                    Show Less
+                  </Button>
+                )}
                 {hasNextPage && (
                   <Button
                     onClick={handleLoadMore}
