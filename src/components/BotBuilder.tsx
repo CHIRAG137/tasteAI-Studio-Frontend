@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
@@ -20,7 +20,7 @@ import { useNavigate } from "react-router-dom";
 import { getAuthHeaders, isAuthenticated } from "@/utils/auth";
 import { Navbar } from "@/components/Navbar";
 import { BotCardSkeleton } from "./BotCardSkeleton";
-
+import { BotFilters, BotFilterState } from "./BotFilters";
 interface BotConfig {
   name: string;
   websiteUrl: string;
@@ -63,6 +63,50 @@ export const BotBuilder = () => {
   const [creatingBot, setCreatingBot] = useState<any | null>(null);
   const [progress, setProgress] = useState(0);
   const [isFetchingBots, setIsFetchingBots] = useState(true);
+  const [filters, setFilters] = useState<BotFilterState>({
+    searchQuery: "",
+    primaryPurpose: "all",
+    conversationalTone: "all",
+    voiceEnabled: "all",
+    isVideoBot: "all",
+    humanHandoffEnabled: "all",
+  });
+
+  // Filter bots based on current filters
+  const filteredBots = useMemo(() => {
+    return savedBots.filter((bot) => {
+      // Search by name
+      if (filters.searchQuery && !bot.name.toLowerCase().includes(filters.searchQuery.toLowerCase())) {
+        return false;
+      }
+      // Primary purpose filter
+      if (filters.primaryPurpose !== "all" && bot.primaryPurpose !== filters.primaryPurpose) {
+        return false;
+      }
+      // Conversational tone filter
+      if (filters.conversationalTone !== "all" && bot.conversationalTone !== filters.conversationalTone) {
+        return false;
+      }
+      // Voice enabled filter
+      if (filters.voiceEnabled !== "all") {
+        const voiceValue = filters.voiceEnabled === "true";
+        if (bot.voiceEnabled !== voiceValue && !bot.isVideoBot) return false;
+        // Video bots always have voice
+        if (bot.isVideoBot && !voiceValue) return false;
+      }
+      // Video bot filter
+      if (filters.isVideoBot !== "all") {
+        const isVideoValue = filters.isVideoBot === "true";
+        if (bot.isVideoBot !== isVideoValue) return false;
+      }
+      // Human handoff filter
+      if (filters.humanHandoffEnabled !== "all") {
+        const handoffValue = filters.humanHandoffEnabled === "true";
+        if (bot.humanHandoffEnabled !== handoffValue) return false;
+      }
+      return true;
+    });
+  }, [savedBots, filters]);
 
   const handleLoadMore = () => {
     if (hasNextPage && !isLoadingMore) {
@@ -455,12 +499,30 @@ export const BotBuilder = () => {
               </p>
             </div>
 
+            {/* Search and Filters */}
+            <BotFilters
+              onFiltersChange={setFilters}
+              totalBots={savedBots.length}
+              filteredCount={filteredBots.length}
+            />
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {isFetchingBots
                 ? Array.from({ length: 6 }).map((_, i) => (
                   <BotCardSkeleton key={i} />
                 ))
-                : savedBots.map(bot => (
+                : filteredBots.length === 0 ? (
+                  <div className="col-span-full text-center py-12">
+                    <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">No bots found</h3>
+                    <p className="text-muted-foreground">
+                      {savedBots.length === 0 
+                        ? "Create your first bot to get started" 
+                        : "Try adjusting your search or filters"}
+                    </p>
+                  </div>
+                )
+                : filteredBots.map(bot => (
                   <BotCard
                     key={bot.id}
                     bot={bot.id === "temp" ? { ...bot, progress } : bot}
