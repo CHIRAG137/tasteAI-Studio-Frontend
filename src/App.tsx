@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Sessions from "./pages/Sessions";
 import EditBot from "./pages/EditBot";
+import Profile from "./pages/Profile";
 import { PublicBotChatPage } from "@/components/PublicBotChatPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PublicRoute } from "@/components/PublicRoute";
@@ -69,6 +70,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Documentation />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             } 
           />
