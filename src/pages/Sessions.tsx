@@ -99,26 +99,25 @@ export default function Sessions() {
     }
   };
 
-  // ✅ NEW: Helper function to format history entry into readable message
+  // Helper function to format history entry into readable message
   const formatHistoryEntry = (h: any): string => {
     let content = "";
     
     // Handle based on mode
     if (h.mode === "qa") {
       if (h.fromUser || h.question) {
-        content = `❓ ${h.question || h.content || "Question asked"}`;
+        content = `${h.question || "Question asked"}`;
       } else {
         const answer = h.answer || "No match found";
-        const scoreInfo = h.score !== undefined ? ` (confidence: ${(h.score * 100).toFixed(1)}%)` : "";
-        content = `✅ ${answer}${scoreInfo}`;
+        content = `${answer}`;
       }
     } else if (h.mode === "handoff") {
       if (h.type === "handoff_initiated") {
-        content = `🤝 Handoff requested: ${h.content || "User requested assistance"}`;
+        content = `${h.content || "User requested assistance"}`;
       } else if (h.sender === "agent" || (!h.fromUser && h.messageText)) {
-        content = `🤖 Agent: ${h.messageText || h.content || "(message)"}`;
+        content = `${h.messageText || h.content || "(message)"}`;
       } else if (h.fromUser) {
-        content = `👤 ${h.messageText || h.content || "(message)"}`;
+        content = `${h.messageText || h.content || "(message)"}`;
       } else {
         content = `${h.messageText || h.content || "(handoff event)"}`;
       }
@@ -127,36 +126,36 @@ export default function Sessions() {
       switch (h.type) {
         case "branch_select":
           content = h.content?.selected 
-            ? `✅ Selected: ${h.content.selected}` 
-            : `✅ Branch selected`;
+            ? `Selected: ${h.content.selected}` 
+            : `Branch selected`;
           break;
         case "user_input":
           content = h.content || "(user input)";
           break;
-        case "branch":
-          content = `🌿 Branch point reached`;
-          break;
+        // case "branch":
+        //   content = `Branch point reached`;
+        //   break;
         case "code":
           if (h.content?.success !== undefined) {
             const status = h.content.success ? '✓ Success' : '✗ Failed';
             const result = h.content.result ? `: ${JSON.stringify(h.content.result)}` : "";
-            content = `⚙️ Code executed (${status})${result}`;
+            content = `Code executed (${status})${result}`;
           } else {
-            content = `⚙️ Code executed`;
+            content = `Code executed`;
           }
           break;
         case "confirmation":
           content = h.content 
-            ? `❓ Confirmation: ${h.content}` 
-            : `❓ Confirmation requested`;
+            ? `${h.content}` 
+            : `Confirmation requested`;
           break;
         case "question":
           if (h.awaitingInput) {
             content = h.content 
-              ? `❓ ${h.content}` 
-              : `❓ Question presented (awaiting response)`;
+              ? `${h.content}` 
+              : `Question presented (awaiting response)`;
           } else {
-            content = h.content || `❓ Question`;
+            content = h.content || `Question`;
           }
           break;
         case "message":
@@ -164,8 +163,8 @@ export default function Sessions() {
           break;
         case "redirect":
           content = h.content 
-            ? `➡️ Redirected to: ${h.content}` 
-            : `➡️ Redirected`;
+            ? `Redirected to: ${h.content}` 
+            : `Redirected`;
           break;
         default:
           // Fallback for unknown types
@@ -180,7 +179,7 @@ export default function Sessions() {
     } else {
       // Legacy/default handling
       if (h.type === "branch_select" && h.content?.selected) {
-        content = `✅ Selected: ${h.content.selected}`;
+        content = `Selected: ${h.content.selected}`;
       } else if (typeof h.content === "object" && h.content !== null) {
         content = JSON.stringify(h.content);
       } else {

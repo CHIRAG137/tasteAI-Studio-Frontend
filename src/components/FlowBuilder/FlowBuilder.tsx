@@ -19,7 +19,8 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { X, Plus, MessageSquare, HelpCircle, GitBranch, CheckCircle, Link2, Code } from 'lucide-react';
+import { X, Plus, MessageSquare, HelpCircle, GitBranch, CheckCircle, Link2, Code, AlertCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 // Node type definitions
 interface NodeData extends Record<string, unknown> {
@@ -178,6 +179,8 @@ interface FlowBuilderProps {
 }
 
 export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, initialNodes, initialEdges }: FlowBuilderProps) {
+  const { toast } = useToast();
+
   const defaultNodes: Node<NodeData>[] = initialNodes as Node<NodeData>[] || [
     {
       id: '1',
@@ -213,19 +216,36 @@ export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, 
   }, []);
 
   const addNode = (type: NodeData['type']) => {
+    // ✅ UPDATED: Add default values for nodes with required fields
+    const defaultData: any = {
+      label: `${type} Node`,
+      type,
+    };
+
+    // Message node with default placeholder text
+    if (type === 'message') {
+      defaultData.message = 'Enter your message here';
+    }
+    // Question node with default text and variable name
+    else if (type === 'question') {
+      defaultData.message = 'What would you like to know?';
+      defaultData.variable = 'answer'; // Default variable name
+    }
+    // Confirmation node with default text
+    else if (type === 'confirmation') {
+      defaultData.message = 'Is this correct?';
+    }
+    // Code node with template
+    else if (type === 'code') {
+      defaultData.code = '// Write your JavaScript code here\n// Available: axios, variables, getVariable(), setVariable()\n\n';
+      defaultData.timeout = 5000;
+    }
+
     const newNode: Node<NodeData> = {
       id: `${nodes.length + 1}`,
       type,
       position: { x: 250, y: nodes.length * 150 + 100 },
-      data: {
-        label: `${type} Node`,
-        type,
-        message: '',
-        ...(type === 'code' && {
-          code: '// Write your JavaScript code here\n// Available: axios, variables, getVariable(), setVariable()\n\n',
-          timeout: 5000
-        }),
-      },
+      data: defaultData,
     };
     setNodes((nds) => [...nds, newNode]);
   };
@@ -288,9 +308,63 @@ export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, 
     setSelectedNode(null);
   };
 
+  // ✅ UPDATED: Add validation function to check required fields
+  const validateNodes = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    nodes.forEach((node) => {
+      // Message nodes require text
+      if (node.data.type === 'message') {
+        if (!node.data.message || node.data.message.trim() === '') {
+          errors.push(`Message node "${node.id}": Message text is required`);
+        }
+      }
+      // Question nodes require both text and variable
+      else if (node.data.type === 'question') {
+        if (!node.data.message || node.data.message.trim() === '') {
+          errors.push(`Question node "${node.id}": Question text is required`);
+        }
+        if (!node.data.variable || node.data.variable.trim() === '') {
+          errors.push(`Question node "${node.id}": Variable name is required`);
+        }
+      }
+      // Confirmation nodes require text
+      else if (node.data.type === 'confirmation') {
+        if (!node.data.message || node.data.message.trim() === '') {
+          errors.push(`Confirmation node "${node.id}": Confirmation text is required`);
+        }
+      }
+    });
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  };
+
   const handleSave = () => {
+    // ✅ UPDATED: Validate nodes before saving
+    const validation = validateNodes();
+
+    if (!validation.isValid) {
+      // Show first error as main message
+      toast({
+        title: "Validation Error",
+        description: validation.errors[0],
+        variant: "destructive",
+      });
+
+      // Log all errors to console for debugging
+      console.error("Flow validation errors:", validation.errors);
+      return;
+    }
+
     if (onSave) {
       onSave(nodes, edges);
+      toast({
+        title: "Success",
+        description: "Flow saved successfully",
+      });
     }
   };
 
@@ -392,7 +466,17 @@ export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, 
               selectedNode.data.type === 'question' ||
               selectedNode.data.type === 'confirmation') && (
                 <div>
-                  <Label htmlFor="node-message">Message</Label>
+                  {/* ✅ UPDATED: Show required indicator */}
+                  <div className="flex items-center gap-1 mb-1">
+                    <Label htmlFor="node-message">Message</Label>
+                    <span className="text-red-500 text-sm font-bold">*</span>
+                  </div>
+                  {(!selectedNode.data.message || selectedNode.data.message.trim() === '') && (
+                    <div className="flex items-center gap-1 text-xs text-amber-600 mb-2">
+                      <AlertCircle className="w-3 h-3" />
+                      <span>This field is required</span>
+                    </div>
+                  )}
                   <Textarea
                     id="node-message"
                     value={selectedNode.data.message || ''}
@@ -407,7 +491,17 @@ export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, 
 
             {selectedNode.data.type === 'question' && (
               <div>
-                <Label htmlFor="node-variable">Variable Name</Label>
+                {/* ✅ UPDATED: Show required indicator */}
+                <div className="flex items-center gap-1 mb-1">
+                  <Label htmlFor="node-variable">Variable Name</Label>
+                  <span className="text-red-500 text-sm font-bold">*</span>
+                </div>
+                {(!selectedNode.data.variable || selectedNode.data.variable.trim() === '') && (
+                  <div className="flex items-center gap-1 text-xs text-amber-600 mb-2">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>This field is required</span>
+                  </div>
+                )}
                 <Input
                   id="node-variable"
                   type="text"
