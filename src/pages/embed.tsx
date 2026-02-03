@@ -309,6 +309,7 @@ export default function EmbedChat() {
           body: JSON.stringify({
             question,
             botId: botData._id,
+            flowSessionId: sessionId,
           }),
         }
       );
@@ -625,6 +626,7 @@ export default function EmbedChat() {
           body: JSON.stringify({
             question,
             botId: botData._id,
+            flowSessionId: sessionId,
           }),
         }
       );

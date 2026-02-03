@@ -442,6 +442,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           body: JSON.stringify({
             question,
             botId: bot.id,
+            flowSessionId: sessionId,
           }),
         }
       );
@@ -613,6 +614,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           body: JSON.stringify({
             question,
             botId: bot.id,
+            flowSessionId: sessionId,
           }),
         }
       );

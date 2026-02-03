@@ -348,6 +348,7 @@ export const PublicBotChatPage = () => {
           body: JSON.stringify({
             question,
             botId: bot._id,
+            flowSessionId: sessionId,
           }),
         }
       );
@@ -567,6 +568,7 @@ export const PublicBotChatPage = () => {
           body: JSON.stringify({
             question,
             botId: bot._id,
+            flowSessionId: sessionId,
           }),
         }
       );

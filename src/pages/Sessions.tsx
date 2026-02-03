@@ -18,6 +18,8 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  mode?: "flow" | "qa" | "handoff";
+  type?: string; // Added to preserve the original type
 }
 
 interface Session {
@@ -28,6 +30,7 @@ interface Session {
   timestamp: string;
   messages: Message[];
   duration?: string;
+  currentMode?: "flow" | "qa" | "handoff" | "idle";
 }
 
 export default function Sessions() {
@@ -50,7 +53,6 @@ export default function Sessions() {
   const [summarizerError, setSummarizerError] = useState<string>("");
   const [showSummary, setShowSummary] = useState(false);
 
-  // ✅ NEW: Helper functions to parse user agent
   const parseBrowser = (userAgent: string | undefined) => {
     if (!userAgent || userAgent === 'Unknown') return 'Unknown Browser';
     if (userAgent.includes('Chrome')) return 'Chrome';
@@ -69,6 +71,124 @@ export default function Sessions() {
     if (userAgent.includes('Android')) return 'Android';
     if (userAgent.includes('iOS')) return 'iOS';
     return 'Unknown OS';
+  };
+
+  const getModeColor = (mode?: string) => {
+    switch (mode) {
+      case 'flow':
+        return 'bg-blue-100 text-blue-800';
+      case 'qa':
+        return 'bg-green-100 text-green-800';
+      case 'handoff':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getModeLabel = (mode?: string) => {
+    switch (mode) {
+      case 'flow':
+        return 'Flow';
+      case 'qa':
+        return 'QA';
+      case 'handoff':
+        return 'Handoff';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  // ✅ NEW: Helper function to format history entry into readable message
+  const formatHistoryEntry = (h: any): string => {
+    let content = "";
+    
+    // Handle based on mode
+    if (h.mode === "qa") {
+      if (h.fromUser || h.question) {
+        content = `❓ ${h.question || h.content || "Question asked"}`;
+      } else {
+        const answer = h.answer || "No match found";
+        const scoreInfo = h.score !== undefined ? ` (confidence: ${(h.score * 100).toFixed(1)}%)` : "";
+        content = `✅ ${answer}${scoreInfo}`;
+      }
+    } else if (h.mode === "handoff") {
+      if (h.type === "handoff_initiated") {
+        content = `🤝 Handoff requested: ${h.content || "User requested assistance"}`;
+      } else if (h.sender === "agent" || (!h.fromUser && h.messageText)) {
+        content = `🤖 Agent: ${h.messageText || h.content || "(message)"}`;
+      } else if (h.fromUser) {
+        content = `👤 ${h.messageText || h.content || "(message)"}`;
+      } else {
+        content = `${h.messageText || h.content || "(handoff event)"}`;
+      }
+    } else if (h.mode === "flow") {
+      // Handle all flow types
+      switch (h.type) {
+        case "branch_select":
+          content = h.content?.selected 
+            ? `✅ Selected: ${h.content.selected}` 
+            : `✅ Branch selected`;
+          break;
+        case "user_input":
+          content = h.content || "(user input)";
+          break;
+        case "branch":
+          content = `🌿 Branch point reached`;
+          break;
+        case "code":
+          if (h.content?.success !== undefined) {
+            const status = h.content.success ? '✓ Success' : '✗ Failed';
+            const result = h.content.result ? `: ${JSON.stringify(h.content.result)}` : "";
+            content = `⚙️ Code executed (${status})${result}`;
+          } else {
+            content = `⚙️ Code executed`;
+          }
+          break;
+        case "confirmation":
+          content = h.content 
+            ? `❓ Confirmation: ${h.content}` 
+            : `❓ Confirmation requested`;
+          break;
+        case "question":
+          if (h.awaitingInput) {
+            content = h.content 
+              ? `❓ ${h.content}` 
+              : `❓ Question presented (awaiting response)`;
+          } else {
+            content = h.content || `❓ Question`;
+          }
+          break;
+        case "message":
+          content = h.content || "[Empty message]";
+          break;
+        case "redirect":
+          content = h.content 
+            ? `➡️ Redirected to: ${h.content}` 
+            : `➡️ Redirected`;
+          break;
+        default:
+          // Fallback for unknown types
+          if (h.content) {
+            content = typeof h.content === "object" 
+              ? JSON.stringify(h.content) 
+              : h.content;
+          } else {
+            content = `[${h.type || "System event"}]`;
+          }
+      }
+    } else {
+      // Legacy/default handling
+      if (h.type === "branch_select" && h.content?.selected) {
+        content = `✅ Selected: ${h.content.selected}`;
+      } else if (typeof h.content === "object" && h.content !== null) {
+        content = JSON.stringify(h.content);
+      } else {
+        content = h.content || `[${h.type || "Event"}]`;
+      }
+    }
+    
+    return content;
   };
 
   // Check summarizer availability on mount
@@ -123,27 +243,20 @@ export default function Sessions() {
       if (data?.status === "success" && Array.isArray(data.result?.sessions)) {
         const mappedSessions: Session[] = data.result.sessions.map((s: any) => ({
           id: s._id,
-          // ✅ UPDATED: Use IP address as primary identifier, fallback to username
           userId: s.ipAddress || s.variables?.username || "Unknown User",
           ipAddress: s.ipAddress,
           userAgent: s.userAgent,
           timestamp: s.createdAt,
           duration: s.duration,
-          messages: s.history.map((h: any) => {
-            let content = "";
-            if (h.type === "branch_select" && h.content?.selected) {
-              content = `✅ Selected Branch: ${h.content.selected}`;
-            } else if (typeof h.content === "object") {
-              content = JSON.stringify(h.content);
-            } else {
-              content = h.content;
-            }
-            return {
-              role: h.fromUser ? "user" : "assistant",
-              content,
-              timestamp: h.timestamp,
-            };
-          }),
+          currentMode: s.currentMode,
+          // ✅ FIXED: Map ALL history entries without filtering
+          messages: s.history.map((h: any) => ({
+            role: h.fromUser ? "user" : "assistant",
+            content: formatHistoryEntry(h),
+            timestamp: h.timestamp,
+            mode: h.mode,
+            type: h.type,
+          })),
         }));
         setSessions(mappedSessions);
       }
@@ -169,26 +282,18 @@ export default function Sessions() {
         const s = data.result;
         const mappedSession: Session = {
           id: s.sessionId,
-          // ✅ UPDATED: Use IP address from API response
-          userId: s.ipAddress || s.history.find((h: any) => h.fromUser)?.content || "Unknown User",
+          userId: s.ipAddress || "Unknown User",
           ipAddress: s.ipAddress,
           userAgent: s.userAgent,
           timestamp: s.createdAt,
-          messages: s.history.map((h: any) => {
-            let content = "";
-            if (h.type === "branch_select" && h.content?.selected) {
-              content = `Selected Branch: ${h.content.selected}`;
-            } else if (typeof h.content === "object") {
-              content = JSON.stringify(h.content);
-            } else {
-              content = h.content;
-            }
-            return {
-              role: h.fromUser ? "user" : "assistant",
-              content,
-              timestamp: h.timestamp,
-            };
-          }),
+          // ✅ FIXED: Map ALL history entries without filtering
+          messages: s.history.map((h: any) => ({
+            role: h.fromUser ? "user" : "assistant",
+            content: formatHistoryEntry(h),
+            timestamp: h.timestamp,
+            mode: h.mode,
+            type: h.type,
+          })),
         };
         setSelectedSession(mappedSession);
       }
@@ -439,14 +544,12 @@ export default function Sessions() {
                   >
                     <CardHeader className="p-4 pb-2">
                       <div className="flex items-start justify-between">
-                        {/* ✅ UPDATED: Show IP address with icon */}
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
                           <div className="min-w-0 flex-1">
                             <span className="text-sm font-medium block truncate">
                               {session.ipAddress || session.userId}
                             </span>
-                            {/* ✅ NEW: Show browser and OS info if available */}
                             {session.userAgent && (
                               <div className="flex items-center gap-1 mt-0.5">
                                 <Monitor className="w-3 h-3 text-muted-foreground" />
@@ -457,9 +560,16 @@ export default function Sessions() {
                             )}
                           </div>
                         </div>
-                        <Badge variant="secondary" className="text-xs flex-shrink-0 ml-2">
-                          {session.messages.length} msgs
-                        </Badge>
+                        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {session.messages.length} msgs
+                          </Badge>
+                          {session.currentMode && (
+                            <Badge className={cn("text-xs h-5", getModeColor(session.currentMode))}>
+                              {getModeLabel(session.currentMode)}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="p-4 pt-0 space-y-1">
@@ -500,7 +610,6 @@ export default function Sessions() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold text-lg">Session Replay</h3>
-                      {/* ✅ UPDATED: Show IP address in session header */}
                       <div className="flex items-center gap-2 mt-1">
                         <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">
@@ -511,13 +620,19 @@ export default function Sessions() {
                           {formatDate(selectedSession.timestamp)} at {formatTime(selectedSession.timestamp)}
                         </p>
                       </div>
-                      {/* ✅ NEW: Show device info in header */}
                       {selectedSession.userAgent && (
                         <div className="flex items-center gap-2 mt-1">
                           <Monitor className="w-3.5 h-3.5 text-muted-foreground" />
                           <p className="text-xs text-muted-foreground">
                             {parseBrowser(selectedSession.userAgent)} on {parseOS(selectedSession.userAgent)}
                           </p>
+                        </div>
+                      )}
+                      {selectedSession.currentMode && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge className={cn("text-xs h-5", getModeColor(selectedSession.currentMode))}>
+                            Current Mode: {getModeLabel(selectedSession.currentMode)}
+                          </Badge>
                         </div>
                       )}
                     </div>
@@ -527,6 +642,10 @@ export default function Sessions() {
                         {selectedSession.duration}
                       </Badge>
                     )}
+                  </div>
+
+                  <div className="text-xs text-muted-foreground">
+                    Showing all {selectedSession.messages.length} entries from session history
                   </div>
 
                   {/* Summarizer Button */}
@@ -606,6 +725,18 @@ export default function Sessions() {
                             {message.role === "user" ? <User className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
                           </div>
                           <div className={`flex flex-col gap-1 ${message.role === "user" ? "items-end" : "items-start"}`}>
+                            <div className="flex items-center gap-2">
+                              {message.mode && (
+                                <Badge variant="outline" className={cn("text-xs h-5", getModeColor(message.mode))}>
+                                  {getModeLabel(message.mode)}
+                                </Badge>
+                              )}
+                              {message.type && (
+                                <Badge variant="secondary" className="text-xs h-5">
+                                  {message.type}
+                                </Badge>
+                              )}
+                            </div>
                             <div className={cn(
                               "rounded-lg px-4 py-2 w-fit min-w-[100px]",
                               message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
