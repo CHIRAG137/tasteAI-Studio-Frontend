@@ -110,7 +110,10 @@ export default function Sessions() {
       // QA mode is handled separately in mapHistoryToMessages
       content = h.answer || "No match found";
     } else if (h.mode === "handoff") {
-      if (h.type === "handoff_initiated") {
+      // Handle handoff system messages
+      if (h.systemMessage || h.type?.startsWith("handoff_")) {
+        content = h.content || "(handoff system message)";
+      } else if (h.type === "handoff_initiated") {
         content = `${h.content || "User requested assistance"}`;
       } else if (h.sender === "agent" || (!h.fromUser && h.messageText)) {
         content = `${h.messageText || h.content || "(message)"}`;
@@ -191,6 +194,18 @@ export default function Sessions() {
     
     for (let i = 0; i < history.length; i++) {
       const h = history[i];
+      
+      // Handle system messages (including handoff status messages)
+      if (h.systemMessage || (h.mode === "handoff" && h.type?.startsWith("handoff_"))) {
+        messages.push({
+          role: "assistant",
+          content: formatHistoryEntry(h),
+          timestamp: h.timestamp,
+          mode: "handoff",
+          type: h.type,
+        });
+        continue;
+      }
       
       // Handle QA mode - split into question (user) and answer (assistant)
       if (h.mode === "qa") {

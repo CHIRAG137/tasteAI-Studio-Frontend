@@ -113,17 +113,69 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   // Request human handoff
   const requestHumanHandoff = async (userQuestion: string) => {
     if (!bot.humanHandoffEnabled) {
-      addSystemMessage("Human support is not available for this bot.");
+      const message = "Human support is not available for this bot.";
+      addSystemMessage(message);
+      // Save to flow session
+      try {
+        await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message,
+              messageType: "handoff_unavailable",
+            }),
+          }
+        );
+      } catch (error) {
+        console.error("Error saving message to flow session:", error);
+      }
       return;
     }
 
     if (handoffRequested) {
-      addSystemMessage("Your request for human support has already been submitted.");
+      const message = "Your request for human support has already been submitted.";
+      addSystemMessage(message);
+      // Save to flow session
+      try {
+        await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message,
+              messageType: "handoff_duplicate_request",
+            }),
+          }
+        );
+      } catch (error) {
+        console.error("Error saving message to flow session:", error);
+      }
       return;
     }
 
     setHandoffRequested(true);
-    addSystemMessage("Connecting you with a human agent...");
+    const connectingMessage = "Connecting you with a human agent...";
+    addSystemMessage(connectingMessage);
+    
+    // Save initial message to flow session
+    try {
+      await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: connectingMessage,
+            messageType: "handoff_connecting",
+          }),
+        }
+      );
+    } catch (error) {
+      console.error("Error saving message to flow session:", error);
+    }
 
     try {
       const response = await fetch(
@@ -148,19 +200,74 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         setAssignedAgentEmail(data.result.agent.email);
         setIsConnectedToAgent(data.result.agent.isOnline);
 
-        addSystemMessage(data.result.message);
+        const agentStatusMessage = data.result.message;
+        addSystemMessage(agentStatusMessage);
+        
+        // Save agent status message to flow session
+        try {
+          await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message: agentStatusMessage,
+                messageType: "handoff_agent_assigned",
+                handoffSessionId: data.result.handoffSession._id,
+              }),
+            }
+          );
+        } catch (error) {
+          console.error("Error saving agent status message to flow session:", error);
+        }
         
         if (!data.result.agent.isOnline) {
-          addSystemMessage(
-            "The agent is currently offline but will respond as soon as possible. You can continue asking questions or close this chat."
-          );
+          const offlineMessage = "The agent is currently offline but will respond as soon as possible. You can continue asking questions or close this chat.";
+          addSystemMessage(offlineMessage);
+          
+          // Save offline message to flow session
+          try {
+            await fetch(
+              `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  message: offlineMessage,
+                  messageType: "handoff_agent_offline",
+                  handoffSessionId: data.result.handoffSession._id,
+                }),
+              }
+            );
+          } catch (error) {
+            console.error("Error saving offline message to flow session:", error);
+          }
         }
       } else {
         throw new Error(data.message || "Failed to request human support");
       }
     } catch (error: any) {
       console.error("Handoff request error:", error);
-      addSystemMessage("Failed to connect with a human agent. Please try again later.");
+      const errorMessage = "Failed to connect with a human agent. Please try again later.";
+      addSystemMessage(errorMessage);
+      
+      // Save error message to flow session
+      try {
+        await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: errorMessage,
+              messageType: "handoff_error",
+            }),
+          }
+        );
+      } catch (saveError) {
+        console.error("Error saving error message to flow session:", saveError);
+      }
+      
       setHandoffRequested(false);
     }
   };
