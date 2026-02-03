@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X, Filter, Sparkles, Loader2, ArrowLeft, MapPin, Monitor } from "lucide-react";
+import { Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X, Filter, Sparkles, Loader2, ArrowLeft, MapPin, Monitor, Bot, Headphones } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -22,6 +23,8 @@ interface Message {
   type?: string; // Added to preserve the original type
   isConfirmation?: boolean; // For showing Yes/No buttons
   confirmationResponse?: string; // The selected confirmation value
+  isSystemMessage?: boolean; // For handoff system messages
+  isAgentMessage?: boolean; // For agent messages in handoff
 }
 
 interface Session {
@@ -196,13 +199,27 @@ export default function Sessions() {
       const h = history[i];
       
       // Handle system messages (including handoff status messages)
-      if (h.systemMessage || (h.mode === "handoff" && h.type?.startsWith("handoff_"))) {
+      if (h.systemMessage || (h.mode === "handoff" && h.type?.startsWith("handoff_") && h.type !== "handoff_initiated")) {
         messages.push({
           role: "assistant",
           content: formatHistoryEntry(h),
           timestamp: h.timestamp,
           mode: "handoff",
           type: h.type,
+          isSystemMessage: true,
+        });
+        continue;
+      }
+      
+      // Handle agent messages in handoff
+      if (h.mode === "handoff" && h.sender === "agent") {
+        messages.push({
+          role: "assistant",
+          content: h.messageText || h.content || "(agent message)",
+          timestamp: h.timestamp,
+          mode: "handoff",
+          type: "agent_message",
+          isAgentMessage: true,
         });
         continue;
       }
@@ -795,70 +812,85 @@ export default function Sessions() {
                   )}
                 </CardHeader>
 
-                <ScrollArea className="flex-1">
-                  <div className="px-6 pb-6 space-y-4">
+                <ScrollArea className="flex-1 bg-white dark:bg-gray-900">
+                  <div className="px-6 pb-6 pt-4 space-y-4">
                     {selectedSession.messages.map((message, index) => (
                       <div key={index} className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                        <div className={`flex gap-3 max-w-[85%] ${message.role === "user" ? "flex-row-reverse" : ""}`}>
-                          <div className={cn(
-                            "flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-lg",
-                            message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
-                          )}>
-                            {message.role === "user" ? <User className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
-                          </div>
-                          <div className={`flex flex-col gap-1 ${message.role === "user" ? "items-end" : "items-start"}`}>
-                            {/* <div className="flex items-center gap-2">
-                              {message.mode && (
-                                <Badge variant="outline" className={cn("text-xs h-5", getModeColor(message.mode))}>
-                                  {getModeLabel(message.mode)}
-                                </Badge>
-                              )}
-                              {message.type && (
-                                <Badge variant="secondary" className="text-xs h-5">
-                                  {message.type}
-                                </Badge>
-                              )}
-                            </div> */}
-                            <div className={cn(
-                              "rounded-lg px-4 py-2 w-fit min-w-[100px]",
-                              message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                        {/* Avatar for assistant/bot/agent messages */}
+                        {message.role === "assistant" && (
+                          <Avatar className="h-8 w-8 shrink-0">
+                            <AvatarFallback className={cn(
+                              message.isAgentMessage
+                                ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                                : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                             )}>
-                              <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                              {/* Confirmation Yes/No buttons */}
-                              {message.isConfirmation && (
-                                <div className="flex gap-2 mt-3">
-                                  <Button
-                                    size="sm"
-                                    variant={message.confirmationResponse?.toLowerCase() === "yes" ? "default" : "outline"}
-                                    className={cn(
-                                      "h-7 px-3 text-xs",
-                                      message.confirmationResponse?.toLowerCase() === "yes" 
-                                        ? "bg-green-600 hover:bg-green-600 text-white" 
-                                        : "opacity-60 cursor-default"
-                                    )}
-                                    disabled
-                                  >
-                                    Yes
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant={message.confirmationResponse?.toLowerCase() === "no" ? "default" : "outline"}
-                                    className={cn(
-                                      "h-7 px-3 text-xs",
-                                      message.confirmationResponse?.toLowerCase() === "no" 
-                                        ? "bg-red-600 hover:bg-red-600 text-white" 
-                                        : "opacity-60 cursor-default"
-                                    )}
-                                    disabled
-                                  >
-                                    No
-                                  </Button>
-                                </div>
+                              {message.isAgentMessage ? (
+                                <Headphones className="h-4 w-4" />
+                              ) : (
+                                <Bot className="h-4 w-4" />
                               )}
-                            </div>
-                            <span className="text-xs text-muted-foreground">{formatTime(message.timestamp)}</span>
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                        
+                        <div className={`flex flex-col gap-1 ${message.role === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
+                          <div className={cn(
+                            "rounded-lg px-4 py-3",
+                            message.role === "user"
+                              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                              : message.isAgentMessage
+                              ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                              : message.isSystemMessage
+                              ? "bg-orange-100 text-orange-900 border border-orange-200"
+                              : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                          )}>
+                            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                            {/* Confirmation Yes/No buttons */}
+                            {message.isConfirmation && (
+                              <div className="flex gap-2 mt-3">
+                                <Button
+                                  size="sm"
+                                  variant={message.confirmationResponse?.toLowerCase() === "yes" ? "default" : "outline"}
+                                  className={cn(
+                                    "h-7 px-3 text-xs",
+                                    message.confirmationResponse?.toLowerCase() === "yes" 
+                                      ? "bg-green-600 hover:bg-green-600 text-white border-green-600" 
+                                      : "opacity-60 cursor-default bg-white/20 border-gray-300"
+                                  )}
+                                  disabled
+                                >
+                                  Yes
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant={message.confirmationResponse?.toLowerCase() === "no" ? "default" : "outline"}
+                                  className={cn(
+                                    "h-7 px-3 text-xs",
+                                    message.confirmationResponse?.toLowerCase() === "no" 
+                                      ? "bg-red-600 hover:bg-red-600 text-white border-red-600" 
+                                      : "opacity-60 cursor-default bg-white/20 border-gray-300"
+                                  )}
+                                  disabled
+                                >
+                                  No
+                                </Button>
+                              </div>
+                            )}
                           </div>
+                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                            {message.isAgentMessage && <Headphones className="h-3 w-3" />}
+                            {formatTime(message.timestamp)}
+                          </span>
                         </div>
+                        
+                        {/* Avatar for user messages */}
+                        {message.role === "user" && (
+                          <Avatar className="h-8 w-8 shrink-0">
+                            <AvatarFallback className="bg-gray-300">
+                              <User className="h-4 w-4" />
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
                       </div>
                     ))}
                   </div>
