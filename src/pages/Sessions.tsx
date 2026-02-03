@@ -792,7 +792,7 @@ export default function Sessions() {
                             {message.role === "user" ? <User className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
                           </div>
                           <div className={`flex flex-col gap-1 ${message.role === "user" ? "items-end" : "items-start"}`}>
-                            <div className="flex items-center gap-2">
+                            {/* <div className="flex items-center gap-2">
                               {message.mode && (
                                 <Badge variant="outline" className={cn("text-xs h-5", getModeColor(message.mode))}>
                                   {getModeLabel(message.mode)}
@@ -803,7 +803,7 @@ export default function Sessions() {
                                   {message.type}
                                 </Badge>
                               )}
-                            </div>
+                            </div> */}
                             <div className={cn(
                               "rounded-lg px-4 py-2 w-fit min-w-[100px]",
                               message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
