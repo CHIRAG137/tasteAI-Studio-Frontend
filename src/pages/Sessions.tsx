@@ -20,6 +20,8 @@ interface Message {
   timestamp: string;
   mode?: "flow" | "qa" | "handoff";
   type?: string; // Added to preserve the original type
+  isConfirmation?: boolean; // For showing Yes/No buttons
+  confirmationResponse?: string; // The selected confirmation value
 }
 
 interface Session {
@@ -105,12 +107,8 @@ export default function Sessions() {
     
     // Handle based on mode
     if (h.mode === "qa") {
-      if (h.fromUser || h.question) {
-        content = `${h.question || "Question asked"}`;
-      } else {
-        const answer = h.answer || "No match found";
-        content = `${answer}`;
-      }
+      // QA mode is handled separately in mapHistoryToMessages
+      content = h.answer || "No match found";
     } else if (h.mode === "handoff") {
       if (h.type === "handoff_initiated") {
         content = `${h.content || "User requested assistance"}`;
@@ -132,9 +130,6 @@ export default function Sessions() {
         case "user_input":
           content = h.content || "(user input)";
           break;
-        // case "branch":
-        //   content = `Branch point reached`;
-        //   break;
         case "code":
           if (h.content?.success !== undefined) {
             const status = h.content.success ? '✓ Success' : '✗ Failed';
@@ -188,6 +183,91 @@ export default function Sessions() {
     }
     
     return content;
+  };
+
+  // Map history to messages with special handling for QA and confirmation
+  const mapHistoryToMessages = (history: any[]): Message[] => {
+    const messages: Message[] = [];
+    
+    for (let i = 0; i < history.length; i++) {
+      const h = history[i];
+      
+      // Handle QA mode - split into question (user) and answer (assistant)
+      if (h.mode === "qa") {
+        // Add question as user message (right side)
+        if (h.question) {
+          messages.push({
+            role: "user",
+            content: h.question,
+            timestamp: h.timestamp,
+            mode: "qa",
+            type: "question",
+          });
+        }
+        // Add answer as assistant message (left side)
+        if (h.answer) {
+          messages.push({
+            role: "assistant",
+            content: h.answer,
+            timestamp: h.timestamp,
+            mode: "qa",
+            type: "answer",
+          });
+        }
+        continue;
+      }
+      
+      // Handle confirmation - look ahead for the response
+      if (h.mode === "flow" && h.type === "confirmation" && !h.fromUser) {
+        // Find the next user_input that corresponds to this confirmation
+        let confirmationResponse: string | undefined;
+        for (let j = i + 1; j < history.length; j++) {
+          const nextH = history[j];
+          if (nextH.mode === "flow" && nextH.type === "user_input" && nextH.fromUser && nextH.nodeId === h.nodeId) {
+            confirmationResponse = nextH.content?.toLowerCase() === "yes" || nextH.content?.toLowerCase() === "no" 
+              ? nextH.content 
+              : undefined;
+            break;
+          }
+          // Stop if we hit a different node type that's not user input
+          if (nextH.nodeId !== h.nodeId && nextH.type !== "user_input") {
+            break;
+          }
+        }
+        
+        messages.push({
+          role: "assistant",
+          content: formatHistoryEntry(h),
+          timestamp: h.timestamp,
+          mode: h.mode,
+          type: h.type,
+          isConfirmation: true,
+          confirmationResponse,
+        });
+        continue;
+      }
+      
+      // Skip user_input that was a confirmation response (already handled above)
+      if (h.mode === "flow" && h.type === "user_input" && h.fromUser) {
+        const prevConfirmation = history.slice(0, i).reverse().find(
+          (ph: any) => ph.nodeId === h.nodeId && ph.type === "confirmation"
+        );
+        if (prevConfirmation && (h.content?.toLowerCase() === "yes" || h.content?.toLowerCase() === "no")) {
+          continue; // Skip, already shown as buttons
+        }
+      }
+      
+      // Default handling for other message types
+      messages.push({
+        role: h.fromUser ? "user" : "assistant",
+        content: formatHistoryEntry(h),
+        timestamp: h.timestamp,
+        mode: h.mode,
+        type: h.type,
+      });
+    }
+    
+    return messages;
   };
 
   // Check summarizer availability on mount
@@ -248,14 +328,8 @@ export default function Sessions() {
           timestamp: s.createdAt,
           duration: s.duration,
           currentMode: s.currentMode,
-          // ✅ FIXED: Map ALL history entries without filtering
-          messages: s.history.map((h: any) => ({
-            role: h.fromUser ? "user" : "assistant",
-            content: formatHistoryEntry(h),
-            timestamp: h.timestamp,
-            mode: h.mode,
-            type: h.type,
-          })),
+          // ✅ Use mapHistoryToMessages for proper QA and confirmation handling
+          messages: mapHistoryToMessages(s.history),
         }));
         setSessions(mappedSessions);
       }
@@ -285,14 +359,8 @@ export default function Sessions() {
           ipAddress: s.ipAddress,
           userAgent: s.userAgent,
           timestamp: s.createdAt,
-          // ✅ FIXED: Map ALL history entries without filtering
-          messages: s.history.map((h: any) => ({
-            role: h.fromUser ? "user" : "assistant",
-            content: formatHistoryEntry(h),
-            timestamp: h.timestamp,
-            mode: h.mode,
-            type: h.type,
-          })),
+          // ✅ Use mapHistoryToMessages for proper QA and confirmation handling
+          messages: mapHistoryToMessages(s.history),
         };
         setSelectedSession(mappedSession);
       }
@@ -741,6 +809,37 @@ export default function Sessions() {
                               message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
                             )}>
                               <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                              {/* Confirmation Yes/No buttons */}
+                              {message.isConfirmation && (
+                                <div className="flex gap-2 mt-3">
+                                  <Button
+                                    size="sm"
+                                    variant={message.confirmationResponse?.toLowerCase() === "yes" ? "default" : "outline"}
+                                    className={cn(
+                                      "h-7 px-3 text-xs",
+                                      message.confirmationResponse?.toLowerCase() === "yes" 
+                                        ? "bg-green-600 hover:bg-green-600 text-white" 
+                                        : "opacity-60 cursor-default"
+                                    )}
+                                    disabled
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={message.confirmationResponse?.toLowerCase() === "no" ? "default" : "outline"}
+                                    className={cn(
+                                      "h-7 px-3 text-xs",
+                                      message.confirmationResponse?.toLowerCase() === "no" 
+                                        ? "bg-red-600 hover:bg-red-600 text-white" 
+                                        : "opacity-60 cursor-default"
+                                    )}
+                                    disabled
+                                  >
+                                    No
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                             <span className="text-xs text-muted-foreground">{formatTime(message.timestamp)}</span>
                           </div>
