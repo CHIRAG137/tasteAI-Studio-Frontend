@@ -115,9 +115,35 @@ export default function Sessions() {
     } else if (h.mode === "handoff") {
       // Handle handoff system messages
       if (h.systemMessage || h.type?.startsWith("handoff_")) {
-        content = h.content || "(handoff system message)";
-      } else if (h.type === "handoff_initiated") {
-        content = `${h.content || "User requested assistance"}`;
+        // Special handling for each handoff event type
+        switch (h.type) {
+          case "handoff_connecting":
+            content = h.content || "Connecting you with a human agent...";
+            break;
+          case "handoff_initiated":
+            content = h.content || "User requested assistance";
+            break;
+          case "handoff_agent_assigned":
+            content = h.content || "Your request has been received. An agent will respond as soon as possible.";
+            break;
+          case "handoff_agent_offline":
+            content = h.content || "The agent is currently offline but will respond as soon as possible.";
+            break;
+          case "handoff_accepted":
+            content = h.content || "A human agent has accepted your request.";
+            break;
+          case "handoff_resolved":
+            content = h.content || "This conversation has been marked resolved by the agent.";
+            break;
+          case "handoff_resolved_by_client":
+            content = "This conversation was marked resolved by the user.";
+            break;
+          case "handoff_reopened":
+            content = "This conversation was reopened by the user.";
+            break;
+          default:
+            content = h.content || "(handoff system message)";
+        }
       } else if (h.sender === "agent" || (!h.fromUser && h.messageText)) {
         content = `${h.messageText || h.content || "(message)"}`;
       } else if (h.fromUser) {
@@ -198,11 +224,57 @@ export default function Sessions() {
     for (let i = 0; i < history.length; i++) {
       const h = history[i];
       
-      // Handle system messages (including handoff status messages)
+      // Skip duplicate handoff events - only show system message version
+      // For handoff_resolved, handoff_accepted, etc., there are often two entries:
+      // 1. The actual event (without systemMessage flag)
+      // 2. The system message notification (with systemMessage flag)
+      // We only want to show the system message version
+      if (h.mode === "handoff" && h.type?.startsWith("handoff_") && !h.systemMessage && h.type !== "handoff_initiated") {
+        // Check if there's a corresponding system message for this event
+        const hasSystemMessage = history.some((item, idx) => 
+          idx > i && 
+          item.type === h.type && 
+          item.systemMessage === true &&
+          item.handoffSessionId === h.handoffSessionId
+        );
+        
+        // Skip if there's a system message version coming
+        if (hasSystemMessage) {
+          continue;
+        }
+      }
+      
+      // Handle all handoff system messages (including resolved, resolved_by_client, reopened)
       if (h.systemMessage || (h.mode === "handoff" && h.type?.startsWith("handoff_") && h.type !== "handoff_initiated")) {
         messages.push({
           role: "assistant",
           content: formatHistoryEntry(h),
+          timestamp: h.timestamp,
+          mode: "handoff",
+          type: h.type,
+          isSystemMessage: true,
+        });
+        continue;
+      }
+      
+      // Handle handoff_resolved_by_client specifically (user action, but shown as system message)
+      if (h.type === "handoff_resolved_by_client") {
+        messages.push({
+          role: "assistant",
+          content: "This conversation was marked resolved by the user.",
+          timestamp: h.timestamp,
+          mode: "handoff",
+          type: h.type,
+          isSystemMessage: true,
+        });
+        continue;
+      }
+      
+      // Handle handoff_reopened specifically (user action, but shown as system message)
+      if (h.type === "handoff_reopened") {
+        messages.push({
+          role: "assistant",
+          content: "This conversation was reopened by the user.",
           timestamp: h.timestamp,
           mode: "handoff",
           type: h.type,
@@ -360,7 +432,6 @@ export default function Sessions() {
           timestamp: s.createdAt,
           duration: s.duration,
           currentMode: s.currentMode,
-          // ✅ Use mapHistoryToMessages for proper QA and confirmation handling
           messages: mapHistoryToMessages(s.history),
         }));
         setSessions(mappedSessions);
@@ -391,7 +462,6 @@ export default function Sessions() {
           ipAddress: s.ipAddress,
           userAgent: s.userAgent,
           timestamp: s.createdAt,
-          // ✅ Use mapHistoryToMessages for proper QA and confirmation handling
           messages: mapHistoryToMessages(s.history),
         };
         setSelectedSession(mappedSession);
@@ -841,7 +911,7 @@ export default function Sessions() {
                               : message.isAgentMessage
                               ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
                               : message.isSystemMessage
-                              ? "bg-orange-100 text-orange-900 border border-orange-200"
+                              ? "bg-orange-100 text-orange-900 border border-orange-200 dark:bg-orange-950 dark:text-orange-100 dark:border-orange-800"
                               : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           )}>
                             <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>

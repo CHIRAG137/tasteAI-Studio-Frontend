@@ -178,7 +178,7 @@ export default function EmbedChat() {
             setHandoffStatus('resolved');
             handoffStatusRef.current = 'resolved';
             setHandoffRequested(false);
-            const resolvedMsg = 'This conversation has been marked resolved by the agent. You can no longer send messages.';
+            const resolvedMsg = 'This conversation has been marked resolved by the agent.';
             setMessages(prev => [...prev, { id: `sys-${Date.now()}`, from: 'bot', text: resolvedMsg, timestamp: new Date() }]);
           }
         }

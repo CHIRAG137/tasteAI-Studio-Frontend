@@ -423,7 +423,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             setHandoffStatus('resolved');
             handoffStatusRef.current = 'resolved';
             setHandoffRequested(false);
-            const resolvedMsg = 'This conversation has been marked resolved by the agent. You can no longer send messages.';
+            const resolvedMsg = 'This conversation has been marked resolved by the agent.';
             addSystemMessage(resolvedMsg);
             try {
               await fetch(
