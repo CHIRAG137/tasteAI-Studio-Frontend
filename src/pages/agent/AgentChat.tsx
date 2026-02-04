@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { 
   ArrowLeft, 
   Send, 
@@ -13,7 +14,9 @@ import {
   Headphones, 
   CheckCircle,
   RefreshCw,
-  Clock
+  Clock,
+  Bot,
+  MessageSquare
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getAgentAuthHeaders } from "@/utils/agentAuth";
@@ -26,6 +29,18 @@ interface Message {
   agentId?: string;
 }
 
+interface PreHandoffMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  mode?: "flow" | "qa" | "handoff";
+  type?: string;
+  isConfirmation?: boolean;
+  confirmationResponse?: string;
+  isSystemMessage?: boolean;
+  isAgentMessage?: boolean;
+}
+
 interface HandoffSession {
   _id: string;
   bot: {
@@ -33,6 +48,7 @@ interface HandoffSession {
     name: string;
     description?: string;
   };
+  sessionId?: string; // Original chat session ID
   status: "pending" | "active" | "resolved";
   userQuestion: string;
   requestedAt: string;
@@ -40,16 +56,185 @@ interface HandoffSession {
   messages: Message[];
 }
 
+// Helper function to format history entry into readable message
+const formatHistoryEntry = (h: any): string => {
+  let content = "";
+  
+  if (h.mode === "qa") {
+    content = h.answer || "No match found";
+  } else if (h.mode === "handoff") {
+    if (h.systemMessage || h.type?.startsWith("handoff_")) {
+      content = h.content || "(handoff system message)";
+    } else if (h.type === "handoff_initiated") {
+      content = `${h.content || "User requested assistance"}`;
+    } else if (h.sender === "agent" || (!h.fromUser && h.messageText)) {
+      content = `${h.messageText || h.content || "(message)"}`;
+    } else if (h.fromUser) {
+      content = `${h.messageText || h.content || "(message)"}`;
+    } else {
+      content = `${h.messageText || h.content || "(handoff event)"}`;
+    }
+  } else if (h.mode === "flow") {
+    switch (h.type) {
+      case "branch_select":
+        content = h.content?.selected 
+          ? `Selected: ${h.content.selected}` 
+          : `Branch selected`;
+        break;
+      case "user_input":
+        content = h.content || "(user input)";
+        break;
+      case "code":
+        if (h.content?.success !== undefined) {
+          const status = h.content.success ? '✓ Success' : '✗ Failed';
+          const result = h.content.result ? `: ${JSON.stringify(h.content.result)}` : "";
+          content = `Code executed (${status})${result}`;
+        } else {
+          content = `Code executed`;
+        }
+        break;
+      case "confirmation":
+        content = h.content 
+          ? `${h.content}` 
+          : `Confirmation requested`;
+        break;
+      case "question":
+        if (h.awaitingInput) {
+          content = h.content 
+            ? `${h.content}` 
+            : `Question presented (awaiting response)`;
+        } else {
+          content = h.content || `Question`;
+        }
+        break;
+      case "message":
+        content = h.content || "[Empty message]";
+        break;
+      case "redirect":
+        content = h.content 
+          ? `Redirected to: ${h.content}` 
+          : `Redirected`;
+        break;
+      default:
+        if (h.content) {
+          content = typeof h.content === "object" 
+            ? JSON.stringify(h.content) 
+            : h.content;
+        } else {
+          content = `[${h.type || "System event"}]`;
+        }
+    }
+  } else {
+    if (h.type === "branch_select" && h.content?.selected) {
+      content = `Selected: ${h.content.selected}`;
+    } else if (typeof h.content === "object" && h.content !== null) {
+      content = JSON.stringify(h.content);
+    } else {
+      content = h.content || `[${h.type || "Event"}]`;
+    }
+  }
+  
+  return content;
+};
+
+// Map history to pre-handoff messages
+const mapHistoryToPreHandoffMessages = (history: any[]): PreHandoffMessage[] => {
+  const messages: PreHandoffMessage[] = [];
+  
+  for (let i = 0; i < history.length; i++) {
+    const h = history[i];
+    
+    // Stop when we hit handoff messages (those will be shown in the handoff section)
+    if (h.mode === "handoff") {
+      break;
+    }
+    
+    // Handle QA mode - split into question (user) and answer (assistant)
+    if (h.mode === "qa") {
+      if (h.question) {
+        messages.push({
+          role: "user",
+          content: h.question,
+          timestamp: h.timestamp,
+          mode: "qa",
+          type: "question",
+        });
+      }
+      if (h.answer) {
+        messages.push({
+          role: "assistant",
+          content: h.answer,
+          timestamp: h.timestamp,
+          mode: "qa",
+          type: "answer",
+        });
+      }
+      continue;
+    }
+    
+    // Handle confirmation - look ahead for the response
+    if (h.mode === "flow" && h.type === "confirmation" && !h.fromUser) {
+      let confirmationResponse: string | undefined;
+      for (let j = i + 1; j < history.length; j++) {
+        const nextH = history[j];
+        if (nextH.mode === "flow" && nextH.type === "user_input" && nextH.fromUser && nextH.nodeId === h.nodeId) {
+          confirmationResponse = nextH.content?.toLowerCase() === "yes" || nextH.content?.toLowerCase() === "no" 
+            ? nextH.content 
+            : undefined;
+          break;
+        }
+        if (nextH.nodeId !== h.nodeId && nextH.type !== "user_input") {
+          break;
+        }
+      }
+      
+      messages.push({
+        role: "assistant",
+        content: formatHistoryEntry(h),
+        timestamp: h.timestamp,
+        mode: h.mode,
+        type: h.type,
+        isConfirmation: true,
+        confirmationResponse,
+      });
+      continue;
+    }
+    
+    // Skip user_input that was a confirmation response
+    if (h.mode === "flow" && h.type === "user_input" && h.fromUser) {
+      const prevConfirmation = history.slice(0, i).reverse().find(
+        (ph: any) => ph.nodeId === h.nodeId && ph.type === "confirmation"
+      );
+      if (prevConfirmation && (h.content?.toLowerCase() === "yes" || h.content?.toLowerCase() === "no")) {
+        continue;
+      }
+    }
+    
+    // Default handling
+    messages.push({
+      role: h.fromUser ? "user" : "assistant",
+      content: formatHistoryEntry(h),
+      timestamp: h.timestamp,
+      mode: h.mode,
+      type: h.type,
+    });
+  }
+  
+  return messages;
+};
+
 const AgentChat = () => {
   const navigate = useNavigate();
   const { conversationId } = useParams<{ conversationId: string }>();
-const sessionId = conversationId;
+  const sessionId = conversationId;
   const { toast } = useToast();
   const [session, setSession] = useState<HandoffSession | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [preHandoffMessages, setPreHandoffMessages] = useState<PreHandoffMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [resolveNotes, setResolveNotes] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [preHandoffLoading, setPreHandoffLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showResolveDialog, setShowResolveDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -123,6 +308,42 @@ const sessionId = conversationId;
     const interval = setInterval(fetchSession, 3000);
     return () => clearInterval(interval);
   }, [sessionId]);
+
+  // Fetch pre-handoff chat history
+  const fetchPreHandoffHistory = async () => {
+    if (!session?.bot?._id || !session?.sessionId) return;
+    
+    setPreHandoffLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/bots/${session.bot._id}/history/${session.sessionId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            ...getAgentAuthHeaders(),
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (data?.status === "success" && data.result?.history) {
+        const mappedMessages = mapHistoryToPreHandoffMessages(data.result.history);
+        setPreHandoffMessages(mappedMessages);
+      }
+    } catch (error: any) {
+      console.error("Error fetching pre-handoff history:", error);
+    } finally {
+      setPreHandoffLoading(false);
+    }
+  };
+
+  // Fetch pre-handoff history when session is loaded
+  useEffect(() => {
+    if (session?.bot?._id && session?.sessionId) {
+      fetchPreHandoffHistory();
+    }
+  }, [session?.bot?._id, session?.sessionId]);
 
   // Accept session (if pending)
   const handleAccept = async () => {
@@ -345,13 +566,108 @@ const sessionId = conversationId;
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-4 flex flex-col">
         <Card className="flex-1 flex flex-col bg-white/80 backdrop-blur-sm overflow-hidden">
           <ScrollArea className="flex-1 p-4">
-            {messages.length === 0 ? (
+            {preHandoffMessages.length === 0 && messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
                 <Clock className="w-12 h-12 text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">No messages yet</p>
               </div>
             ) : (
               <div className="space-y-4">
+                {/* Pre-handoff Chat History */}
+                {preHandoffMessages.length > 0 && (
+                  <>
+                    <div className="flex items-center gap-2 mb-2">
+                      <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Previous Chat History
+                      </span>
+                    </div>
+                    
+                    {preHandoffMessages.map((msg, index) => (
+                      <div
+                        key={`pre-${index}`}
+                        className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                      >
+                        <Avatar className="w-8 h-8 flex-shrink-0">
+                          <AvatarFallback className={
+                            msg.role === "user"
+                              ? "bg-gradient-to-br from-blue-500 to-purple-500"
+                              : "bg-gradient-to-br from-emerald-500 to-teal-500"
+                          }>
+                            {msg.role === "user" ? (
+                              <User className="w-4 h-4 text-white" />
+                            ) : (
+                              <Bot className="w-4 h-4 text-white" />
+                            )}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className={`max-w-[75%] ${msg.role === "user" ? "text-right" : ""}`}>
+                          <div className={`flex items-center gap-2 mb-1 ${msg.role === "user" ? "justify-end" : ""}`}>
+                            <span className="text-xs font-medium capitalize text-muted-foreground">
+                              {msg.role === "user" ? "User" : "Bot"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(msg.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <div
+                            className={`inline-block px-4 py-2 rounded-2xl shadow-sm ${
+                              msg.role === "user"
+                                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-br-md"
+                                : "bg-gray-100 dark:bg-gray-800 text-foreground rounded-bl-md"
+                            }`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                          </div>
+                          
+                          {/* Confirmation buttons */}
+                          {msg.isConfirmation && (
+                            <div className="flex gap-2 mt-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled
+                                className={`text-xs ${
+                                  msg.confirmationResponse?.toLowerCase() === "yes"
+                                    ? "bg-green-100 border-green-500 text-green-700"
+                                    : ""
+                                }`}
+                              >
+                                Yes
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled
+                                className={`text-xs ${
+                                  msg.confirmationResponse?.toLowerCase() === "no"
+                                    ? "bg-red-100 border-red-500 text-red-700"
+                                    : ""
+                                }`}
+                              >
+                                No
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Separator between pre-handoff and handoff messages */}
+                    <div className="flex items-center gap-3 py-4">
+                      <Separator className="flex-1" />
+                      <div className="flex items-center gap-2 px-3 py-1 bg-purple-100 rounded-full">
+                        <Headphones className="w-3 h-3 text-purple-600" />
+                        <span className="text-xs font-medium text-purple-600">
+                          Handoff Started
+                        </span>
+                      </div>
+                      <Separator className="flex-1" />
+                    </div>
+                  </>
+                )}
+                
+                {/* Handoff Messages */}
                 {messages.map((message, index) => (
                   <div
                     key={index}
@@ -359,37 +675,37 @@ const sessionId = conversationId;
                       message.sender === "agent" ? "flex-row-reverse" : ""
                     }`}
                   >
-                    <Avatar className="w-8 h-8">
+                    <Avatar className="w-8 h-8 flex-shrink-0">
                       <AvatarFallback className={
                         message.sender === "agent"
-                          ? "bg-emerald-100 text-emerald-600"
-                          : "bg-blue-100 text-blue-600"
+                          ? "bg-gradient-to-br from-emerald-500 to-teal-500"
+                          : "bg-gradient-to-br from-blue-500 to-purple-500"
                       }>
                         {message.sender === "agent" ? (
-                          <Headphones className="w-5 w-5" />
+                          <Headphones className="w-4 h-4 text-white" />
                         ) : (
-                          <User className="w-5 h-5" />
+                          <User className="w-4 h-4 text-white" />
                         )}
                       </AvatarFallback>
                     </Avatar>
                     <div
-                      className={`max-w-[70%] ${
+                      className={`max-w-[75%] ${
                         message.sender === "agent" ? "text-right" : ""
                       }`}
                     >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium capitalize">
-                          {message.sender}
+                      <div className={`flex items-center gap-2 mb-1 ${message.sender === "agent" ? "justify-end" : ""}`}>
+                        <span className="text-xs font-medium capitalize text-muted-foreground">
+                          {message.sender === "agent" ? "You" : "User"}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           {new Date(message.timestamp).toLocaleTimeString()}
                         </span>
                       </div>
                       <div
-                        className={`inline-block px-4 py-2 rounded-lg ${
+                        className={`inline-block px-4 py-2 rounded-2xl shadow-sm ${
                           message.sender === "agent"
-                            ? "bg-emerald-600 text-white"
-                            : "bg-muted"
+                            ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-br-md"
+                            : "bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-bl-md"
                         }`}
                       >
                         <p className="text-sm whitespace-pre-wrap">{message.message}</p>
