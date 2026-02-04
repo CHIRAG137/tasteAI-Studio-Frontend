@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Send, Bot, User, Mic, MicOff, Video, Loader2, X, PhoneOff, Volume2, VolumeX } from "lucide-react";
+import { Send, Bot, User, Mic, MicOff, Video, Loader2, X, PhoneOff, Volume2, VolumeX, Headphones, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -470,6 +470,60 @@ export default function EmbedChat() {
     } catch (error) {
       console.error('Error sending message to agent:', error);
       toast({ title: 'Error', description: 'Failed to send message to agent', variant: 'destructive' });
+    }
+  };
+
+  // Client resolves the handoff (user ends the chat)
+  const clientResolveHandoff = async () => {
+    if (!handoffSessionId || !sessionId) return;
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-resolve`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ flowSessionId: sessionId }),
+        }
+      );
+      const data = await res.json();
+      if (res.ok) {
+        setHandoffStatus('resolved');
+        handoffStatusRef.current = 'resolved';
+        setHandoffRequested(false);
+        setMessages(prev => [...prev, { id: `sys-${Date.now()}`, from: 'bot', text: 'You have ended this conversation.', timestamp: new Date() }]);
+      } else {
+        throw new Error(data.message || 'Failed to resolve session');
+      }
+    } catch (error) {
+      console.error('Error resolving handoff (client):', error);
+      toast({ title: 'Error', description: 'Failed to end chat', variant: 'destructive' });
+    }
+  };
+
+  // Client reopens a resolved handoff session
+  const clientReopenHandoff = async () => {
+    if (!handoffSessionId || !sessionId) return;
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-reopen`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ flowSessionId: sessionId }),
+        }
+      );
+      const data = await res.json();
+      if (res.ok) {
+        setHandoffRequested(true);
+        setHandoffStatus('pending');
+        handoffStatusRef.current = 'pending';
+        setMessages(prev => [...prev, { id: `sys-${Date.now()}`, from: 'bot', text: 'You have reopened the conversation. Waiting for an agent to respond.', timestamp: new Date() }]);
+      } else {
+        throw new Error(data.message || 'Failed to reopen session');
+      }
+    } catch (error) {
+      console.error('Error reopening handoff (client):', error);
+      toast({ title: 'Error', description: 'Failed to reopen chat', variant: 'destructive' });
     }
   };
 
@@ -1476,6 +1530,35 @@ export default function EmbedChat() {
                 </Button>
               </div>
             </AlertDescription>
+          </Alert>
+        )}
+
+        {handoffRequested && !isConnectedToAgent && (
+          <Alert className="mb-2 bg-yellow-50 border-yellow-200">
+            <Clock className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800 text-sm">Waiting for an agent to respond. You can continue sending messages.</AlertDescription>
+            <div className="mt-2">
+              <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
+            </div>
+          </Alert>
+        )}
+
+        {handoffRequested && isConnectedToAgent && (
+          <Alert className="mb-2 bg-green-50 border-green-200">
+            <Headphones className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800 text-sm">Connected to agent: {assignedAgentEmail}</AlertDescription>
+            <div className="mt-2">
+              <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
+            </div>
+          </Alert>
+        )}
+
+        {handoffStatus === 'resolved' && (
+          <Alert className="mb-2 bg-gray-50 border-gray-200">
+            <AlertDescription className="text-gray-800 text-sm">This conversation has been resolved. You cannot send messages.</AlertDescription>
+            <div className="mt-2">
+              <Button size="sm" onClick={clientReopenHandoff}>Reopen chat</Button>
+            </div>
           </Alert>
         )}
 
