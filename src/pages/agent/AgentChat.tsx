@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   ArrowLeft, 
   Send, 
@@ -16,7 +17,12 @@ import {
   RefreshCw,
   Clock,
   Bot,
-  MessageSquare
+  MessageSquare,
+  Sparkles,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  ArrowDown
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getAgentAuthHeaders } from "@/utils/agentAuth";
@@ -48,7 +54,7 @@ interface HandoffSession {
     name: string;
     description?: string;
   };
-  sessionId?: string; // Original chat session ID
+  sessionId?: string;
   flowSession?: {
     _id: string;
     history: any[];
@@ -59,6 +65,13 @@ interface HandoffSession {
   requestedAt: string;
   acceptedAt?: string;
   messages: Message[];
+}
+
+interface ChatSummary {
+  overview: string;
+  userIntent: string;
+  actionItems: string[];
+  keyPoints: string[];
 }
 
 // Helper function to format history entry into readable message
@@ -105,11 +118,9 @@ const formatHistoryEntry = (h: any): string => {
           content = h.content ? `${h.content}` : `Confirmation requested`;
         }
         break;
-        break;
       case "question":
         if (h.awaitingInput) {
           if (typeof h.content === "object" && h.content !== null) {
-            // Handle question object with {prompt, answer, variable}
             content = h.content.prompt || h.content.answer || JSON.stringify(h.content);
           } else {
             content = h.content ? `${h.content}` : `Question presented (awaiting response)`;
@@ -159,12 +170,10 @@ const mapHistoryToPreHandoffMessages = (history: any[]): PreHandoffMessage[] => 
   for (let i = 0; i < history.length; i++) {
     const h = history[i];
     
-    // Stop when we hit handoff messages (those will be shown in the handoff section)
     if (h.mode === "handoff") {
       break;
     }
     
-    // Handle QA mode - split into question (user) and answer (assistant)
     if (h.mode === "qa") {
       if (h.question) {
         messages.push({
@@ -187,7 +196,6 @@ const mapHistoryToPreHandoffMessages = (history: any[]): PreHandoffMessage[] => 
       continue;
     }
     
-    // Handle confirmation - look ahead for the response
     if (h.mode === "flow" && h.type === "confirmation" && !h.fromUser) {
       let confirmationResponse: string | undefined;
       for (let j = i + 1; j < history.length; j++) {
@@ -215,7 +223,6 @@ const mapHistoryToPreHandoffMessages = (history: any[]): PreHandoffMessage[] => 
       continue;
     }
     
-    // Skip user_input that was a confirmation response
     if (h.mode === "flow" && h.type === "user_input" && h.fromUser) {
       const prevConfirmation = history.slice(0, i).reverse().find(
         (ph: any) => ph.nodeId === h.nodeId && ph.type === "confirmation"
@@ -225,7 +232,6 @@ const mapHistoryToPreHandoffMessages = (history: any[]): PreHandoffMessage[] => 
       }
     }
     
-    // Default handling
     messages.push({
       role: h.fromUser ? "user" : "assistant",
       content: formatHistoryEntry(h),
@@ -243,6 +249,7 @@ const AgentChat = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
   const sessionId = conversationId;
   const { toast } = useToast();
+  
   const [session, setSession] = useState<HandoffSession | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [preHandoffMessages, setPreHandoffMessages] = useState<PreHandoffMessage[]>([]);
@@ -253,15 +260,72 @@ const AgentChat = () => {
   const [showResolveDialog, setShowResolveDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Summarization states
+  const [summary, setSummary] = useState<ChatSummary | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
+  const [summarizerAvailable, setSummarizerAvailable] = useState<boolean | null>(null);
+  const [summarizerError, setSummarizerError] = useState<string>("");
+  const [showSummary, setShowSummary] = useState(false);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const prevMessagesLengthRef = useRef(0);
+  const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollAreaViewportRef.current) {
+      const viewport = scrollAreaViewportRef.current;
+      viewport.scrollTop = viewport.scrollHeight;
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
+  // Monitor scroll position to detect if user scrolled up
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    const viewport = document.querySelector('[data-radix-scroll-area-viewport]');
+    if (!viewport) return;
 
-  // Fetch session details
+    scrollAreaViewportRef.current = viewport as HTMLDivElement;
+
+    const handleScroll = () => {
+      if (!viewport) return;
+      const isAtBottom = viewport.scrollHeight - viewport.scrollTop <= viewport.clientHeight + 100;
+      setShouldAutoScroll(isAtBottom);
+    };
+
+    viewport.addEventListener('scroll', handleScroll);
+    return () => viewport.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Only scroll to bottom when new messages are added AND user is at bottom
+  useEffect(() => {
+    // Check if new messages were added
+    const newMessagesAdded = messages.length > prevMessagesLengthRef.current;
+    prevMessagesLengthRef.current = messages.length;
+
+    if (newMessagesAdded && shouldAutoScroll) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => scrollToBottom(), 100);
+    }
+  }, [messages, shouldAutoScroll]);
+
+  // Check summarizer availability on mount
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if ('Summarizer' in self) {
+        try {
+          const availability = await (self as any).Summarizer.availability();
+          setSummarizerAvailable(availability !== 'unavailable');
+        } catch (error) {
+          console.error('Error checking summarizer availability:', error);
+          setSummarizerAvailable(false);
+        }
+      } else {
+        setSummarizerAvailable(false);
+      }
+    };
+    checkAvailability();
+  }, []);
+
   const fetchSession = async () => {
     if (!sessionId) return;
     
@@ -282,7 +346,6 @@ const AgentChat = () => {
         throw new Error(data.message || "Failed to fetch session");
       }
 
-      // Fetch session details separately if needed
       const sessionResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/sessions?status=all`,
         {
@@ -317,13 +380,10 @@ const AgentChat = () => {
 
   useEffect(() => {
     fetchSession();
-    
-    // Poll for new messages every 3 seconds
     const interval = setInterval(fetchSession, 3000);
     return () => clearInterval(interval);
   }, [sessionId]);
 
-  // Process pre-handoff history from session.flowSession.history
   useEffect(() => {
     if (session?.flowSession?.history && session.flowSession.history.length > 0) {
       const mappedMessages = mapHistoryToPreHandoffMessages(session.flowSession.history);
@@ -331,7 +391,97 @@ const AgentChat = () => {
     }
   }, [session?.flowSession?.history]);
 
-  // Accept session (if pending)
+  // Summarize chat history
+  const summarizeChatHistory = async () => {
+    if (preHandoffMessages.length === 0) {
+      toast({
+        title: "No History",
+        description: "There's no chat history to summarize",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSummarizing(true);
+    setSummarizerError("");
+    setSummary(null);
+
+    try {
+      const conversationText = preHandoffMessages
+        .map(msg => `${msg.role === "user" ? "User" : "Bot"}: ${msg.content}`)
+        .join("\n\n");
+
+      if (summarizerAvailable) {
+        // Use Chrome built-in API
+        const summarizer = await (self as any).Summarizer.create({
+          type: "key-points",
+          format: "markdown",
+          length: "medium",
+        });
+
+        const result = await summarizer.summarize(conversationText, {
+          context: "Provide a summary of this customer support chat focusing on: 1) What the chat was about, 2) What the user was looking for, 3) Action items for the agent. Format as markdown with clear sections.",
+        });
+
+        // Parse the markdown summary into structured format
+        const parsedSummary: ChatSummary = {
+          overview: result.split('\n')[0] || "Chat summary",
+          userIntent: result.includes("looking for") ? result.split("looking for")[1].split('\n')[0] : "Not specified",
+          actionItems: result.match(/[-]\s(.+)/g)?.map(item => item.replace(/[-]\s/, '')) || [],
+          keyPoints: result.split('\n').filter(line => line.trim() && !line.startsWith('#'))
+        };
+
+        setSummary(parsedSummary);
+        summarizer.destroy();
+      } else {
+        // Fallback to backend API - Use the same /api/summarize endpoint as sessions
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/summarize`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAgentAuthHeaders(),
+          },
+          body: JSON.stringify({
+            messages: preHandoffMessages,
+            botName: session?.bot.name || "Bot",
+          }),
+        });
+
+        const data = await res.json();
+        if (data.status === "success") {
+          // Parse the summary text into structured format
+          const summaryText = data.result.summary;
+          
+          // Try to extract sections from the summary
+          const lines = summaryText.split('\n').filter((line: string) => line.trim());
+          
+          const parsedSummary: ChatSummary = {
+            overview: lines[0] || "Chat summary",
+            userIntent: session?.userQuestion || "User requested assistance",
+            actionItems: lines.filter((line: string) => line.includes('•') || line.includes('-')).map((line: string) => line.replace(/[•\-]\s/, '').trim()),
+            keyPoints: lines.slice(1, 5).filter((line: string) => line.length > 10)
+          };
+          
+          setSummary(parsedSummary);
+        } else {
+          throw new Error(data.message || "Summarization failed");
+        }
+      }
+
+      setShowSummary(true);
+    } catch (error: any) {
+      console.error("Error summarizing chat:", error);
+      setSummarizerError(error.message || "Failed to summarize conversation");
+      toast({
+        title: "Summarization Failed",
+        description: error.message || "Could not generate summary",
+        variant: "destructive",
+      });
+    } finally {
+      setSummarizing(false);
+    }
+  };
+
   const handleAccept = async () => {
     try {
       const response = await fetch(
@@ -367,7 +517,6 @@ const AgentChat = () => {
     }
   };
 
-  // Send message
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isSending) return;
 
@@ -375,7 +524,6 @@ const AgentChat = () => {
     setInputMessage("");
     setIsSending(true);
 
-    // Optimistically add message
     const optimisticMessage: Message = {
       sender: "agent",
       message: messageContent,
@@ -402,7 +550,6 @@ const AgentChat = () => {
         throw new Error(data.message || "Failed to send message");
       }
 
-      // Refresh messages
       fetchSession();
     } catch (error: any) {
       console.error("Error sending message:", error);
@@ -411,14 +558,12 @@ const AgentChat = () => {
         description: error.message || "Failed to send message",
         variant: "destructive",
       });
-      // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m !== optimisticMessage));
     } finally {
       setIsSending(false);
     }
   };
 
-  // Resolve session
   const handleResolve = async () => {
     try {
       const response = await fetch(
@@ -522,7 +667,7 @@ const AgentChat = () => {
                 onClick={fetchSession}
                 disabled={isLoading}
               >
-                <RefreshCw className={`w-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
               {session.status === "pending" && (
                 <Button 
@@ -549,8 +694,120 @@ const AgentChat = () => {
       </header>
 
       {/* Chat Area */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-4 flex flex-col">
-        <Card className="flex-1 flex flex-col bg-white/80 backdrop-blur-sm overflow-hidden">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-4 flex flex-col gap-4">
+        {/* Summary Card */}
+        {preHandoffMessages.length > 0 && (
+          <Card className="bg-white/80 backdrop-blur-sm">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-600" />
+                  <h3 className="font-semibold">Chat Summary</h3>
+                </div>
+                <Button
+                  onClick={summarizeChatHistory}
+                  disabled={summarizing}
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                >
+                  {summarizing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      {summary ? "Regenerate" : "Generate Summary"}
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {summarizerAvailable === false && (
+                <Alert className="mb-3">
+                  <AlertDescription className="text-xs">
+                    Using Gemini-based summarization — Chrome built-in summarizer not available
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {summarizerError && (
+                <Alert variant="destructive" className="mb-3">
+                  <AlertDescription className="text-xs">
+                    {summarizerError}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {summary && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-muted-foreground">Summary Details</h4>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowSummary(!showSummary)}
+                      className="h-6 px-2"
+                    >
+                      {showSummary ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+
+                  {showSummary && (
+                    <div className="space-y-3 pt-2 border-t">
+                      <div>
+                        <h5 className="text-xs font-semibold text-gray-700 mb-1">Overview</h5>
+                        <p className="text-sm text-gray-600">{summary.overview}</p>
+                      </div>
+
+                      <div>
+                        <h5 className="text-xs font-semibold text-gray-700 mb-1">What User Was Looking For</h5>
+                        <p className="text-sm text-gray-600">{summary.userIntent}</p>
+                      </div>
+
+                      {summary.actionItems && summary.actionItems.length > 0 && (
+                        <div>
+                          <h5 className="text-xs font-semibold text-gray-700 mb-1">Action Items</h5>
+                          <ul className="space-y-1">
+                            {summary.actionItems.map((item, idx) => (
+                              <li key={idx} className="text-sm text-gray-600 flex items-start gap-2">
+                                <span className="text-purple-600 mt-1">•</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {summary.keyPoints && summary.keyPoints.length > 0 && (
+                        <div>
+                          <h5 className="text-xs font-semibold text-gray-700 mb-1">Key Points</h5>
+                          <ul className="space-y-1">
+                            {summary.keyPoints.map((point, idx) => (
+                              <li key={idx} className="text-sm text-gray-600 flex items-start gap-2">
+                                <span className="text-emerald-600 mt-1">•</span>
+                                <span>{point}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* Messages Card */}
+        <Card className="flex-1 flex flex-col bg-white/80 backdrop-blur-sm overflow-hidden relative">
           <ScrollArea className="flex-1 p-4">
             {preHandoffMessages.length === 0 && messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
@@ -606,7 +863,6 @@ const AgentChat = () => {
                             <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                           </div>
                           
-                          {/* Confirmation buttons */}
                           {msg.isConfirmation && (
                             <div className="flex gap-2 mt-2">
                               <Button
@@ -639,7 +895,6 @@ const AgentChat = () => {
                       </div>
                     ))}
                     
-                    {/* Separator between pre-handoff and handoff messages */}
                     <div className="flex items-center gap-3 py-4">
                       <Separator className="flex-1" />
                       <div className="flex items-center gap-2 px-3 py-1 bg-purple-100 rounded-full">
@@ -703,6 +958,23 @@ const AgentChat = () => {
               </div>
             )}
           </ScrollArea>
+
+          {/* Scroll to Bottom Button */}
+          {!shouldAutoScroll && (
+            <div className="absolute bottom-24 right-8 z-10">
+              <Button
+                onClick={() => {
+                  setShouldAutoScroll(true);
+                  scrollToBottom();
+                }}
+                size="sm"
+                className="rounded-full shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <ArrowDown className="w-4 h-4 mr-1" />
+                New messages
+              </Button>
+            </div>
+          )}
 
           {/* Input Area */}
           {session.status !== "resolved" && (
