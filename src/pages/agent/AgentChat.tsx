@@ -49,6 +49,11 @@ interface HandoffSession {
     description?: string;
   };
   sessionId?: string; // Original chat session ID
+  flowSession?: {
+    _id: string;
+    history: any[];
+    variables?: Record<string, any>;
+  };
   status: "pending" | "active" | "resolved";
   userQuestion: string;
   requestedAt: string;
@@ -234,7 +239,6 @@ const AgentChat = () => {
   const [inputMessage, setInputMessage] = useState("");
   const [resolveNotes, setResolveNotes] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [preHandoffLoading, setPreHandoffLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showResolveDialog, setShowResolveDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -309,41 +313,13 @@ const AgentChat = () => {
     return () => clearInterval(interval);
   }, [sessionId]);
 
-  // Fetch pre-handoff chat history
-  const fetchPreHandoffHistory = async () => {
-    if (!session?.bot?._id || !session?.sessionId) return;
-    
-    setPreHandoffLoading(true);
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/bots/${session.bot._id}/history/${session.sessionId}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            ...getAgentAuthHeaders(),
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (data?.status === "success" && data.result?.history) {
-        const mappedMessages = mapHistoryToPreHandoffMessages(data.result.history);
-        setPreHandoffMessages(mappedMessages);
-      }
-    } catch (error: any) {
-      console.error("Error fetching pre-handoff history:", error);
-    } finally {
-      setPreHandoffLoading(false);
-    }
-  };
-
-  // Fetch pre-handoff history when session is loaded
+  // Process pre-handoff history from session.flowSession.history
   useEffect(() => {
-    if (session?.bot?._id && session?.sessionId) {
-      fetchPreHandoffHistory();
+    if (session?.flowSession?.history && session.flowSession.history.length > 0) {
+      const mappedMessages = mapHistoryToPreHandoffMessages(session.flowSession.history);
+      setPreHandoffMessages(mappedMessages);
     }
-  }, [session?.bot?._id, session?.sessionId]);
+  }, [session?.flowSession?.history]);
 
   // Accept session (if pending)
   const handleAccept = async () => {
