@@ -326,6 +326,14 @@ export const PublicBotChatPage = () => {
     };
   }, []);
 
+  // Human handoff state
+  const [handoffRequested, setHandoffRequested] = useState(false);
+  const [handoffSessionId, setHandoffSessionId] = useState<string | null>(null);
+  const [isConnectedToAgent, setIsConnectedToAgent] = useState(false);
+  const [assignedAgentEmail, setAssignedAgentEmail] = useState<string | null>(null);
+  const [handoffStatus, setHandoffStatus] = useState<string | null>(null);
+  const handoffStatusRef = useRef<string | null>(null);
+
   // Handle voice question for video bot in Q&A mode (auto-submit)
   const handleVoiceQuestion = async (question: string) => {
     if (!question.trim() || isLoading) return;
@@ -374,6 +382,71 @@ export const PublicBotChatPage = () => {
       addBotMessage("I'm having trouble answering that. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Send message to agent when in handoff mode
+  const sendMessageToAgent = async (message: string) => {
+    if (!handoffSessionId) return;
+    if (handoffStatusRef.current === 'resolved') {
+      const msg = 'This conversation has been resolved. You cannot send more messages.';
+      setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: msg, sender: 'bot', timestamp: new Date() }]);
+      return;
+    }
+
+    try {
+      await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-message`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, flowSessionId: sessionId }),
+        }
+      );
+    } catch (error) {
+      console.error('Error sending message to agent:', error);
+      toast({ title: 'Error', description: 'Failed to send message to agent', variant: 'destructive' });
+    }
+  };
+
+  // Request human handoff
+  const requestHumanHandoff = async (userQuestion: string) => {
+    if (!bot?.human_handoff_enabled && !bot?.humanHandoffEnabled) {
+      const message = "Human support is not available for this bot.";
+      setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: message, sender: 'bot', timestamp: new Date() }]);
+      return;
+    }
+
+    if (handoffRequested) {
+      const message = "Your request for human support has already been submitted.";
+      setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: message, sender: 'bot', timestamp: new Date() }]);
+      return;
+    }
+
+    setHandoffRequested(true);
+    const connectingMessage = "Connecting you with a human agent...";
+    setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: connectingMessage, sender: 'bot', timestamp: new Date() }]);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ botId: bot._id, flowSessionId: sessionId, userQuestion, userIpAddress: '', userAgent: navigator.userAgent }),
+      });
+      const data = await response.json();
+      if (data.status === 'success' && data.result) {
+        setHandoffSessionId(data.result.handoffSession._id);
+        setAssignedAgentEmail(data.result.agent?.email || null);
+        setIsConnectedToAgent(!!data.result.agent?.isOnline);
+        const agentStatusMessage = data.result.message;
+        setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: agentStatusMessage, sender: 'bot', timestamp: new Date() }]);
+      } else {
+        throw new Error(data.message || 'Failed to request human support');
+      }
+    } catch (err) {
+      console.error('Handoff request error:', err);
+      setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: 'Failed to connect with a human agent. Please try again later.', sender: 'bot', timestamp: new Date() }]);
+      setHandoffRequested(false);
     }
   };
 
@@ -543,6 +616,61 @@ export const PublicBotChatPage = () => {
 
     initFlow();
   }, [bot]);
+
+  // Poll for agent messages when handoff is active
+  useEffect(() => {
+    if (!handoffSessionId) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-messages?flowSessionId=${sessionId}`
+        );
+        const data = await response.json();
+
+        if (data.status === 'success' && data.result?.messages) {
+          const agentMessages = data.result.messages
+            .filter((m: any) => m.sender === 'agent')
+            .map((m: any) => ({
+              id: `agent-${m.timestamp || Date.now()}`,
+              content: m.message,
+              sender: 'bot' as const,
+              timestamp: new Date(m.timestamp),
+            }));
+
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map(m => m.id));
+            const newMessages = agentMessages.filter((m: Message) => !existingIds.has(m.id));
+            return [...prev, ...newMessages];
+          });
+
+          const status = data.result.status;
+          const assignedAgent = data.result.assignedAgent;
+
+          if (status === 'active' && handoffStatusRef.current !== 'active') {
+            setHandoffStatus('active');
+            handoffStatusRef.current = 'active';
+            setIsConnectedToAgent(true);
+            if (assignedAgent?.email) setAssignedAgentEmail(assignedAgent.email);
+            const agentMsg = `A human agent (${assignedAgent?.email || 'agent'}) has accepted your request.`;
+            setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: agentMsg, sender: 'bot', timestamp: new Date() }]);
+          }
+
+          if (status === 'resolved' && handoffStatusRef.current !== 'resolved') {
+            setHandoffStatus('resolved');
+            handoffStatusRef.current = 'resolved';
+            setHandoffRequested(false);
+            const resolvedMsg = 'This conversation has been marked resolved by the agent. You can no longer send messages.';
+            setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: resolvedMsg, sender: 'bot', timestamp: new Date() }]);
+          }
+        }
+      } catch (error) {
+        console.error('Error polling agent messages:', error);
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [handoffSessionId, sessionId]);
 
   // Handle Q&A mode
   const handleAskQuestion = async () => {
@@ -1253,7 +1381,7 @@ export const PublicBotChatPage = () => {
                                 ? "Type your message..."
                                 : "Select an option above...")
                       }
-                      disabled={isLoading || !canSendText || isProcessing}
+                      disabled={isLoading || !canSendText || handoffStatus === 'resolved' || isProcessing}
                       className="pr-12"
                     />
                     {shouldShowMicButton && canSendText && (
@@ -1457,7 +1585,7 @@ export const PublicBotChatPage = () => {
                               ? "Type your message..."
                               : "Select an option above...")
                     }
-                    disabled={isLoading || !canSendText || isProcessing}
+                    disabled={isLoading || !canSendText || handoffStatus === 'resolved' || isProcessing}
                     className="pr-12"
                   />
                   {bot.is_voice_enabled && canSendText && (

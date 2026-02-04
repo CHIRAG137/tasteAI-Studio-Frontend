@@ -63,6 +63,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const [handoffSessionId, setHandoffSessionId] = useState<string | null>(null);
   const [isConnectedToAgent, setIsConnectedToAgent] = useState(false);
   const [assignedAgentEmail, setAssignedAgentEmail] = useState<string | null>(null);
+  const [handoffStatus, setHandoffStatus] = useState<string | null>(null);
+  const handoffStatusRef = useRef<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -275,6 +277,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   // Send message to agent when in handoff mode
   const sendMessageToAgent = async (message: string) => {
     if (!handoffSessionId) return;
+    if (handoffStatusRef.current === 'resolved') {
+      const msg = 'This conversation has been resolved. You cannot send more messages.';
+      addSystemMessage(msg);
+      return;
+    }
 
     try {
       await fetch(
@@ -319,11 +326,68 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               timestamp: new Date(m.timestamp),
             }));
 
+          // Append any new agent messages
           setMessages((prev) => {
             const existingIds = new Set(prev.map(m => m.id));
             const newMessages = agentMessages.filter((m: Message) => !existingIds.has(m.id));
             return [...prev, ...newMessages];
           });
+
+          // Handle session status updates (pending | active | resolved)
+          const status = data.result.status;
+          const assignedAgent = data.result.assignedAgent;
+
+          // When agent accepts (active)
+          if (status === 'active' && handoffStatusRef.current !== 'active') {
+            setHandoffStatus('active');
+            handoffStatusRef.current = 'active';
+            setIsConnectedToAgent(true);
+            if (assignedAgent?.email) setAssignedAgentEmail(assignedAgent.email);
+            const agentMsg = `A human agent (${assignedAgent?.email || 'agent'}) has accepted your request.`;
+            addSystemMessage(agentMsg);
+            // persist system message to flow session (best-effort)
+            try {
+              await fetch(
+                `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    message: agentMsg,
+                    messageType: 'handoff_accepted',
+                    handoffSessionId,
+                  }),
+                }
+              );
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          // When agent resolves
+          if (status === 'resolved' && handoffStatusRef.current !== 'resolved') {
+            setHandoffStatus('resolved');
+            handoffStatusRef.current = 'resolved';
+            setHandoffRequested(false);
+            const resolvedMsg = 'This conversation has been marked resolved by the agent. You can no longer send messages.';
+            addSystemMessage(resolvedMsg);
+            try {
+              await fetch(
+                `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    message: resolvedMsg,
+                    messageType: 'handoff_resolved',
+                    handoffSessionId,
+                  }),
+                }
+              );
+            } catch (e) {
+              // ignore
+            }
+          }
         }
       } catch (error) {
         console.error("Error polling agent messages:", error);
@@ -1410,7 +1474,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder={getPlaceholderText()}
-                      disabled={isLoading || (!canSendText && !handoffRequested) || isProcessing}
+                      disabled={isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing}
                       className="pr-12"
                     />
                     {shouldShowMicButton && !handoffRequested && (
@@ -1434,7 +1498,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   </div>
                   <Button
                     onClick={() => handleSendMessage()}
-                    disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || isListening || isProcessing}
+                    disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
                     size="icon"
                     className={handoffRequested 
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
@@ -1610,7 +1674,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder={getPlaceholderText()}
-                    disabled={isLoading || (!canSendText && !handoffRequested) || isProcessing}
+                    disabled={isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing}
                     className="pr-12"
                   />
                   {bot.voiceEnabled && canSendText && !handoffRequested && (
@@ -1634,7 +1698,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 </div>
                 <Button
                   onClick={() => handleSendMessage()}
-                  disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || isListening || isProcessing}
+                  disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
                   size="icon"
                   className={handoffRequested 
                     ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"

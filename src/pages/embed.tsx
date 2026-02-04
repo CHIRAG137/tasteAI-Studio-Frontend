@@ -41,6 +41,8 @@ export default function EmbedChat() {
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [handoffSessionId, setHandoffSessionId] = useState<string | null>(null);
+
   // const audioRef = useRef<HTMLAudioElement>(null);
 
   // BROWSER SPEECH RECOGNITION (Speech-to-Text)
@@ -130,6 +132,102 @@ export default function EmbedChat() {
       recognitionRef.current.stop();
     } else {
       recognitionRef.current.start();
+    }
+  };
+
+  // Poll for agent messages when handoff is active
+  useEffect(() => {
+    if (!handoffSessionId) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-messages?flowSessionId=${sessionId}`
+        );
+        const data = await response.json();
+
+        if (data.status === 'success' && data.result?.messages) {
+          const agentMessages = data.result.messages
+            .filter((m: any) => m.sender === 'agent')
+            .map((m: any) => ({
+              id: `agent-${m.timestamp || Date.now()}`,
+              from: 'bot',
+              text: m.message,
+              timestamp: new Date(m.timestamp),
+            }));
+
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map(m => m.id));
+            const newMessages = agentMessages.filter((m: Message) => !existingIds.has(m.id));
+            return [...prev, ...newMessages];
+          });
+
+          const status = data.result.status;
+          const assignedAgent = data.result.assignedAgent;
+
+          if (status === 'active' && handoffStatusRef.current !== 'active') {
+            setHandoffStatus('active');
+            handoffStatusRef.current = 'active';
+            setIsConnectedToAgent(true);
+            if (assignedAgent?.email) setAssignedAgentEmail(assignedAgent.email);
+            const agentMsg = `A human agent (${assignedAgent?.email || 'agent'}) has accepted your request.`;
+            setMessages(prev => [...prev, { id: `sys-${Date.now()}`, from: 'bot', text: agentMsg, timestamp: new Date() }]);
+          }
+
+          if (status === 'resolved' && handoffStatusRef.current !== 'resolved') {
+            setHandoffStatus('resolved');
+            handoffStatusRef.current = 'resolved';
+            setHandoffRequested(false);
+            const resolvedMsg = 'This conversation has been marked resolved by the agent. You can no longer send messages.';
+            setMessages(prev => [...prev, { id: `sys-${Date.now()}`, from: 'bot', text: resolvedMsg, timestamp: new Date() }]);
+          }
+        }
+      } catch (error) {
+        console.error('Error polling agent messages:', error);
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [handoffSessionId, sessionId]);
+
+  // Request human handoff
+  const requestHumanHandoff = async (userQuestion: string) => {
+    if (!botData?.human_handoff_enabled && !botData?.humanHandoffEnabled) {
+      const message = "Human support is not available for this bot.";
+      setMessages(prev => [...prev, { id: `sys-${Date.now()}`, from: 'bot', text: message, timestamp: new Date() }]);
+      return;
+    }
+
+    if (handoffRequested) {
+      const message = "Your request for human support has already been submitted.";
+      setMessages(prev => [...prev, { id: `sys-${Date.now()}`, from: 'bot', text: message, timestamp: new Date() }]);
+      return;
+    }
+
+    setHandoffRequested(true);
+    const connectingMessage = "Connecting you with a human agent...";
+    setMessages(prev => [...prev, { id: `sys-${Date.now()}`, from: 'bot', text: connectingMessage, timestamp: new Date() }]);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ botId: botData._id, flowSessionId: sessionId, userQuestion, userIpAddress: '', userAgent: navigator.userAgent }),
+      });
+      const data = await response.json();
+      if (data.status === 'success' && data.result) {
+        setHandoffSessionId(data.result.handoffSession._id);
+        setAssignedAgentEmail(data.result.agent?.email || null);
+        setIsConnectedToAgent(!!data.result.agent?.isOnline);
+        const agentStatusMessage = data.result.message;
+        setMessages(prev => [...prev, { id: `sys-${Date.now()}`, from: 'bot', text: agentStatusMessage, timestamp: new Date() }]);
+      } else {
+        throw new Error(data.message || 'Failed to request human support');
+      }
+    } catch (err) {
+      console.error('Handoff request error:', err);
+      setMessages(prev => [...prev, { id: `sys-${Date.now()}`, from: 'bot', text: 'Failed to connect with a human agent. Please try again later.', timestamp: new Date() }]);
+      setHandoffRequested(false);
     }
   };
 
@@ -246,6 +344,13 @@ export default function EmbedChat() {
     };
   }, []);
 
+  // Human handoff state
+  const [handoffRequested, setHandoffRequested] = useState(false);
+  const [isConnectedToAgent, setIsConnectedToAgent] = useState(false);
+  const [assignedAgentEmail, setAssignedAgentEmail] = useState<string | null>(null);
+  const [handoffStatus, setHandoffStatus] = useState<string | null>(null);
+  const handoffStatusRef = useRef<string | null>(null);
+
   // COMMENTED OUT - Old API-based TTS function
   // Function to convert text to speech and play it
   // const playTextToSpeech = async (text: string) => {
@@ -341,6 +446,30 @@ export default function EmbedChat() {
       addBotMessage("I'm having trouble answering that. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Send message to agent when in handoff mode
+  const sendMessageToAgent = async (message: string) => {
+    if (!handoffSessionId) return;
+    if (handoffStatusRef.current === 'resolved') {
+      const msg = 'This conversation has been resolved. You cannot send more messages.';
+      setMessages(prev => [...prev, { id: `sys-${Date.now()}`, from: 'bot', text: msg, timestamp: new Date() }]);
+      return;
+    }
+
+    try {
+      await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-message`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, flowSessionId: sessionId }),
+        }
+      );
+    } catch (error) {
+      console.error('Error sending message to agent:', error);
+      toast({ title: 'Error', description: 'Failed to send message to agent', variant: 'destructive' });
     }
   };
 
@@ -804,6 +933,9 @@ export default function EmbedChat() {
 
       setMessages((prev) => [...prev, ...botMessages]);
 
+      // If there's an active handoff session, do not proceed to flow responses
+      // (agent messages will be polled separately)
+
       // Queue all texts for speech in order (using browser TTS)
       textsToSpeak.forEach(text => queueTextToSpeech(text));
     } catch (err: any) {
@@ -1013,7 +1145,7 @@ export default function EmbedChat() {
                             : "bg-green-500 hover:bg-green-600"
                           : "bg-gray-400 hover:bg-gray-500"
                           }`}
-                        disabled={isLoading || isProcessing || isSpeaking}
+                        disabled={isLoading || isProcessing || isSpeaking || handoffStatus === 'resolved'}
                       >
                         {isProcessing ? (
                           <Loader2 className="h-5 w-5 animate-spin text-white" />
@@ -1073,7 +1205,7 @@ export default function EmbedChat() {
                             : "bg-green-500 hover:bg-green-600"
                           : "bg-gray-400 hover:bg-gray-500"
                           }`}
-                        disabled={isLoading || isProcessing || isSpeaking}
+                        disabled={isLoading || isProcessing || isSpeaking || handoffStatus === 'resolved'}
                       >
                         {isProcessing ? (
                           <Loader2 className="h-5 w-5 animate-spin text-white" />
@@ -1391,7 +1523,7 @@ export default function EmbedChat() {
                       ? "Ask me anything..."
                       : (customization?.placeholder || "Type your message...")
               }
-              disabled={isLoading || !canSendText || isProcessing}
+              disabled={isLoading || !canSendText || handoffStatus === 'resolved' || isProcessing}
               className={`flex-1 transition-all duration-200 ${botData?.is_voice_enabled && canSendText && flowFinished && !botData?.is_video_bot ? 'pr-10' : ''
                 } ${customization?.useChatCustomCSS ? 'embed-input' : ''}`}
               style={getInputStyle()}
@@ -1421,7 +1553,7 @@ export default function EmbedChat() {
           </div>
           <Button
             onClick={() => handleSendMessage()}
-            disabled={!input.trim() || isLoading || !canSendText || isListening || isProcessing}
+            disabled={!input.trim() || isLoading || !canSendText || handoffStatus === 'resolved' || isListening || isProcessing}
             size="icon"
             className={`shrink-0 transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-send-button' : ''
               }`}
