@@ -22,11 +22,13 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
-  ArrowDown
+  ArrowDown,
+  Info
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getAgentAuthHeaders } from "@/utils/agentAuth";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface Message {
   sender: "user" | "agent";
@@ -82,9 +84,35 @@ const formatHistoryEntry = (h: any): string => {
     content = h.answer || "No match found";
   } else if (h.mode === "handoff") {
     if (h.systemMessage || h.type?.startsWith("handoff_")) {
-      content = h.content || "(handoff system message)";
-    } else if (h.type === "handoff_initiated") {
-      content = `${h.content || "User requested assistance"}`;
+      // Special handling for each handoff event type
+      switch (h.type) {
+        case "handoff_connecting":
+          content = h.content || "Connecting you with a human agent...";
+          break;
+        case "handoff_initiated":
+          content = h.content || "User requested assistance";
+          break;
+        case "handoff_agent_assigned":
+          content = h.content || "Your request has been received. An agent will respond as soon as possible.";
+          break;
+        case "handoff_agent_offline":
+          content = h.content || "The agent is currently offline but will respond as soon as possible.";
+          break;
+        case "handoff_accepted":
+          content = h.content || "A human agent has accepted your request.";
+          break;
+        case "handoff_resolved":
+          content = h.content || "This conversation has been marked resolved by the agent.";
+          break;
+        case "handoff_resolved_by_client":
+          content = "This conversation was marked resolved by the user.";
+          break;
+        case "handoff_reopened":
+          content = "This conversation was reopened by the user.";
+          break;
+        default:
+          content = h.content || "(handoff system message)";
+      }
     } else if (h.sender === "agent" || (!h.fromUser && h.messageText)) {
       content = `${h.messageText || h.content || "(message)"}`;
     } else if (h.fromUser) {
@@ -163,15 +191,43 @@ const formatHistoryEntry = (h: any): string => {
   return content;
 };
 
-// Map history to pre-handoff messages
+// Map history to pre-handoff messages (before agent messages)
 const mapHistoryToPreHandoffMessages = (history: any[]): PreHandoffMessage[] => {
   const messages: PreHandoffMessage[] = [];
   
   for (let i = 0; i < history.length; i++) {
     const h = history[i];
     
-    if (h.mode === "handoff") {
+    // Stop at handoff_initiated or when actual agent messages start
+    if (h.type === "handoff_initiated" || (h.mode === "handoff" && h.sender === "agent")) {
       break;
+    }
+    
+    // Skip duplicate handoff events - only show system message version
+    if (h.mode === "handoff" && h.type?.startsWith("handoff_") && !h.systemMessage && h.type !== "handoff_connecting") {
+      const hasSystemMessage = history.some((item, idx) => 
+        idx > i && 
+        item.type === h.type && 
+        item.systemMessage === true &&
+        item.handoffSessionId === h.handoffSessionId
+      );
+      
+      if (hasSystemMessage) {
+        continue;
+      }
+    }
+    
+    // Include handoff system messages (connecting, assigned, offline, accepted, etc.)
+    if (h.mode === "handoff" && (h.systemMessage || h.type?.startsWith("handoff_"))) {
+      messages.push({
+        role: "assistant",
+        content: formatHistoryEntry(h),
+        timestamp: h.timestamp,
+        mode: "handoff",
+        type: h.type,
+        isSystemMessage: true,
+      });
+      continue;
     }
     
     if (h.mode === "qa") {
@@ -244,6 +300,53 @@ const mapHistoryToPreHandoffMessages = (history: any[]): PreHandoffMessage[] => 
   return messages;
 };
 
+// Map history to handoff system messages (resolved, reopened, etc. that happen AFTER agent messages)
+const mapHistoryToHandoffSystemMessages = (history: any[]): PreHandoffMessage[] => {
+  const messages: PreHandoffMessage[] = [];
+  let agentMessagesStarted = false;
+  
+  for (let i = 0; i < history.length; i++) {
+    const h = history[i];
+    
+    // Track when agent messages started
+    if (h.mode === "handoff" && h.sender === "agent") {
+      agentMessagesStarted = true;
+      continue;
+    }
+    
+    // Only collect handoff system messages that happen after agent messages started
+    if (agentMessagesStarted && h.mode === "handoff") {
+      // Skip duplicate handoff events
+      if (h.type?.startsWith("handoff_") && !h.systemMessage) {
+        const hasSystemMessage = history.some((item, idx) => 
+          idx > i && 
+          item.type === h.type && 
+          item.systemMessage === true &&
+          item.handoffSessionId === h.handoffSessionId
+        );
+        
+        if (hasSystemMessage) {
+          continue;
+        }
+      }
+      
+      // Include system messages (resolved, reopened, etc.)
+      if (h.systemMessage || h.type === "handoff_resolved_by_client" || h.type === "handoff_reopened") {
+        messages.push({
+          role: "assistant",
+          content: formatHistoryEntry(h),
+          timestamp: h.timestamp,
+          mode: "handoff",
+          type: h.type,
+          isSystemMessage: true,
+        });
+      }
+    }
+  }
+  
+  return messages;
+};
+
 const AgentChat = () => {
   const navigate = useNavigate();
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -253,6 +356,7 @@ const AgentChat = () => {
   const [session, setSession] = useState<HandoffSession | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [preHandoffMessages, setPreHandoffMessages] = useState<PreHandoffMessage[]>([]);
+  const [handoffSystemMessages, setHandoffSystemMessages] = useState<PreHandoffMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [resolveNotes, setResolveNotes] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -298,12 +402,10 @@ const AgentChat = () => {
 
   // Only scroll to bottom when new messages are added AND user is at bottom
   useEffect(() => {
-    // Check if new messages were added
     const newMessagesAdded = messages.length > prevMessagesLengthRef.current;
     prevMessagesLengthRef.current = messages.length;
 
     if (newMessagesAdded && shouldAutoScroll) {
-      // Small delay to ensure DOM is updated
       setTimeout(() => scrollToBottom(), 100);
     }
   }, [messages, shouldAutoScroll]);
@@ -388,6 +490,9 @@ const AgentChat = () => {
     if (session?.flowSession?.history && session.flowSession.history.length > 0) {
       const mappedMessages = mapHistoryToPreHandoffMessages(session.flowSession.history);
       setPreHandoffMessages(mappedMessages);
+      
+      const systemMessages = mapHistoryToHandoffSystemMessages(session.flowSession.history);
+      setHandoffSystemMessages(systemMessages);
     }
   }, [session?.flowSession?.history]);
 
@@ -412,7 +517,6 @@ const AgentChat = () => {
         .join("\n\n");
 
       if (summarizerAvailable) {
-        // Use Chrome built-in API
         const summarizer = await (self as any).Summarizer.create({
           type: "key-points",
           format: "markdown",
@@ -423,7 +527,6 @@ const AgentChat = () => {
           context: "Provide a summary of this customer support chat focusing on: 1) What the chat was about, 2) What the user was looking for, 3) Action items for the agent. Format as markdown with clear sections.",
         });
 
-        // Parse the markdown summary into structured format
         const parsedSummary: ChatSummary = {
           overview: result.split('\n')[0] || "Chat summary",
           userIntent: result.includes("looking for") ? result.split("looking for")[1].split('\n')[0] : "Not specified",
@@ -434,7 +537,6 @@ const AgentChat = () => {
         setSummary(parsedSummary);
         summarizer.destroy();
       } else {
-        // Fallback to backend API - Use the same /api/summarize endpoint as sessions
         const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/summarize`, {
           method: "POST",
           headers: {
@@ -449,10 +551,7 @@ const AgentChat = () => {
 
         const data = await res.json();
         if (data.status === "success") {
-          // Parse the summary text into structured format
           const summaryText = data.result.summary;
-          
-          // Try to extract sections from the summary
           const lines = summaryText.split('\n').filter((line: string) => line.trim());
           
           const parsedSummary: ChatSummary = {
@@ -829,37 +928,52 @@ const AgentChat = () => {
                     {preHandoffMessages.map((msg, index) => (
                       <div
                         key={`pre-${index}`}
-                        className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                        className={`flex gap-3 ${msg.isSystemMessage ? 'justify-center' : msg.role === "user" ? "flex-row-reverse" : ""}`}
                       >
-                        <Avatar className="w-8 h-8 flex-shrink-0">
-                          <AvatarFallback className={
-                            msg.role === "user"
-                              ? "bg-gradient-to-br from-blue-500 to-purple-500"
-                              : "bg-gradient-to-br from-emerald-500 to-teal-500"
-                          }>
-                            {msg.role === "user" ? (
-                              <User className="w-4 h-4 text-white" />
-                            ) : (
-                              <Bot className="w-4 h-4 text-white" />
-                            )}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className={`max-w-[75%] ${msg.role === "user" ? "text-right" : ""}`}>
-                          <div className={`flex items-center gap-2 mb-1 ${msg.role === "user" ? "justify-end" : ""}`}>
-                            <span className="text-xs font-medium capitalize text-muted-foreground">
-                              {msg.role === "user" ? "User" : "Bot"}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(msg.timestamp).toLocaleTimeString()}
-                            </span>
-                          </div>
-                          <div
-                            className={`inline-block px-4 py-2 rounded-2xl shadow-sm ${
+                        {!msg.isSystemMessage && (
+                          <Avatar className="w-8 h-8 flex-shrink-0">
+                            <AvatarFallback className={
                               msg.role === "user"
+                                ? "bg-gradient-to-br from-blue-500 to-purple-500"
+                                : "bg-gradient-to-br from-emerald-500 to-teal-500"
+                            }>
+                              {msg.role === "user" ? (
+                                <User className="w-4 h-4 text-white" />
+                              ) : (
+                                <Bot className="w-4 h-4 text-white" />
+                              )}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                        
+                        <div className={`${msg.isSystemMessage ? 'max-w-[85%]' : 'max-w-[75%]'} ${msg.role === "user" && !msg.isSystemMessage ? "text-right" : ""}`}>
+                          {!msg.isSystemMessage && (
+                            <div className={`flex items-center gap-2 mb-1 ${msg.role === "user" ? "justify-end" : ""}`}>
+                              <span className="text-xs font-medium capitalize text-muted-foreground">
+                                {msg.role === "user" ? "User" : "Bot"}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(msg.timestamp).toLocaleTimeString()}
+                              </span>
+                            </div>
+                          )}
+                          
+                          <div
+                            className={cn(
+                              "inline-block px-4 py-2 rounded-2xl shadow-sm",
+                              msg.isSystemMessage
+                                ? "bg-orange-100 text-orange-900 border border-orange-200 dark:bg-orange-950 dark:text-orange-100 dark:border-orange-800 w-full text-center"
+                                : msg.role === "user"
                                 ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-br-md"
                                 : "bg-gray-100 dark:bg-gray-800 text-foreground rounded-bl-md"
-                            }`}
+                            )}
                           >
+                            {msg.isSystemMessage && (
+                              <div className="flex items-center justify-center gap-2 mb-1">
+                                <Info className="w-3 h-3" />
+                                <span className="text-xs font-medium">System Message</span>
+                              </div>
+                            )}
                             <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                           </div>
                           
@@ -900,7 +1014,7 @@ const AgentChat = () => {
                       <div className="flex items-center gap-2 px-3 py-1 bg-purple-100 rounded-full">
                         <Headphones className="w-3 h-3 text-purple-600" />
                         <span className="text-xs font-medium text-purple-600">
-                          Handoff Started
+                          Agent Conversation Started
                         </span>
                       </div>
                       <Separator className="flex-1" />
@@ -908,7 +1022,7 @@ const AgentChat = () => {
                   </>
                 )}
                 
-                {/* Handoff Messages */}
+                {/* Handoff Messages (Agent-User conversation) */}
                 {messages.map((message, index) => (
                   <div
                     key={index}
@@ -954,6 +1068,27 @@ const AgentChat = () => {
                     </div>
                   </div>
                 ))}
+                
+                {/* Handoff System Messages (resolved, reopened, etc.) */}
+                {handoffSystemMessages.map((msg, index) => (
+                  <div key={`handoff-system-${index}`} className="flex justify-center">
+                    <div className="max-w-[85%]">
+                      <div
+                        className="inline-block px-4 py-2 rounded-2xl shadow-sm bg-orange-100 text-orange-900 border border-orange-200 dark:bg-orange-950 dark:text-orange-100 dark:border-orange-800 w-full text-center"
+                      >
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                          <Info className="w-3 h-3" />
+                          <span className="text-xs font-medium">System Message</span>
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(msg.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
                 <div ref={messagesEndRef} />
               </div>
             )}
