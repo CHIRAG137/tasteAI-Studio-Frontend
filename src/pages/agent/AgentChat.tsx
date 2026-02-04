@@ -99,17 +99,27 @@ const formatHistoryEntry = (h: any): string => {
         }
         break;
       case "confirmation":
-        content = h.content 
-          ? `${h.content}` 
-          : `Confirmation requested`;
+        if (typeof h.content === "object" && h.content !== null) {
+          content = h.content.prompt || h.content.message || JSON.stringify(h.content);
+        } else {
+          content = h.content ? `${h.content}` : `Confirmation requested`;
+        }
+        break;
         break;
       case "question":
         if (h.awaitingInput) {
-          content = h.content 
-            ? `${h.content}` 
-            : `Question presented (awaiting response)`;
+          if (typeof h.content === "object" && h.content !== null) {
+            // Handle question object with {prompt, answer, variable}
+            content = h.content.prompt || h.content.answer || JSON.stringify(h.content);
+          } else {
+            content = h.content ? `${h.content}` : `Question presented (awaiting response)`;
+          }
         } else {
-          content = h.content || `Question`;
+          if (typeof h.content === "object" && h.content !== null) {
+            content = h.content.prompt || h.content.answer || JSON.stringify(h.content);
+          } else {
+            content = h.content || `Question`;
+          }
         }
         break;
       case "message":
