@@ -2,6 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -712,6 +718,13 @@ const AgentChat = () => {
     }
   };
 
+  const inputDisabled = isSending || session?.status === "pending";
+  const inputDisabledMessage = isSending
+    ? "Message is sending — please wait."
+    : session?.status === "pending"
+    ? "Accept the session to start chatting"
+    : "";
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1115,18 +1128,32 @@ const AgentChat = () => {
           {session.status !== "resolved" && (
             <div className="p-4 border-t bg-white/50">
               <div className="flex gap-2">
-                <Input
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Type your message..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  disabled={isSending || session.status === "pending"}
-                />
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="w-full">
+                        <Input
+                          value={inputMessage}
+                          onChange={(e) => setInputMessage(e.target.value)}
+                          placeholder="Type your message..."
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendMessage();
+                            }
+                          }}
+                          disabled={inputDisabled}
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    {inputDisabled && (
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-sm">{inputDisabledMessage}</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+
                 <Button 
                   onClick={handleSendMessage} 
                   disabled={!inputMessage.trim() || isSending || session.status === "pending"}
