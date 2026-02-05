@@ -65,6 +65,13 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const [assignedAgentEmail, setAssignedAgentEmail] = useState<string | null>(null);
   const [handoffStatus, setHandoffStatus] = useState<string | null>(null);
   const handoffStatusRef = useRef<string | null>(null);
+
+  // Rating modal state
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingValue, setRatingValue] = useState<number>(0);
+  const [ratingFeedback, setRatingFeedback] = useState<string>('');
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [submittingRating, setSubmittingRating] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -322,6 +329,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         setHandoffStatus('resolved');
         handoffStatusRef.current = 'resolved';
         setHandoffRequested(false);
+        // show rating modal to the client after resolving
+        setShowRatingModal(true);
         addSystemMessage('You have ended this conversation.');
       } else {
         throw new Error(data.message || 'Failed to resolve session');
@@ -356,6 +365,39 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     } catch (error) {
       console.error('Error reopening handoff (client):', error);
       toast({ title: 'Error', description: 'Failed to reopen chat', variant: 'destructive' });
+    }
+  };
+
+  // Submit rating to backend
+  const submitRating = async () => {
+    if (!handoffSessionId || !sessionId) {
+      toast({ title: 'Error', description: 'Session information missing', variant: 'destructive' });
+      return;
+    }
+
+    if (!ratingValue || ratingValue < 1) {
+      toast({ title: 'Please rate', description: 'Select a rating between 1 and 5', variant: 'destructive' });
+      return;
+    }
+
+    setSubmittingRating(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ flowSessionId: sessionId, rating: ratingValue, feedback: ratingFeedback }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to submit rating');
+
+      setRatingSubmitted(true);
+      setShowRatingModal(false);
+      toast({ title: 'Thanks', description: 'Your rating has been submitted' });
+    } catch (err: any) {
+      console.error('Rating submit error', err);
+      toast({ title: 'Error', description: err.message || 'Failed to submit rating', variant: 'destructive' });
+    } finally {
+      setSubmittingRating(false);
     }
   };
 
@@ -423,6 +465,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             setHandoffStatus('resolved');
             handoffStatusRef.current = 'resolved';
             setHandoffRequested(false);
+            // prompt the client to rate the agent/session
+            setShowRatingModal(true);
             const resolvedMsg = 'This conversation has been marked resolved by the agent.';
             addSystemMessage(resolvedMsg);
             try {
@@ -1806,6 +1850,39 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               </div>
             </div>
           </>
+        )}
+        {showRatingModal && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold mb-2">Rate your experience</h3>
+              <p className="text-sm text-gray-500 mb-4">How would you rate the support you received?</p>
+              <div className="flex justify-center gap-2 mb-4">
+                {[1,2,3,4,5].map(i => (
+                  <button
+                    key={i}
+                    onClick={() => setRatingValue(i)}
+                    className={`text-3xl ${ratingValue >= i ? 'text-yellow-400' : 'text-gray-300'}`}
+                    aria-label={`Rate ${i}`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={ratingFeedback}
+                onChange={(e) => setRatingFeedback(e.target.value)}
+                className="w-full p-2 border rounded mb-4 bg-white dark:bg-gray-800 text-sm"
+                rows={4}
+                placeholder="Optional feedback (what went well, what could improve)"
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowRatingModal(false)}>Cancel</Button>
+                <Button onClick={submitRating} disabled={submittingRating || ratingSubmitted || ratingValue < 1}>
+                  {submittingRating ? 'Submitting...' : 'Submit Rating'}
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </DialogContent>
     </Dialog>
