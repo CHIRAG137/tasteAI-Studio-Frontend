@@ -929,6 +929,20 @@ export const PublicBotChatPage = () => {
 
     setCurrentPausedFor(null);
 
+    // Check for handoff intent in flow mode
+    if (!flowFinished && detectHandoffIntent(messageToSend) && (bot?.human_handoff_enabled || bot?.humanHandoffEnabled)) {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: messageToSend,
+        sender: "user",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+      setInputMessage("");
+      await requestHumanHandoff(messageToSend);
+      return;
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       content: messageToSend,
@@ -1100,6 +1114,17 @@ export const PublicBotChatPage = () => {
 
   const videoBotAvatarUrl = bot?.video_bot_image_url || null;
 
+  // Get appropriate placeholder text
+  const getPlaceholderText = () => {
+    if (isListening) return "Listening... Speak now";
+    if (isProcessing) return "Processing speech...";
+    if (handoffRequested && isConnectedToAgent) return "Message the agent...";
+    if (handoffRequested && !isConnectedToAgent) return "Waiting for agent...";
+    if (flowFinished) return "Ask me anything...";
+    if (canSendText) return "Type your message...";
+    return "Select an option above...";
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1117,21 +1142,28 @@ export const PublicBotChatPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <Card className={`w-full ${bot.is_video_bot ? (showVideoAvatar ? 'max-w-6xl' : 'max-w-2xl') : 'max-w-2xl'} h-[600px] flex flex-col shadow-2xl rounded-xl overflow-hidden transition-all duration-300`}>
         <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0 space-y-0">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 flex-1 min-w-0">
               <Avatar className="h-12 w-12 border-2 border-white flex-shrink-0 mt-1">
                 <AvatarFallback className="bg-white text-blue-600">
-                  <Bot className="h-6 w-6" />
+                  {handoffRequested ? <Headphones className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <CardTitle className="text-xl text-white">{bot.name}</CardTitle>
                   <div className="flex gap-1.5 flex-wrap">
-                    {/* Voice Status Badge */}
+                    {/* Handoff Status Badge */}
+                    {handoffRequested && (
+                      <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 border-orange-200 animate-pulse">
+                        <Headphones className="h-3 w-3 mr-1" />
+                        {isConnectedToAgent ? "Agent Connected" : "Waiting for Agent"}
+                      </Badge>
+                    )}
+
                     <Badge
                       variant="secondary"
                       className={`text-xs ${bot.is_voice_enabled ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}
@@ -1149,7 +1181,6 @@ export const PublicBotChatPage = () => {
                       )}
                     </Badge>
 
-                    {/* Bot Type Badge */}
                     <Badge
                       variant="secondary"
                       className={`text-xs ${bot.is_video_bot ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}
@@ -1167,22 +1198,6 @@ export const PublicBotChatPage = () => {
                       )}
                     </Badge>
 
-                    {/* Primary Purpose Badge */}
-                    <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 border-amber-200">
-                      {bot.primary_purpose}
-                    </Badge>
-
-                    {/* Tone Badge */}
-                    <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-700 border-pink-200">
-                      {bot.conversation_tone}
-                    </Badge>
-
-                    {/* Languages Badge */}
-                    <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200">
-                      {bot.supported_languages}
-                    </Badge>
-
-                    {/* Mode Badge - Q&A or Flow */}
                     {flowFinished ? (
                       <Badge variant="secondary" className="text-xs bg-teal-100 text-teal-700 border-teal-200">
                         Q&A Mode
@@ -1197,6 +1212,12 @@ export const PublicBotChatPage = () => {
                 {bot.description && (
                   <p className="text-sm text-white/90 mt-1.5 line-clamp-2">
                     {bot.description}
+                  </p>
+                )}
+                {handoffRequested && assignedAgentEmail && (
+                  <p className="text-xs text-white/80 mt-1">
+                    <Clock className="inline h-3 w-3 mr-1" />
+                    Agent: {assignedAgentEmail}
                   </p>
                 )}
               </div>
@@ -1745,8 +1766,33 @@ export const PublicBotChatPage = () => {
               <div ref={messagesEndRef} />
             </ScrollArea>
 
-            {/* Input Area - For non-video bots */}
+              {/* Input Area - For non-video bots */}
             <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+              {/* Handoff Status Alerts */}
+              {handoffRequested && !isConnectedToAgent && (
+                <Alert className="mb-2 bg-yellow-50 border-yellow-200">
+                  <Clock className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-800">
+                    Waiting for an agent to respond. You can continue sending messages.
+                  </AlertDescription>
+                  <div className="mt-2">
+                    <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
+                  </div>
+                </Alert>
+              )}
+
+              {handoffRequested && isConnectedToAgent && (
+                <Alert className="mb-2 bg-green-50 border-green-200">
+                  <Headphones className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800">
+                    Connected to agent: {assignedAgentEmail}
+                  </AlertDescription>
+                  <div className="mt-2">
+                    <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
+                  </div>
+                </Alert>
+              )}
+
               {/* TTS Permission Prompt */}
               {showTtsPrompt && bot.is_video_bot && (
                 <Alert className="mb-2 bg-amber-50 border-amber-200">
@@ -1765,28 +1811,42 @@ export const PublicBotChatPage = () => {
                 </Alert>
               )}
 
-              {/* REMOVED: Voice Waveform - replaced with simple status message */}
-              {/* Voice Waveform */}
-              {/* <VoiceWaveform
-                isListening={isListening}
-                audioLevels={audioLevels}
-                showSilenceWarning={showSilenceWarning}
-                silenceCountdown={silenceCountdown}
-              /> */}
-
-              {isListening && (
+              {flowFinished && isListening && (
                 <Alert className="mb-2 bg-blue-50 border-blue-200">
                   <Mic className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800">Listening... Speak now</AlertDescription>
                 </Alert>
               )}
 
-              {/* Processing indicator */}
               {isProcessing && (
                 <Alert className="mb-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <AlertDescription>Processing your speech...</AlertDescription>
                 </Alert>
+              )}
+
+              {handoffStatus === 'resolved' && (
+                <Alert className="mb-2 bg-gray-50 border-gray-200">
+                  <AlertDescription className="text-gray-800">
+                    This conversation has been resolved. You cannot send messages.
+                  </AlertDescription>
+                  <div className="mt-2">
+                    <Button size="sm" onClick={clientReopenHandoff}>Reopen chat</Button>
+                  </div>
+                </Alert>
+              )}
+
+              {!showVideoAvatar && (
+                <div className="mb-3">
+                  <Button
+                    onClick={handleBringBackAvatar}
+                    variant="outline"
+                    className="w-full border-2 border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+                  >
+                    <Video className="h-4 w-4 mr-2" />
+                    Show Video Avatar
+                  </Button>
+                </div>
               )}
 
               <div className="flex gap-2">
@@ -1796,21 +1856,11 @@ export const PublicBotChatPage = () => {
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder={
-                      isListening
-                        ? "Listening... Speak now"
-                        : isProcessing
-                          ? "Processing speech..."
-                          : flowFinished
-                            ? "Ask me anything..."
-                            : (canSendText
-                              ? "Type your message..."
-                              : "Select an option above...")
-                    }
-                    disabled={isLoading || !canSendText || handoffStatus === 'resolved' || isProcessing}
+                    placeholder={getPlaceholderText()}
+                    disabled={isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing}
                     className="pr-12"
                   />
-                  {bot.is_voice_enabled && canSendText && (
+                  {shouldShowMicButton && !handoffRequested && (
                     <Button
                       type="button"
                       size="icon"
@@ -1831,12 +1881,23 @@ export const PublicBotChatPage = () => {
                 </div>
                 <Button
                   onClick={() => handleSendMessage()}
-                  disabled={!inputMessage.trim() || isLoading || !canSendText || isListening || isProcessing}
+                  disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
                   size="icon"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                  className={handoffRequested 
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
+                    : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                  }
                 >
                   <Send className="h-4 w-4" />
                 </Button>
+              </div>
+              <div className="text-center py-2 border-t mt-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Powered by{" "}
+                  <span className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    TasteAI Studio
+                  </span>
+                </p>
               </div>
             </div>
           </CardContent>
