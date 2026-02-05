@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
-import { Bot, Sparkles, User, Globe, Mic, Languages, Brain, MessageSquare, Video, Users } from "lucide-react";
+import { Bot, Sparkles, User, Globe, Mic, Languages, Brain, MessageSquare, Video, Users, Bell, BellRing } from "lucide-react";
 import { BasicInfoSection } from "./BotBuilder/BasicInfoSection";
 import { WebsiteSection } from "./BotBuilder/WebsiteSection";
 import { VoiceSection } from "./BotBuilder/VoiceSection";
@@ -63,6 +63,7 @@ export const BotBuilder = () => {
   const [creatingBot, setCreatingBot] = useState<any | null>(null);
   const [progress, setProgress] = useState(0);
   const [isFetchingBots, setIsFetchingBots] = useState(true);
+  const [notifyOnComplete, setNotifyOnComplete] = useState(false);
   const [filters, setFilters] = useState<BotFilterState>({
     searchQuery: "",
     primaryPurpose: "all",
@@ -252,6 +253,29 @@ export const BotBuilder = () => {
 
     if (isCreatingBot) return; // prevent duplicate clicks
 
+    // Helper function to play notification sound
+    const playNotificationSound = () => {
+      if (notifyOnComplete) {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Pleasant notification tone
+        oscillator.frequency.setValueAtTime(587.33, audioContext.currentTime); // D5
+        oscillator.frequency.setValueAtTime(880, audioContext.currentTime + 0.1); // A5
+        oscillator.frequency.setValueAtTime(1174.66, audioContext.currentTime + 0.2); // D6
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+      }
+    };
+
     try {
       setIsCreatingBot(true);
       setProgress(5);
@@ -329,6 +353,9 @@ export const BotBuilder = () => {
         description: result.message || `${botConfig.name} has been created successfully.`,
       });
 
+      // Play notification sound if enabled
+      playNotificationSound();
+
       // Replace temp bot with real one
       await fetchBots();
 
@@ -343,6 +370,7 @@ export const BotBuilder = () => {
     } finally {
       setIsCreatingBot(false);
       setProgress(0);
+      setNotifyOnComplete(false);
     }
   };
 
@@ -475,14 +503,33 @@ export const BotBuilder = () => {
                   initialEdges={botConfig.conversationFlow?.edges}
                 />
 
-                <div className="flex justify-end pt-6">
+                <div className="flex justify-end pt-6 gap-3 items-center">
+                  {isCreatingBot && (
+                    <Button
+                      type="button"
+                      variant={notifyOnComplete ? "default" : "outline"}
+                      size="lg"
+                      onClick={() => setNotifyOnComplete(!notifyOnComplete)}
+                      className={notifyOnComplete 
+                        ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white animate-pulse" 
+                        : ""}
+                    >
+                      {notifyOnComplete ? (
+                        <BellRing className="w-5 h-5 mr-2" />
+                      ) : (
+                        <Bell className="w-5 h-5 mr-2" />
+                      )}
+                      {notifyOnComplete ? "Will Notify" : "Notify Me"}
+                    </Button>
+                  )}
                   <Button
                     type="submit"
                     size="lg"
                     className="bg-gradient-primary hover:opacity-90 shadow-medium px-8 py-3 text-lg font-semibold"
+                    disabled={isCreatingBot}
                   >
                     <Bot className="w-5 h-5 mr-2" />
-                    Create Bot
+                    {isCreatingBot ? "Creating..." : "Create Bot"}
                   </Button>
                 </div>
               </form>
