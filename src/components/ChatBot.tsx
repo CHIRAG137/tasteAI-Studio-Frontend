@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Send, Bot, User, X, Mic, MicOff, Loader2, Video, Phone, PhoneOff, Volume2, VolumeX, Headphones, Clock } from "lucide-react";
+import { Send, Bot, User, X, Mic, MicOff, Loader2, Video, Phone, PhoneOff, Volume2, VolumeX, Headphones, Clock, ArrowDown } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -72,6 +72,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const [ratingFeedback, setRatingFeedback] = useState<string>('');
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [submittingRating, setSubmittingRating] = useState(false);
+  
+  // Jump to latest state
+  const [showJumpButton, setShowJumpButton] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -739,7 +743,16 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     }
   };
 
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setShowJumpButton(false);
+  };
+
+  const handleScrollAreaScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const element = e.currentTarget;
+    const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
+    setShowJumpButton(!isNearBottom && element.scrollHeight > element.clientHeight);
+  };
 
   useEffect(scrollToBottom, [messages]);
 
@@ -1213,11 +1226,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           </div>
         </DialogHeader>
 
-        {/* Continue with rest of your existing JSX - I'll show key changes for messages rendering */}
-        
         {bot.isVideoBot ? (
           <div className="flex-1 flex overflow-hidden">
-            {/* Your existing video bot layout */}
             {showVideoAvatar && (
               <div className="w-1/2 relative overflow-hidden flex items-center justify-center">
                 {videoBotAvatarUrl ? (
@@ -1383,15 +1393,21 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               </div>
             )}
 
-            <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-white dark:bg-gray-900 transition-all duration-300`}>
-              <ScrollArea className="flex-1 p-4">
-                {messages.length === 0 && (
-                  <div className="text-center text-gray-400 py-8">
-                    <p className="mb-2">Start a conversation!</p>
-                    <p className="text-sm">{flowFinished ? "Type a message or use voice input" : "Follow the flow to continue"}</p>
-                  </div>
-                )}
-                {messages.map(msg => (
+            <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-white dark:bg-gray-900 transition-all duration-300 relative`}>
+              <div 
+                ref={scrollAreaRef}
+                onScroll={handleScrollAreaScroll}
+                className="flex-1 overflow-y-auto overflow-x-hidden p-4"
+              >
+                <div className="space-y-4">
+                  {messages.length === 0 && (
+                    <div className="text-center text-gray-400 py-8">
+                      <p className="mb-2">Start a conversation!</p>
+                      <p className="text-sm">{flowFinished ? "Type a message or use voice input" : "Follow the flow to continue"}</p>
+                    </div>
+                  )}
+                  
+                  {messages.map(msg => (
                   <div
                     key={msg.id}
                     className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
@@ -1432,7 +1448,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                         })}
                       </span>
 
-                      {/* Your existing confirmation and branch option buttons */}
                       {msg.showConfirmationButtons &&
                         isAwaitingInput &&
                         msg.sender === "bot" &&
@@ -1498,8 +1513,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     </div>
                   </div>
                 )}
+                
                 <div ref={messagesEndRef} />
-              </ScrollArea>
+                </div>
+              </div>
 
               <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
                 {handoffRequested && !isConnectedToAgent && (
@@ -1636,10 +1653,21 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             </div>
           </div>
         ) : (
-          /* Your existing regular chat view with same message rendering changes */
           <>
-            <ScrollArea className="flex-1 p-4">
-              {messages.map(msg => (
+            <div 
+              ref={scrollAreaRef}
+              onScroll={handleScrollAreaScroll}
+              className="flex-1 overflow-y-auto overflow-x-hidden p-4"
+            >
+              <div className="space-y-4">
+                {messages.length === 0 && (
+                  <div className="text-center text-gray-400 py-8">
+                    <p className="mb-2">Start a conversation!</p>
+                    <p className="text-sm">{flowFinished ? "Type a message or use voice input" : "Follow the flow to continue"}</p>
+                  </div>
+                )}
+                
+                {messages.map(msg => (
                 <div
                   key={msg.id}
                   className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
@@ -1745,8 +1773,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   </div>
                 </div>
               )}
+              
               <div ref={messagesEndRef} />
-            </ScrollArea>
+              </div>
+            </div>
 
             <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
               {handoffRequested && !isConnectedToAgent && (
@@ -1796,6 +1826,20 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     <Button size="sm" onClick={clientReopenHandoff}>Reopen chat</Button>
                   </div>
                 </Alert>
+              )}
+
+              {/* Jump to Latest Button - shown when not at bottom */}
+              {showJumpButton && (
+                <div className="mb-3 flex justify-center">
+                  <Button
+                    onClick={scrollToBottom}
+                    variant="outline"
+                    className="flex items-center gap-2 shadow-md"
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                    Jump to Latest Message
+                  </Button>
+                </div>
               )}
 
               <div className="flex gap-2">

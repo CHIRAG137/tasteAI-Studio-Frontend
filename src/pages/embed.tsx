@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Send, Bot, User, Mic, MicOff, Video, Loader2, X, PhoneOff, Volume2, VolumeX, Headphones, Clock } from "lucide-react";
+import { Send, Bot, User, Mic, MicOff, Video, Loader2, X, PhoneOff, Volume2, VolumeX, Headphones, Clock, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -41,6 +41,11 @@ export default function EmbedChat() {
   const [isMuted, setIsMuted] = useState(true);
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  
+  // Jump to latest state
+  const [showJumpButton, setShowJumpButton] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [handoffSessionId, setHandoffSessionId] = useState<string | null>(null);
 
@@ -668,6 +673,13 @@ export default function EmbedChat() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setShowJumpButton(false);
+  };
+
+  const handleScrollAreaScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const element = e.currentTarget;
+    const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
+    setShowJumpButton(!isNearBottom && element.scrollHeight > element.clientHeight);
   };
 
   useEffect(scrollToBottom, [messages]);
@@ -1423,7 +1435,6 @@ export default function EmbedChat() {
         )}
 
         {/* Chat Header */}
-        {/* Chat Header */}
         <div
           className={`p-4 border-b transition-all duration-200 ${customization?.useChatCustomCSS ? "embed-chat-header" : ""
             }`}
@@ -1496,8 +1507,12 @@ export default function EmbedChat() {
       </div>
 
       {/* Scrollable Messages Area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        <div className="p-4 space-y-4 min-h-full">
+      <div 
+        ref={scrollAreaRef}
+        onScroll={handleScrollAreaScroll}
+        className="flex-1 overflow-y-auto overflow-x-hidden"
+      >
+        <div className="p-4 space-y-4 min-h-full flex flex-col">
           {messages.length === 0 && !isPreview && (
             <div className="text-center text-gray-400 py-8">
               <p className="text-sm">Start a conversation!</p>
@@ -1637,6 +1652,7 @@ export default function EmbedChat() {
               </div>
             </div>
           )}
+          
           <div ref={messagesEndRef} />
         </div>
       </div>
@@ -1647,6 +1663,20 @@ export default function EmbedChat() {
           }`}
         style={getHeaderStyle()}
       >
+        {/* Jump to Latest Button - shown when not at bottom */}
+        {showJumpButton && (
+          <div className="mb-3 flex justify-center">
+            <Button
+              onClick={scrollToBottom}
+              variant="outline"
+              className="flex items-center gap-2 shadow-md"
+            >
+              <ArrowDown className="h-4 w-4" />
+              Jump to Latest Message
+            </Button>
+          </div>
+        )}
+
         {/* TTS Permission Prompt */}
         {showTtsPrompt && botData?.is_video_bot && (
           <Alert className="mb-2 bg-amber-50 border-amber-200">

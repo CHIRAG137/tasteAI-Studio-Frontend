@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Bot, User, Send, Mic, MicOff, Video, Loader2, PhoneOff, Volume2, VolumeX, Headphones, Clock } from "lucide-react";
+import { Bot, User, Send, Mic, MicOff, Video, Loader2, PhoneOff, Volume2, VolumeX, Headphones, Clock, ArrowDown } from "lucide-react";
 // TODO: import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
 // TODO: import { VoiceWaveform } from "@/components/VoiceWaveform";
@@ -39,6 +39,11 @@ export const PublicBotChatPage = () => {
   const [isMuted, setIsMuted] = useState(true);
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  
+  // Jump to latest state
+  const [showJumpButton, setShowJumpButton] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // const audioRef = useRef<HTMLAudioElement>(null);
@@ -646,7 +651,16 @@ export const PublicBotChatPage = () => {
   //   stopTimeout: 5,
   // });
 
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setShowJumpButton(false);
+  };
+
+  const handleScrollAreaScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const element = e.currentTarget;
+    const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
+    setShowJumpButton(!isNearBottom && element.scrollHeight > element.clientHeight);
+  };
 
   useEffect(scrollToBottom, [messages]);
   useEffect(() => { inputRef.current?.focus(); }, []);
@@ -1402,9 +1416,13 @@ export const PublicBotChatPage = () => {
             )}
 
             {/* Right Side - Chat Interface */}
-            <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-white dark:bg-gray-900 transition-all duration-300`}>
+            <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-white dark:bg-gray-900 transition-all duration-300 relative`}>
               {/* Chat Messages */}
-              <ScrollArea className="flex-1 p-4">
+              <ScrollArea 
+                ref={scrollAreaRef}
+                onScroll={handleScrollAreaScroll}
+                className="flex-1 p-4"
+              >
                 {messages.length === 0 && (
                   <div className="text-center text-gray-400 py-8">
                     <p className="mb-2">Start a conversation!</p>
@@ -1514,6 +1532,20 @@ export const PublicBotChatPage = () => {
                     </div>
                   </div>
                 )}
+                
+                {/* Jump to Latest Button - displayed in center of message area */}
+                {showJumpButton && (
+                  <div className="flex justify-center my-4">
+                    <Button
+                      onClick={scrollToBottom}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center gap-2"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                      Jump to Latest
+                    </Button>
+                  </div>
+                )}
+                
                 <div ref={messagesEndRef} />
               </ScrollArea>
 
@@ -1660,8 +1692,12 @@ export const PublicBotChatPage = () => {
           </div>
         ) : (
           /* Regular Chat View */
-          <CardContent className="flex-1 flex flex-col p-0">
-            <ScrollArea className="flex-1 p-4">
+          <CardContent className="flex-1 flex flex-col p-0 relative">
+            <ScrollArea 
+              ref={scrollAreaRef}
+              onScroll={handleScrollAreaScroll}
+              className="flex-1 p-4"
+            >
               {messages.length === 0 && (
                 <div className="text-center text-gray-400 py-8">
                   <p className="mb-2">Start a conversation!</p>
@@ -1763,6 +1799,20 @@ export const PublicBotChatPage = () => {
                   </div>
                 </div>
               )}
+              
+              {/* Jump to Latest Button - displayed in center of message area */}
+              {showJumpButton && (
+                <div className="flex justify-center my-4">
+                  <Button
+                    onClick={scrollToBottom}
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center gap-2"
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                    Jump to Latest
+                  </Button>
+                </div>
+              )}
+              
               <div ref={messagesEndRef} />
             </ScrollArea>
 
