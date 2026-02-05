@@ -15,13 +15,14 @@ import { useToast } from "@/components/ui/use-toast";
 interface Message {
   id: string;
   content: string;
-  sender: "user" | "bot";
+  sender: "user" | "bot" | "agent";
   timestamp: Date;
   showConfirmationButtons?: boolean;
   showBranchOptions?: boolean;
   branchOptions?: string[];
   selectedBranch?: string;
   audioUrl?: string;
+  isSystemMessage?: boolean;
 }
 
 export const PublicBotChatPage = () => {
@@ -334,9 +335,105 @@ export const PublicBotChatPage = () => {
   const [handoffStatus, setHandoffStatus] = useState<string | null>(null);
   const handoffStatusRef = useRef<string | null>(null);
 
+  // Rating modal state
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingValue, setRatingValue] = useState<number>(0);
+  const [ratingFeedback, setRatingFeedback] = useState<string>('');
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [submittingRating, setSubmittingRating] = useState(false);
+
+  // Human handoff keywords detection
+  const detectHandoffIntent = (message: string): boolean => {
+    const handoffKeywords = [
+      'speak to human', 'talk to agent', 'live agent', 'customer service',
+      'representative', 'real person', 'human support', 'talk to someone',
+      'speak to someone', 'human help', 'agent',
+    ];
+    const lowerMessage = message.toLowerCase();
+    return handoffKeywords.some(keyword => lowerMessage.includes(keyword));
+  };
+
+  // Add system message helper
+  const addSystemMessage = async (content: string, messageType?: string) => {
+    const systemMessage: Message = {
+      id: `system-${Date.now()}`,
+      content,
+      sender: "bot",
+      timestamp: new Date(),
+      isSystemMessage: true,
+    };
+    setMessages((prev) => [...prev, systemMessage]);
+
+    // Save to flow session
+    if (sessionId) {
+      try {
+        await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: content,
+              messageType: messageType || "system",
+              handoffSessionId: handoffSessionId || undefined,
+            }),
+          }
+        );
+      } catch (error) {
+        console.error("Error saving system message to flow session:", error);
+      }
+    }
+  };
+
+  // Submit rating to backend
+  const submitRating = async () => {
+    if (!handoffSessionId || !sessionId) {
+      toast({ title: 'Error', description: 'Session information missing', variant: 'destructive' });
+      return;
+    }
+
+    if (!ratingValue || ratingValue < 1) {
+      toast({ title: 'Please rate', description: 'Select a rating between 1 and 5', variant: 'destructive' });
+      return;
+    }
+
+    setSubmittingRating(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ flowSessionId: sessionId, rating: ratingValue, feedback: ratingFeedback }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to submit rating');
+
+      setRatingSubmitted(true);
+      setShowRatingModal(false);
+      toast({ title: 'Thanks', description: 'Your rating has been submitted' });
+    } catch (err: any) {
+      console.error('Rating submit error', err);
+      toast({ title: 'Error', description: err.message || 'Failed to submit rating', variant: 'destructive' });
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
   // Handle voice question for video bot in Q&A mode (auto-submit)
   const handleVoiceQuestion = async (question: string) => {
     if (!question.trim() || isLoading) return;
+
+    // Check for handoff intent in voice mode
+    if (flowFinished && detectHandoffIntent(question) && (bot?.human_handoff_enabled || bot?.humanHandoffEnabled)) {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: question,
+        sender: "user",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+      await requestHumanHandoff(question);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -346,6 +443,13 @@ export const PublicBotChatPage = () => {
     };
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
+
+    // If in handoff mode, send to agent
+    if (handoffRequested && handoffSessionId) {
+      await sendMessageToAgent(question);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch(
@@ -426,7 +530,9 @@ export const PublicBotChatPage = () => {
         setHandoffStatus('resolved');
         handoffStatusRef.current = 'resolved';
         setHandoffRequested(false);
-        setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: 'You have ended this conversation.', sender: 'bot', timestamp: new Date() }]);
+        // Show rating modal
+        setShowRatingModal(true);
+        await addSystemMessage('You have ended this conversation.', 'handoff_client_resolved');
       } else {
         throw new Error(data.message || 'Failed to resolve session');
       }
@@ -453,7 +559,7 @@ export const PublicBotChatPage = () => {
         setHandoffRequested(true);
         setHandoffStatus('pending');
         handoffStatusRef.current = 'pending';
-        setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: 'You have reopened the conversation. Waiting for an agent to respond.', sender: 'bot', timestamp: new Date() }]);
+        await addSystemMessage('You have reopened the conversation. Waiting for an agent to respond.', 'handoff_client_reopened');
       } else {
         throw new Error(data.message || 'Failed to reopen session');
       }
@@ -466,20 +572,17 @@ export const PublicBotChatPage = () => {
   // Request human handoff
   const requestHumanHandoff = async (userQuestion: string) => {
     if (!bot?.human_handoff_enabled && !bot?.humanHandoffEnabled) {
-      const message = "Human support is not available for this bot.";
-      setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: message, sender: 'bot', timestamp: new Date() }]);
+      await addSystemMessage("Human support is not available for this bot.", "handoff_unavailable");
       return;
     }
 
     if (handoffRequested) {
-      const message = "Your request for human support has already been submitted.";
-      setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: message, sender: 'bot', timestamp: new Date() }]);
+      await addSystemMessage("Your request for human support has already been submitted.", "handoff_duplicate_request");
       return;
     }
 
     setHandoffRequested(true);
-    const connectingMessage = "Connecting you with a human agent...";
-    setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: connectingMessage, sender: 'bot', timestamp: new Date() }]);
+    await addSystemMessage("Connecting you with a human agent...", "handoff_connecting");
 
     try {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/request`, {
@@ -493,13 +596,17 @@ export const PublicBotChatPage = () => {
         setAssignedAgentEmail(data.result.agent?.email || null);
         setIsConnectedToAgent(!!data.result.agent?.isOnline);
         const agentStatusMessage = data.result.message;
-        setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: agentStatusMessage, sender: 'bot', timestamp: new Date() }]);
+        await addSystemMessage(agentStatusMessage, "handoff_agent_assigned");
+        
+        if (!data.result.agent?.isOnline) {
+          await addSystemMessage("The agent is currently offline but will respond as soon as possible. You can continue asking questions or close this chat.", "handoff_agent_offline");
+        }
       } else {
         throw new Error(data.message || 'Failed to request human support');
       }
     } catch (err) {
       console.error('Handoff request error:', err);
-      setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: 'Failed to connect with a human agent. Please try again later.', sender: 'bot', timestamp: new Date() }]);
+      await addSystemMessage('Failed to connect with a human agent. Please try again later.', 'handoff_error');
       setHandoffRequested(false);
     }
   };
@@ -688,7 +795,7 @@ export const PublicBotChatPage = () => {
             .map((m: any) => ({
               id: `agent-${m.timestamp || Date.now()}`,
               content: m.message,
-              sender: 'bot' as const,
+              sender: 'agent' as const,
               timestamp: new Date(m.timestamp),
             }));
 
@@ -701,21 +808,24 @@ export const PublicBotChatPage = () => {
           const status = data.result.status;
           const assignedAgent = data.result.assignedAgent;
 
+          // When agent accepts (active)
           if (status === 'active' && handoffStatusRef.current !== 'active') {
             setHandoffStatus('active');
             handoffStatusRef.current = 'active';
             setIsConnectedToAgent(true);
             if (assignedAgent?.email) setAssignedAgentEmail(assignedAgent.email);
             const agentMsg = `A human agent (${assignedAgent?.email || 'agent'}) has accepted your request.`;
-            setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: agentMsg, sender: 'bot', timestamp: new Date() }]);
+            await addSystemMessage(agentMsg, 'handoff_accepted');
           }
 
+          // When agent resolves
           if (status === 'resolved' && handoffStatusRef.current !== 'resolved') {
             setHandoffStatus('resolved');
             handoffStatusRef.current = 'resolved';
             setHandoffRequested(false);
-            const resolvedMsg = 'This conversation has been marked resolved by the agent.';
-            setMessages(prev => [...prev, { id: `sys-${Date.now()}`, content: resolvedMsg, sender: 'bot', timestamp: new Date() }]);
+            // Show rating modal
+            setShowRatingModal(true);
+            await addSystemMessage('This conversation has been marked resolved by the agent.', 'handoff_resolved');
           }
         }
       } catch (error) {
@@ -731,6 +841,20 @@ export const PublicBotChatPage = () => {
     const question = inputMessage.trim();
     if (!question || isLoading) return;
 
+    // Check for handoff intent
+    if (flowFinished && detectHandoffIntent(question) && (bot?.human_handoff_enabled || bot?.humanHandoffEnabled)) {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: question,
+        sender: "user",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+      setInputMessage("");
+      await requestHumanHandoff(question);
+      return;
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       content: question,
@@ -740,6 +864,13 @@ export const PublicBotChatPage = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
     setIsLoading(true);
+
+    // If in handoff mode, send to agent
+    if (handoffRequested && handoffSessionId) {
+      await sendMessageToAgent(question);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch(
@@ -1262,30 +1393,38 @@ export const PublicBotChatPage = () => {
                 {messages.map(msg => (
                   <div
                     key={msg.id}
-                    className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"
-                      }`}
+                    className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    {msg.sender === "bot" && (
+                    {(msg.sender === "bot" || msg.sender === "agent") && (
                       <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                          <Bot className="h-5 w-5" />
+                        <AvatarFallback className={msg.sender === "agent" 
+                          ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                          : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                        }>
+                          {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                         </AvatarFallback>
                       </Avatar>
                     )}
                     <div className={`flex flex-col gap-1 ${msg.sender === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
                       {msg.content && (
                         <div
-                          className={`rounded-lg p-3 ${msg.sender === "user"
-                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                            : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                            }`}
+                          className={`rounded-lg p-3 ${
+                            msg.sender === "user"
+                              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                              : msg.sender === "agent"
+                              ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                              : msg.isSystemMessage
+                              ? "bg-orange-100 text-orange-900 border border-orange-200"
+                              : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                          }`}
                         >
                           {typeof msg.content === "string"
                             ? msg.content
                             : JSON.stringify(msg.content)}
                         </div>
                       )}
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        {msg.sender === "agent" && <Headphones className="h-3 w-3" />}
                         {msg.timestamp.toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit"
@@ -1717,6 +1856,41 @@ export const PublicBotChatPage = () => {
           </span>
         </p>
       </div>
+
+      {/* Rating Modal */}
+      {showRatingModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
+            <h3 className="text-lg font-semibold mb-2">Rate your experience</h3>
+            <p className="text-sm text-gray-500 mb-4">How would you rate the support you received?</p>
+            <div className="flex justify-center gap-2 mb-4">
+              {[1,2,3,4,5].map(i => (
+                <button
+                  key={i}
+                  onClick={() => setRatingValue(i)}
+                  className={`text-3xl ${ratingValue >= i ? 'text-yellow-400' : 'text-gray-300'}`}
+                  aria-label={`Rate ${i}`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={ratingFeedback}
+              onChange={(e) => setRatingFeedback(e.target.value)}
+              className="w-full p-2 border rounded mb-4 bg-white dark:bg-gray-800 text-sm"
+              rows={4}
+              placeholder="Optional feedback (what went well, what could improve)"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowRatingModal(false)}>Cancel</Button>
+              <Button onClick={submitRating} disabled={submittingRating || ratingSubmitted || ratingValue < 1}>
+                {submittingRating ? 'Submitting...' : 'Submit Rating'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
