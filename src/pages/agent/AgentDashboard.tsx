@@ -1276,11 +1276,6 @@ const SessionCard = ({
                 <Clock className="w-3 h-3" />
                 {formatTime(session.requestedAt)}
               </span>
-              {!session.isCurrentAssignee && (
-                <Badge variant="outline" className="text-xs bg-muted">
-                  Not Assigned
-                </Badge>
-              )}
             </div>
           </div>
 

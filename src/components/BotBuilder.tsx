@@ -398,6 +398,10 @@ export const BotBuilder = () => {
     navigate(`/sessions/${id}`);
   };
 
+  const handleAnalytics = (id: string) => {
+    navigate(`/analytics/${id}`);
+  };
+
   const handleDelete = async (id: string) => {
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${id}`, {
@@ -579,6 +583,7 @@ export const BotBuilder = () => {
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onSessions={handleSessions}
+                    onAnalytics={handleAnalytics}
                   />
                 ))
               }
