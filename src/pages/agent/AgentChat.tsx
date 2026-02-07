@@ -921,6 +921,19 @@ const AgentChat = () => {
         {/* Messages Card */}
         <Card className="flex-1 flex flex-col bg-white/80 backdrop-blur-sm overflow-hidden relative">
           <ScrollArea className="flex-1 p-4">
+            {/* Jump to Latest Button */}
+            {!shouldAutoScroll && (
+              <button
+                onClick={() => {
+                  scrollToBottom();
+                  setShouldAutoScroll(true);
+                }}
+                className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-all duration-200 animate-in fade-in slide-in-from-bottom-2"
+              >
+                <ArrowDown className="w-4 h-4" />
+                <span className="text-sm font-medium">Jump to latest</span>
+              </button>
+            )}
             {preHandoffMessages.length === 0 && messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
                 <Clock className="w-12 h-12 text-muted-foreground mb-4" />
