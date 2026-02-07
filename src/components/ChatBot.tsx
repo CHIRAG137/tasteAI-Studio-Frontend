@@ -64,6 +64,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const [isConnectedToAgent, setIsConnectedToAgent] = useState(false);
   const [assignedAgentEmail, setAssignedAgentEmail] = useState<string | null>(null);
   const [handoffStatus, setHandoffStatus] = useState<string | null>(null);
+  const [isHandoffLoading, setIsHandoffLoading] = useState(false);
   const handoffStatusRef = useRef<string | null>(null);
 
   // Rating modal state
@@ -170,6 +171,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     }
 
     setHandoffRequested(true);
+    setIsHandoffLoading(true);
     const connectingMessage = "Connecting you with a human agent...";
     addSystemMessage(connectingMessage);
     
@@ -212,6 +214,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         setHandoffSessionId(data.result.handoffSession._id);
         setAssignedAgentEmail(data.result.agent.email);
         setIsConnectedToAgent(data.result.agent.isOnline);
+        setIsHandoffLoading(false);
 
         const agentStatusMessage = data.result.message;
         addSystemMessage(agentStatusMessage);
@@ -263,6 +266,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       console.error("Handoff request error:", error);
       const errorMessage = "Failed to connect with a human agent. Please try again later.";
       addSystemMessage(errorMessage);
+      setIsHandoffLoading(false);
       
       // Save error message to flow session
       try {
@@ -1513,6 +1517,19 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     </div>
                   </div>
                 )}
+                {isHandoffLoading && (
+                  <div className="flex gap-3 mb-4">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white">
+                        <Headphones className="h-5 w-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="bg-blue-100 dark:bg-blue-900 rounded-lg p-3 flex items-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                      <span className="text-sm text-blue-700 font-medium">Connecting to an agent...</span>
+                    </div>
+                  </div>
+                )}
                 
                 <div ref={messagesEndRef} />
                 </div>
@@ -1520,16 +1537,29 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
               <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
                 {handoffRequested && !isConnectedToAgent && (
-                  <Alert className="mb-2 bg-yellow-50 border-yellow-200">
-                    <Clock className="h-4 w-4 text-yellow-600" />
-                    <AlertDescription className="text-yellow-800">
-                      Waiting for an agent to respond. You can continue sending messages.
-                    </AlertDescription>
+                <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                  {isHandoffLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                      <AlertDescription className="text-blue-800">
+                        Searching for an available agent...
+                      </AlertDescription>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-yellow-800">
+                        Waiting for an agent to respond. You can continue sending messages.
+                      </AlertDescription>
+                    </>
+                  )}
+                  {!isHandoffLoading && (
                     <div className="mt-2">
                       <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
                     </div>
-                  </Alert>
-                )}
+                  )}
+                </Alert>
+              )}
 
                 {handoffRequested && isConnectedToAgent && (
                   <Alert className="mb-2 bg-green-50 border-green-200">
@@ -1578,7 +1608,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   </Alert>
                 )}
 
-                {isProcessing && (
+                {isProcessing && !isHandoffLoading && (
                   <Alert className="mb-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <AlertDescription>Processing your speech...</AlertDescription>
@@ -1606,7 +1636,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder={getPlaceholderText()}
-                      disabled={isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing}
+                      disabled={isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing}
                       className="pr-12"
                     />
                     {shouldShowMicButton && !handoffRequested && (
@@ -1630,7 +1660,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   </div>
                   <Button
                     onClick={() => handleSendMessage()}
-                    disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
+                    disabled={!inputMessage.trim() || isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
                     size="icon"
                     className={handoffRequested 
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
@@ -1773,6 +1803,19 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   </div>
                 </div>
               )}
+              {isHandoffLoading && (
+                <div className="flex gap-3 mb-4">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white">
+                      <Headphones className="h-5 w-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="bg-blue-100 dark:bg-blue-900 rounded-lg p-3 flex items-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                    <span className="text-sm text-blue-700 font-medium">Connecting to an agent...</span>
+                  </div>
+                </div>
+              )}
               
               <div ref={messagesEndRef} />
               </div>
@@ -1780,14 +1823,27 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
             <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
               {handoffRequested && !isConnectedToAgent && (
-                <Alert className="mb-2 bg-yellow-50 border-yellow-200">
-                  <Clock className="h-4 w-4 text-yellow-600" />
-                  <AlertDescription className="text-yellow-800">
-                    Waiting for an agent to respond. You can continue sending messages.
-                  </AlertDescription>
-                  <div className="mt-2">
-                    <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
-                  </div>
+                <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                  {isHandoffLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                      <AlertDescription className="text-blue-800">
+                        Searching for an available agent...
+                      </AlertDescription>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-yellow-800">
+                        Waiting for an agent to respond. You can continue sending messages.
+                      </AlertDescription>
+                    </>
+                  )}
+                  {!isHandoffLoading && (
+                    <div className="mt-2">
+                      <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
+                    </div>
+                  )}
                 </Alert>
               )}
 
@@ -1810,7 +1866,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 </Alert>
               )}
 
-              {isProcessing && (
+              {isProcessing && !isHandoffLoading && (
                 <Alert className="mb-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <AlertDescription>Processing your speech...</AlertDescription>
@@ -1850,7 +1906,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder={getPlaceholderText()}
-                    disabled={isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing}
+                    disabled={isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing}
                     className="pr-12"
                   />
                   {bot.voiceEnabled && canSendText && !handoffRequested && (

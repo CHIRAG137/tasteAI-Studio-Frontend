@@ -338,6 +338,7 @@ export const PublicBotChatPage = () => {
   const [isConnectedToAgent, setIsConnectedToAgent] = useState(false);
   const [assignedAgentEmail, setAssignedAgentEmail] = useState<string | null>(null);
   const [handoffStatus, setHandoffStatus] = useState<string | null>(null);
+  const [isHandoffLoading, setIsHandoffLoading] = useState(false);
   const handoffStatusRef = useRef<string | null>(null);
 
   // Rating modal state
@@ -587,6 +588,7 @@ export const PublicBotChatPage = () => {
     }
 
     setHandoffRequested(true);
+    setIsHandoffLoading(true);
     await addSystemMessage("Connecting you with a human agent...", "handoff_connecting");
 
     try {
@@ -600,6 +602,7 @@ export const PublicBotChatPage = () => {
         setHandoffSessionId(data.result.handoffSession._id);
         setAssignedAgentEmail(data.result.agent?.email || null);
         setIsConnectedToAgent(!!data.result.agent?.isOnline);
+        setIsHandoffLoading(false);
         const agentStatusMessage = data.result.message;
         await addSystemMessage(agentStatusMessage, "handoff_agent_assigned");
         
@@ -612,6 +615,7 @@ export const PublicBotChatPage = () => {
     } catch (err) {
       console.error('Handoff request error:', err);
       await addSystemMessage('Failed to connect with a human agent. Please try again later.', 'handoff_error');
+      setIsHandoffLoading(false);
       setHandoffRequested(false);
     }
   };
@@ -1523,12 +1527,28 @@ export const PublicBotChatPage = () => {
                 {isLoading && (
                   <div className="flex gap-3 mb-4">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                        <Bot className="h-5 w-5" />
+                      <AvatarFallback className={handoffRequested 
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                        : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                      }>
+                        {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                       </AvatarFallback>
                     </Avatar>
                     <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
                       <Loader2 className="h-5 w-5 animate-spin" />
+                    </div>
+                  </div>
+                )}
+                {isHandoffLoading && (
+                  <div className="flex gap-3 mb-4">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white">
+                        <Headphones className="h-5 w-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="bg-blue-100 dark:bg-blue-900 rounded-lg p-3 flex items-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                      <span className="text-sm text-blue-700 font-medium">Connecting to an agent...</span>
                     </div>
                   </div>
                 )}
@@ -1588,7 +1608,7 @@ export const PublicBotChatPage = () => {
                 )}
 
                 {/* Processing indicator */}
-                {isProcessing && (
+                {isProcessing && !isHandoffLoading && (
                   <Alert className="mb-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <AlertDescription>Processing your speech...</AlertDescription>
@@ -1596,12 +1616,25 @@ export const PublicBotChatPage = () => {
                 )}
 
                 {handoffRequested && !isConnectedToAgent && (
-                  <Alert className="mb-2 bg-yellow-50 border-yellow-200">
-                    <Clock className="h-4 w-4 text-yellow-600" />
-                    <AlertDescription className="text-yellow-800 text-sm">Waiting for an agent to respond. You can continue sending messages.</AlertDescription>
-                    <div className="mt-2">
-                      <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
-                    </div>
+                  <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                    {isHandoffLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                        <AlertDescription className="text-blue-800">
+                          Searching for an available agent...
+                        </AlertDescription>
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="h-4 w-4 text-yellow-600" />
+                        <AlertDescription className="text-yellow-800 text-sm">Waiting for an agent to respond. You can continue sending messages.</AlertDescription>
+                      </>
+                    )}
+                    {!isHandoffLoading && (
+                      <div className="mt-2">
+                        <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
+                      </div>
+                    )}
                   </Alert>
                 )}
 
@@ -1656,7 +1689,7 @@ export const PublicBotChatPage = () => {
                                 ? "Type your message..."
                                 : "Select an option above...")
                       }
-                      disabled={isLoading || !canSendText || handoffStatus === 'resolved' || isProcessing}
+                      disabled={isLoading || isHandoffLoading || !canSendText || handoffStatus === 'resolved' || isProcessing}
                       className="pr-12"
                     />
                     {shouldShowMicButton && canSendText && (
@@ -1680,9 +1713,12 @@ export const PublicBotChatPage = () => {
                   </div>
                   <Button
                     onClick={() => handleSendMessage()}
-                    disabled={!inputMessage.trim() || isLoading || !canSendText || isListening || isProcessing}
+                    disabled={!inputMessage.trim() || isLoading || isHandoffLoading || !canSendText || isListening || isProcessing}
                     size="icon"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                    className={handoffRequested 
+                      ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
+                      : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                    }
                   >
                     <Send className="h-4 w-4" />
                   </Button>
@@ -1790,12 +1826,28 @@ export const PublicBotChatPage = () => {
               {isLoading && (
                 <div className="flex gap-3 mb-4">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                      <Bot className="h-5 w-5" />
+                    <AvatarFallback className={handoffRequested 
+                      ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                      : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                    }>
+                      {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                     </AvatarFallback>
                   </Avatar>
                   <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
                     <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
+                </div>
+              )}
+              {isHandoffLoading && (
+                <div className="flex gap-3 mb-4">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white">
+                      <Headphones className="h-5 w-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="bg-blue-100 dark:bg-blue-900 rounded-lg p-3 flex items-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                    <span className="text-sm text-blue-700 font-medium">Connecting to an agent...</span>
                   </div>
                 </div>
               )}
@@ -1820,14 +1872,27 @@ export const PublicBotChatPage = () => {
             <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
               {/* Handoff Status Alerts */}
               {handoffRequested && !isConnectedToAgent && (
-                <Alert className="mb-2 bg-yellow-50 border-yellow-200">
-                  <Clock className="h-4 w-4 text-yellow-600" />
-                  <AlertDescription className="text-yellow-800">
-                    Waiting for an agent to respond. You can continue sending messages.
-                  </AlertDescription>
-                  <div className="mt-2">
-                    <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
-                  </div>
+                <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                  {isHandoffLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                      <AlertDescription className="text-blue-800">
+                        Searching for an available agent...
+                      </AlertDescription>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-yellow-800">
+                        Waiting for an agent to respond. You can continue sending messages.
+                      </AlertDescription>
+                    </>
+                  )}
+                  {!isHandoffLoading && (
+                    <div className="mt-2">
+                      <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
+                    </div>
+                  )}
                 </Alert>
               )}
 
@@ -1868,7 +1933,7 @@ export const PublicBotChatPage = () => {
                 </Alert>
               )}
 
-              {isProcessing && (
+              {isProcessing && !isHandoffLoading && (
                 <Alert className="mb-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <AlertDescription>Processing your speech...</AlertDescription>
@@ -1907,7 +1972,7 @@ export const PublicBotChatPage = () => {
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder={getPlaceholderText()}
-                    disabled={isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing}
+                    disabled={isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing}
                     className="pr-12"
                   />
                   {shouldShowMicButton && !handoffRequested && (
@@ -1931,7 +1996,7 @@ export const PublicBotChatPage = () => {
                 </div>
                 <Button
                   onClick={() => handleSendMessage()}
-                  disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
+                  disabled={!inputMessage.trim() || isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
                   size="icon"
                   className={handoffRequested 
                     ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"

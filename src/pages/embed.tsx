@@ -212,6 +212,7 @@ export default function EmbedChat() {
     }
 
     setHandoffRequested(true);
+    setIsHandoffLoading(true);
     await addSystemMessage("Connecting you with a human agent...", "handoff_connecting");
 
     try {
@@ -225,6 +226,7 @@ export default function EmbedChat() {
         setHandoffSessionId(data.result.handoffSession._id);
         setAssignedAgentEmail(data.result.agent?.email || null);
         setIsConnectedToAgent(!!data.result.agent?.isOnline);
+        setIsHandoffLoading(false);
         const agentStatusMessage = data.result.message;
         await addSystemMessage(agentStatusMessage, "handoff_agent_assigned");
         
@@ -237,6 +239,7 @@ export default function EmbedChat() {
     } catch (err) {
       console.error('Handoff request error:', err);
       await addSystemMessage('Failed to connect with a human agent. Please try again later.', 'handoff_error');
+      setIsHandoffLoading(false);
       setHandoffRequested(false);
     }
   };
@@ -359,6 +362,7 @@ export default function EmbedChat() {
   const [isConnectedToAgent, setIsConnectedToAgent] = useState(false);
   const [assignedAgentEmail, setAssignedAgentEmail] = useState<string | null>(null);
   const [handoffStatus, setHandoffStatus] = useState<string | null>(null);
+  const [isHandoffLoading, setIsHandoffLoading] = useState(false);
   const handoffStatusRef = useRef<string | null>(null);
 
   // Rating modal state
@@ -443,47 +447,6 @@ export default function EmbedChat() {
       setSubmittingRating(false);
     }
   };
-
-  // COMMENTED OUT - Old API-based TTS function
-  // Function to convert text to speech and play it
-  // const playTextToSpeech = async (text: string) => {
-  //   if (!botData?.is_video_bot || !botData?.is_voice_enabled) return;
-
-  //   try {
-  //     setIsSpeaking(true);
-  //     const response = await fetch(
-  //       `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
-  //       {
-  //         method: "POST",
-  //         headers: { "Content-Type": "application/json" },
-  //         body: JSON.stringify({ text, voiceId: botData.voice_id }),
-  //       }
-  //     );
-
-  //     if (!response.ok) {
-  //       throw new Error("Failed to generate speech");
-  //     }
-
-  //     const audioBlob = await response.blob();
-  //     const audioUrl = URL.createObjectURL(audioBlob);
-
-  //     if (audioRef.current) {
-  //       audioRef.current.src = audioUrl;
-  //       audioRef.current.onended = () => {
-  //         setIsSpeaking(false);
-  //         URL.revokeObjectURL(audioUrl);
-  //       };
-  //       audioRef.current.onerror = () => {
-  //         setIsSpeaking(false);
-  //         URL.revokeObjectURL(audioUrl);
-  //       };
-  //       await audioRef.current.play();
-  //     }
-  //   } catch (error) {
-  //     console.error("TTS error:", error);
-  //     setIsSpeaking(false);
-  //   }
-  // };
 
   // Handle voice question for video bot in Q&A mode (auto-submit)
   const handleVoiceQuestion = async (question: string) => {
@@ -636,41 +599,6 @@ export default function EmbedChat() {
     }
   };
 
-  // COMMENTED OUT - Old useSpeechToText hook implementation
-  // const { 
-  //   isListening, 
-  //   isProcessing,
-  //   showSilenceWarning,
-  //   silenceCountdown,
-  //   audioLevels,
-  //   toggleListening 
-  // } = useSpeechToText({
-  //   onResult: (text) => {
-  //     // Only auto-submit voice input when in Q&A mode (flowFinished) for video bots
-  //     if (botData?.is_video_bot && flowFinished) {
-  //       handleVoiceQuestion(text);
-  //     } else {
-  //       // Otherwise, just populate the input field
-  //       setInput(prev => {
-  //         const newText = prev ? prev + " " + text : text;
-  //         return newText.trim();
-  //       });
-  //     }
-  //   },
-  //   onError: (err) => {
-  //     if (!err.includes('speak into the microphone')) {
-  //       toast({
-  //         title: "Speech Error",
-  //         description: err,
-  //         variant: "destructive"
-  //       });
-  //     }
-  //   },
-  //   language: "en-US",
-  //   silenceTimeout: 10,
-  //   stopTimeout: 5,
-  // });
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     setShowJumpButton(false);
@@ -694,15 +622,6 @@ export default function EmbedChat() {
       audioUrl,
     };
     setMessages((prev) => [...prev, botMessage]);
-
-    // COMMENTED OUT - Old audio playback
-    // Play audio if available
-    // if (audioUrl && audioRef.current) {
-    //   audioRef.current.src = audioUrl;
-    //   audioRef.current.play().catch(err => {
-    //     console.error('Error playing audio:', err);
-    //   });
-    // }
 
     return botMessage;
   };
@@ -864,12 +783,6 @@ export default function EmbedChat() {
           if (botData.is_video_bot && messageContent) {
             textsToSpeak.push(messageContent);
           }
-
-          // COMMENTED OUT - Old API-based TTS
-          // For video bots, speak the initial flow messages
-          // if (botData.is_video_bot && messageContent) {
-          //   playTextToSpeech(messageContent);
-          // }
         });
 
         if (data.finished) {
@@ -1097,12 +1010,6 @@ export default function EmbedChat() {
         if (botData.is_video_bot && messageContent) {
           textsToSpeak.push(messageContent);
         }
-
-        // COMMENTED OUT - Old API-based TTS
-        // For video bots, speak the flow messages
-        // if (botData.is_video_bot && messageContent) {
-        //   playTextToSpeech(messageContent);
-        // }
       });
 
       if (data.awaitingInput) {
@@ -1117,9 +1024,6 @@ export default function EmbedChat() {
       }
 
       setMessages((prev) => [...prev, ...botMessages]);
-
-      // If there's an active handoff session, do not proceed to flow responses
-      // (agent messages will be polled separately)
 
       // Queue all texts for speech in order (using browser TTS)
       textsToSpeak.forEach(text => queueTextToSpeech(text));
@@ -1644,11 +1548,27 @@ export default function EmbedChat() {
                         }`}
                       style={{
                         animationDelay: `${i * 0.1}s`,
-                        ...(customization?.useChatCustomCSS ? {} : { backgroundColor: customization?.textColor || undefined })
+                        backgroundColor: customization?.useChatCustomCSS ? undefined : (customization?.textColor || undefined)
                       }}
-                    ></div>
+                    />
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+          
+          {isHandoffLoading && (
+            <div className="flex gap-3 justify-start">
+              <div
+                className={`flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200 bg-gradient-to-r from-emerald-600 to-teal-500`}
+              >
+                <Headphones className="h-3 w-3 text-white" />
+              </div>
+              <div
+                className={`p-3 transition-all duration-200 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center gap-2`}
+              >
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                <span className="text-sm text-blue-700 font-medium">Connecting to an agent...</span>
               </div>
             </div>
           )}
@@ -1696,12 +1616,25 @@ export default function EmbedChat() {
         )}
 
         {handoffRequested && !isConnectedToAgent && (
-          <Alert className="mb-2 bg-yellow-50 border-yellow-200">
-            <Clock className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-800 text-sm">Waiting for an agent to respond. You can continue sending messages.</AlertDescription>
-            <div className="mt-2">
-              <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
-            </div>
+          <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
+            {isHandoffLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                <AlertDescription className="text-blue-800">
+                  Searching for an available agent...
+                </AlertDescription>
+              </>
+            ) : (
+              <>
+                <Clock className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800 text-sm">Waiting for an agent to respond. You can continue sending messages.</AlertDescription>
+              </>
+            )}
+            {!isHandoffLoading && (
+              <div className="mt-2">
+                <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
+              </div>
+            )}
           </Alert>
         )}
 
@@ -1724,18 +1657,6 @@ export default function EmbedChat() {
           </Alert>
         )}
 
-        {/* REMOVED: Voice Waveform - replaced with simple status message */}
-        {/* Voice Waveform (only in Q&A mode for non-video bots, always for video bots) */}
-        {/* {(flowFinished && isListening && !botData?.is_video_bot) && (
-          <VoiceWaveform
-            audioLevels={audioLevels}
-            isListening={isListening}
-            showSilenceWarning={showSilenceWarning}
-            silenceCountdown={silenceCountdown}
-            className="mb-3"
-          />
-        )} */}
-
         {flowFinished && isListening && !botData?.is_video_bot && (
           <Alert className="mb-2 bg-blue-50 border-blue-200">
             <Mic className="h-4 w-4 text-blue-600" />
@@ -1744,7 +1665,7 @@ export default function EmbedChat() {
         )}
 
         {/* Processing indicator */}
-        {isProcessing && (
+        {isProcessing && !isHandoffLoading && (
           <Alert className="mb-3 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
             <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
             <AlertDescription className="text-blue-800 dark:text-blue-200">
@@ -1768,7 +1689,7 @@ export default function EmbedChat() {
                       ? "Ask me anything..."
                       : (customization?.placeholder || "Type your message...")
               }
-              disabled={isLoading || !canSendText || handoffStatus === 'resolved' || isProcessing}
+              disabled={isLoading || isHandoffLoading || !canSendText || handoffStatus === 'resolved' || isProcessing}
               className={`flex-1 transition-all duration-200 ${botData?.is_voice_enabled && canSendText && flowFinished && !botData?.is_video_bot ? 'pr-10' : ''
                 } ${customization?.useChatCustomCSS ? 'embed-input' : ''}`}
               style={getInputStyle()}
@@ -1798,7 +1719,7 @@ export default function EmbedChat() {
           </div>
           <Button
             onClick={() => handleSendMessage()}
-            disabled={!input.trim() || isLoading || !canSendText || handoffStatus === 'resolved' || isListening || isProcessing}
+            disabled={!input.trim() || isLoading || isHandoffLoading || !canSendText || handoffStatus === 'resolved' || isListening || isProcessing}
             size="icon"
             className={`shrink-0 transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-send-button' : ''
               }`}
@@ -1853,10 +1774,6 @@ export default function EmbedChat() {
           </div>
         </div>
       )}
-
-      {/* Hidden audio element for playing TTS */}
-      {/* COMMENTED OUT - No longer needed with browser TTS */}
-      {/* <audio ref={audioRef} className="hidden" /> */}
     </div>
   );
 }
