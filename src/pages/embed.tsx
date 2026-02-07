@@ -371,6 +371,9 @@ export default function EmbedChat() {
   const [ratingFeedback, setRatingFeedback] = useState<string>('');
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [previousRatingValue, setPreviousRatingValue] = useState<number | null>(null);
+  const [previousRatingFeedback, setPreviousRatingFeedback] = useState<string>('');
+  const [isLoadingRating, setIsLoadingRating] = useState(false);
 
   // Human handoff keywords detection
   const detectHandoffIntent = (message: string): boolean => {
@@ -543,6 +546,33 @@ export default function EmbedChat() {
     }
   };
 
+  // Fetch existing rating for a session
+  const fetchExistingRating = async () => {
+    if (!handoffSessionId || !sessionId) return;
+    setIsLoadingRating(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rating?flowSessionId=${sessionId}`
+      );
+      const data = await res.json();
+      if (res.ok && data.userRating) {
+        setPreviousRatingValue(data.userRating);
+        setPreviousRatingFeedback(data.userFeedback || '');
+      }
+    } catch (error) {
+      console.error('Error fetching existing rating:', error);
+    } finally {
+      setIsLoadingRating(false);
+    }
+  };
+
+  // Show rating modal and fetch previous rating data if available
+  const showRatingModalWithData = async () => {
+    setShowRatingModal(true);
+    setRatingSubmitted(false);
+    await fetchExistingRating();
+  };
+
   // Client resolves the handoff (user ends the chat)
   const clientResolveHandoff = async () => {
     if (!handoffSessionId || !sessionId) return;
@@ -560,8 +590,8 @@ export default function EmbedChat() {
         setHandoffStatus('resolved');
         handoffStatusRef.current = 'resolved';
         setHandoffRequested(false);
-        // Show rating modal
-        setShowRatingModal(true);
+        // Show rating modal and load previous rating data
+        await showRatingModalWithData();
         await addSystemMessage('You have ended this conversation.', 'handoff_client_resolved');
       } else {
         throw new Error(data.message || 'Failed to resolve session');
@@ -1745,6 +1775,12 @@ export default function EmbedChat() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
             <h3 className="text-lg font-semibold mb-2">Rate your experience</h3>
+            {previousRatingValue > 0 && (
+              <p className="text-sm text-gray-500 mb-3 p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                Your previous rating: {previousRatingValue} ★
+                {previousRatingFeedback && <span className="block text-xs mt-1">"{previousRatingFeedback}"</span>}
+              </p>
+            )}
             <p className="text-sm text-gray-500 mb-4">How would you rate the support you received?</p>
             <div className="flex justify-center gap-2 mb-4">
               {[1,2,3,4,5].map(i => (
@@ -1767,8 +1803,8 @@ export default function EmbedChat() {
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowRatingModal(false)}>Cancel</Button>
-              <Button onClick={submitRating} disabled={submittingRating || ratingSubmitted || ratingValue < 1}>
-                {submittingRating ? 'Submitting...' : 'Submit Rating'}
+              <Button onClick={submitRating} disabled={submittingRating || ratingValue < 1}>
+                {submittingRating ? 'Submitting...' : previousRatingValue > 0 ? 'Update Rating' : 'Submit Rating'}
               </Button>
             </div>
           </div>

@@ -73,6 +73,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const [ratingFeedback, setRatingFeedback] = useState<string>('');
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [previousRatingValue, setPreviousRatingValue] = useState<number | null>(null);
+  const [previousRatingFeedback, setPreviousRatingFeedback] = useState<string>('');
+  const [isLoadingRating, setIsLoadingRating] = useState(false);
   
   // Jump to latest state
   const [showJumpButton, setShowJumpButton] = useState(false);
@@ -338,7 +341,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         handoffStatusRef.current = 'resolved';
         setHandoffRequested(false);
         // show rating modal to the client after resolving
-        setShowRatingModal(true);
+        showRatingModalWithData();
         addSystemMessage('You have ended this conversation.');
       } else {
         throw new Error(data.message || 'Failed to resolve session');
@@ -374,6 +377,40 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       console.error('Error reopening handoff (client):', error);
       toast({ title: 'Error', description: 'Failed to reopen chat', variant: 'destructive' });
     }
+  };
+
+  // Fetch existing rating for the session
+  const fetchExistingRating = async () => {
+    if (!handoffSessionId || !sessionId) return;
+    setIsLoadingRating(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rating?flowSessionId=${sessionId}`
+      );
+      const data = await res.json();
+      if (res.ok && data.result) {
+        if (data.result.userRating) {
+          setPreviousRatingValue(data.result.userRating);
+          setRatingValue(data.result.userRating);
+        }
+        if (data.result.userFeedback) {
+          setPreviousRatingFeedback(data.result.userFeedback);
+          setRatingFeedback(data.result.userFeedback);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching existing rating:', error);
+    } finally {
+      setIsLoadingRating(false);
+    }
+  };
+
+  // Show rating modal with previous rating data
+  const showRatingModalWithData = async () => {
+    // Reset rating submitted when reopening modal to allow re-rating
+    setRatingSubmitted(false);
+    setShowRatingModal(true);
+    await fetchExistingRating();
   };
 
   // Submit rating to backend
@@ -1956,6 +1993,15 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-md mx-4">
               <h3 className="text-lg font-semibold mb-2">Rate your experience</h3>
               <p className="text-sm text-gray-500 mb-4">How would you rate the support you received?</p>
+              {isLoadingRating && (
+                <p className="text-sm text-gray-500 mb-4">Loading your previous rating...</p>
+              )}
+              {previousRatingValue && !isLoadingRating && (
+                <p className="text-sm text-blue-600 mb-4">
+                  Your previous rating: <span className="font-semibold">{previousRatingValue} ★</span> 
+                  {previousRatingFeedback && <span className="block text-xs mt-1">Feedback: {previousRatingFeedback}</span>}
+                </p>
+              )}
               <div className="flex justify-center gap-2 mb-4">
                 {[1,2,3,4,5].map(i => (
                   <button
@@ -1977,8 +2023,8 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setShowRatingModal(false)}>Cancel</Button>
-                <Button onClick={submitRating} disabled={submittingRating || ratingSubmitted || ratingValue < 1}>
-                  {submittingRating ? 'Submitting...' : 'Submit Rating'}
+                <Button onClick={submitRating} disabled={submittingRating || ratingValue < 1}>
+                  {submittingRating ? 'Updating...' : previousRatingValue ? 'Update Rating' : 'Submit Rating'}
                 </Button>
               </div>
             </div>
