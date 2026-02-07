@@ -363,6 +363,7 @@ export default function EmbedChat() {
   const [assignedAgentEmail, setAssignedAgentEmail] = useState<string | null>(null);
   const [handoffStatus, setHandoffStatus] = useState<string | null>(null);
   const [isHandoffLoading, setIsHandoffLoading] = useState(false);
+  const [isReopenLoading, setIsReopenLoading] = useState(false);
   const handoffStatusRef = useRef<string | null>(null);
 
   // Rating modal state
@@ -604,7 +605,8 @@ export default function EmbedChat() {
 
   // Client reopens a resolved handoff session
   const clientReopenHandoff = async () => {
-    if (!handoffSessionId || !sessionId) return;
+    if (!handoffSessionId || !sessionId || isReopenLoading) return;
+    setIsReopenLoading(true);
     try {
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-reopen`,
@@ -626,6 +628,8 @@ export default function EmbedChat() {
     } catch (error) {
       console.error('Error reopening handoff (client):', error);
       toast({ title: 'Error', description: 'Failed to reopen chat', variant: 'destructive' });
+    } finally {
+      setIsReopenLoading(false);
     }
   };
 
@@ -1682,7 +1686,16 @@ export default function EmbedChat() {
           <Alert className="mb-2 bg-gray-50 border-gray-200">
             <AlertDescription className="text-gray-800 text-sm">This conversation has been resolved. You cannot send messages.</AlertDescription>
             <div className="mt-2">
-              <Button size="sm" onClick={clientReopenHandoff}>Reopen chat</Button>
+              <Button size="sm" onClick={clientReopenHandoff} disabled={isReopenLoading}>
+                {isReopenLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Reopening...
+                  </>
+                ) : (
+                  'Reopen chat'
+                )}
+              </Button>
             </div>
           </Alert>
         )}
