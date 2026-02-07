@@ -11,7 +11,8 @@ import {
   Timer, AlertTriangle, ArrowUpRight, History, X, ArrowDownRight, Bell
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { removeAgentAuthToken, removeAgentEmail, getAgentEmail, getAgentAuthHeaders } from "@/utils/agentAuth";
+import { removeAgentAuthToken, removeAgentEmail, getAgentEmail, getAgentAuthHeaders, getAgentAuthToken } from "@/utils/agentAuth";
+import { logoutAgentUser } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
 
 interface EscalationInfo {
@@ -346,10 +347,34 @@ const AgentDashboard = () => {
   };
 
   const handleLogout = async () => {
-    await updateStatus(false, "offline");
-    removeAgentAuthToken();
-    removeAgentEmail();
-    navigate("/agent/login");
+    try {
+      // First, set agent to offline
+      await updateStatus(false, "offline");
+      
+      // Call logout API
+      const token = getAgentAuthToken();
+      if (token) {
+        await logoutAgentUser(token);
+      }
+      
+      // Clear tokens and email from localStorage
+      removeAgentAuthToken();
+      removeAgentEmail();
+      
+      toast({
+        title: "Success",
+        description: "Logged out successfully",
+      });
+      
+      // Redirect to login page
+      navigate("/agent/login", { replace: true });
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Clear tokens anyway even if API call fails
+      removeAgentAuthToken();
+      removeAgentEmail();
+      navigate("/agent/login", { replace: true });
+    }
   };
 
   const handleSessionClick = (sessionId: string) => {

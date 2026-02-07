@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { User, Plus, Bot } from "lucide-react";
+import { User, Plus, Bot, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,14 +8,44 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { removeAuthToken, getAuthToken } from "@/utils/auth";
+import { logoutBotUser } from "@/api/auth";
+import { useToast } from "@/hooks/use-toast";
 
 export const Navbar = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const token = getAuthToken();
+      if (token) {
+        // Call logout API
+        await logoutBotUser(token);
+      }
+      
+      // Clear token from localStorage
+      removeAuthToken();
+      
+      toast({
+        title: "Success",
+        description: "Logged out successfully",
+      });
+      
+      // Redirect to login page
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Clear token anyway even if API call fails
+      removeAuthToken();
+      navigate("/login", { replace: true });
     }
   };
 
@@ -56,6 +86,10 @@ export const Navbar = () => {
               <DropdownMenuItem onClick={() => navigate("/profile")}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
