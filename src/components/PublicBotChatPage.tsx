@@ -39,15 +39,16 @@ export const PublicBotChatPage = () => {
   const [isMuted, setIsMuted] = useState(true);
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  
+
   // Jump to latest state
   const [showJumpButton, setShowJumpButton] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  
+  const [shouldForceScroll, setShouldForceScroll] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // const audioRef = useRef<HTMLAudioElement>(null);
-  
+
   // BROWSER SPEECH RECOGNITION (Speech-to-Text)
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -238,7 +239,7 @@ export const PublicBotChatPage = () => {
 
   //     try {
   //       setIsSpeaking(true);
-        
+
   //       const response = await fetch(
   //         `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
   //         {
@@ -259,24 +260,24 @@ export const PublicBotChatPage = () => {
   //       await new Promise<void>((resolve, reject) => {
   //         if (audioRef.current) {
   //           audioRef.current.src = audioUrl;
-            
+
   //           const handleEnded = () => {
   //             URL.revokeObjectURL(audioUrl);
   //             audioRef.current?.removeEventListener('ended', handleEnded);
   //             audioRef.current?.removeEventListener('error', handleError);
   //             resolve();
   //           };
-            
+
   //           const handleError = () => {
   //             URL.revokeObjectURL(audioUrl);
   //             audioRef.current?.removeEventListener('ended', handleEnded);
   //             audioRef.current?.removeEventListener('error', handleError);
   //             reject(new Error("Audio playback failed"));
   //           };
-            
+
   //           audioRef.current.addEventListener('ended', handleEnded);
   //           audioRef.current.addEventListener('error', handleError);
-            
+
   //           audioRef.current.play().catch(reject);
   //         } else {
   //           resolve();
@@ -296,7 +297,7 @@ export const PublicBotChatPage = () => {
   // Add text to TTS queue and start processing
   const queueTextToSpeech = (text: string) => {
     if (!bot?.is_video_bot || !text.trim()) return;
-    
+
     ttsQueueRef.current.push(text);
     processTTSQueue();
   };
@@ -468,6 +469,7 @@ export const PublicBotChatPage = () => {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, userMessage]);
+      setShouldForceScroll(true);
       await requestHumanHandoff(question);
       return;
     }
@@ -480,6 +482,7 @@ export const PublicBotChatPage = () => {
     };
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
+    setShouldForceScroll(true);
 
     // If in handoff mode, send to agent
     if (handoffRequested && handoffSessionId) {
@@ -639,7 +642,7 @@ export const PublicBotChatPage = () => {
         setIsHandoffLoading(false);
         const agentStatusMessage = data.result.message;
         await addSystemMessage(agentStatusMessage, "handoff_agent_assigned");
-        
+
         if (!data.result.agent?.isOnline) {
           await addSystemMessage("The agent is currently offline but will respond as soon as possible. You can continue asking questions or close this chat.", "handoff_agent_offline");
         }
@@ -700,8 +703,27 @@ export const PublicBotChatPage = () => {
     setShowJumpButton(!isNearBottom && element.scrollHeight > element.clientHeight);
   };
 
-  useEffect(scrollToBottom, [messages]);
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  // Auto-scroll with smart logic
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const element = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (element) {
+        const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
+
+        // Always scroll if user just sent a message, or if they're already near bottom
+        if (shouldForceScroll || isNearBottom) {
+          scrollToBottom();
+          setShouldForceScroll(false); // Reset the force scroll flag
+        }
+      }
+    }
+  }, [messages]);
+
+  // Initial focus and scroll on mount
+  useEffect(() => {
+    inputRef.current?.focus();
+    scrollToBottom(); // Scroll to bottom on initial load
+  }, []);
 
   // Helper to add bot message
   const addBotMessage = (content: string, audioUrl?: string) => {
@@ -903,6 +925,7 @@ export const PublicBotChatPage = () => {
       };
       setMessages((prev) => [...prev, userMessage]);
       setInputMessage("");
+      setShouldForceScroll(true);
       await requestHumanHandoff(question);
       return;
     }
@@ -916,6 +939,7 @@ export const PublicBotChatPage = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
     setIsLoading(true);
+    setShouldForceScroll(true);
 
     // If in handoff mode, send to agent
     if (handoffRequested && handoffSessionId) {
@@ -980,6 +1004,7 @@ export const PublicBotChatPage = () => {
     if (!messageToSend || isLoading || !sessionId) return;
 
     setCurrentPausedFor(null);
+    setShouldForceScroll(true);
 
     // Check for handoff intent in flow mode
     if (!flowFinished && detectHandoffIntent(messageToSend) && (bot?.human_handoff_enabled || bot?.humanHandoffEnabled)) {
@@ -1308,11 +1333,10 @@ export const PublicBotChatPage = () => {
                           <Button
                             onClick={ttsEnabled ? disableTTS : enableTTS}
                             size="lg"
-                            className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${
-                              ttsEnabled
-                                ? "bg-blue-500 hover:bg-blue-600"
-                                : "bg-gray-400 hover:bg-gray-500"
-                            }`}
+                            className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${ttsEnabled
+                              ? "bg-blue-500 hover:bg-blue-600"
+                              : "bg-gray-400 hover:bg-gray-500"
+                              }`}
                             title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
                           >
                             {ttsEnabled ? (
@@ -1389,11 +1413,10 @@ export const PublicBotChatPage = () => {
                           <Button
                             onClick={ttsEnabled ? disableTTS : enableTTS}
                             size="lg"
-                            className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${
-                              ttsEnabled
-                                ? "bg-blue-500 hover:bg-blue-600"
-                                : "bg-gray-400 hover:bg-gray-500"
-                            }`}
+                            className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${ttsEnabled
+                              ? "bg-blue-500 hover:bg-blue-600"
+                              : "bg-gray-400 hover:bg-gray-500"
+                              }`}
                             title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
                           >
                             {ttsEnabled ? (
@@ -1457,7 +1480,7 @@ export const PublicBotChatPage = () => {
             {/* Right Side - Chat Interface */}
             <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-white dark:bg-gray-900 transition-all duration-300 relative`}>
               {/* Chat Messages */}
-              <ScrollArea 
+              <ScrollArea
                 ref={scrollAreaRef}
                 onScroll={handleScrollAreaScroll}
                 className="flex-1 p-4"
@@ -1475,7 +1498,7 @@ export const PublicBotChatPage = () => {
                   >
                     {(msg.sender === "bot" || msg.sender === "agent") && (
                       <Avatar className="h-8 w-8">
-                        <AvatarFallback className={msg.sender === "agent" 
+                        <AvatarFallback className={msg.sender === "agent"
                           ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
                           : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                         }>
@@ -1486,15 +1509,14 @@ export const PublicBotChatPage = () => {
                     <div className={`flex flex-col gap-1 ${msg.sender === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
                       {msg.content && (
                         <div
-                          className={`rounded-lg p-3 ${
-                            msg.sender === "user"
-                              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                              : msg.sender === "agent"
+                          className={`rounded-lg p-3 ${msg.sender === "user"
+                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                            : msg.sender === "agent"
                               ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
                               : msg.isSystemMessage
-                              ? "bg-orange-100 text-orange-900 border border-orange-200"
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                          }`}
+                                ? "bg-orange-100 text-orange-900 border border-orange-200"
+                                : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            }`}
                         >
                           {typeof msg.content === "string"
                             ? msg.content
@@ -1562,7 +1584,7 @@ export const PublicBotChatPage = () => {
                 {isLoading && (
                   <div className="flex gap-3 mb-4">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className={handoffRequested 
+                      <AvatarFallback className={handoffRequested
                         ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
                         : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                       }>
@@ -1587,7 +1609,7 @@ export const PublicBotChatPage = () => {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Jump to Latest Button - displayed in center of message area */}
                 {showJumpButton && (
                   <div className="flex justify-center my-4">
@@ -1600,7 +1622,7 @@ export const PublicBotChatPage = () => {
                     </Button>
                   </div>
                 )}
-                
+
                 <div ref={messagesEndRef} />
               </ScrollArea>
 
@@ -1759,7 +1781,7 @@ export const PublicBotChatPage = () => {
                     onClick={() => handleSendMessage()}
                     disabled={!inputMessage.trim() || isLoading || isHandoffLoading || !canSendText || isListening || isProcessing}
                     size="icon"
-                    className={handoffRequested 
+                    className={handoffRequested
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
                       : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
                     }
@@ -1773,7 +1795,7 @@ export const PublicBotChatPage = () => {
         ) : (
           /* Regular Chat View */
           <CardContent className="flex-1 flex flex-col p-0 relative min-h-0 overflow-hidden">
-            <ScrollArea 
+            <ScrollArea
               ref={scrollAreaRef}
               onScroll={handleScrollAreaScroll}
               className="flex-1 min-h-0 p-4"
@@ -1790,10 +1812,13 @@ export const PublicBotChatPage = () => {
                   className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"
                     }`}
                 >
-                  {msg.sender === "bot" && (
+                  {(msg.sender === "bot" || msg.sender === "agent") && (
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                        <Bot className="h-5 w-5" />
+                      <AvatarFallback className={msg.sender === "agent"
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                        : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                      }>
+                        {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                       </AvatarFallback>
                     </Avatar>
                   )}
@@ -1870,7 +1895,7 @@ export const PublicBotChatPage = () => {
               {isLoading && (
                 <div className="flex gap-3 mb-4">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className={handoffRequested 
+                    <AvatarFallback className={handoffRequested
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
                       : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                     }>
@@ -1895,7 +1920,7 @@ export const PublicBotChatPage = () => {
                   </div>
                 </div>
               )}
-              
+
               {/* Jump to Latest Button - displayed in center of message area */}
               {showJumpButton && (
                 <div className="flex justify-center my-4">
@@ -1908,7 +1933,7 @@ export const PublicBotChatPage = () => {
                   </Button>
                 </div>
               )}
-              
+
               <div ref={messagesEndRef} />
             </ScrollArea>
 
@@ -2051,7 +2076,7 @@ export const PublicBotChatPage = () => {
                   onClick={() => handleSendMessage()}
                   disabled={!inputMessage.trim() || isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
                   size="icon"
-                  className={handoffRequested 
+                  className={handoffRequested
                     ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
                     : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
                   }
@@ -2099,7 +2124,7 @@ export const PublicBotChatPage = () => {
             )}
             <p className="text-sm text-gray-500 mb-4">How would you rate the support you received?</p>
             <div className="flex justify-center gap-2 mb-4">
-              {[1,2,3,4,5].map(i => (
+              {[1, 2, 3, 4, 5].map(i => (
                 <button
                   key={i}
                   onClick={() => setRatingValue(i)}
