@@ -1196,7 +1196,8 @@ export const PublicBotChatPage = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <Card className={`w-full ${bot.is_video_bot ? (showVideoAvatar ? 'max-w-6xl' : 'max-w-2xl') : 'max-w-2xl'} h-[600px] flex flex-col shadow-2xl rounded-xl overflow-hidden transition-all duration-300`}>
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0 space-y-0">
+        {/* Fixed Header */}
+        <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0 space-y-0 sticky top-0 z-10">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 flex-1 min-w-0">
               <Avatar className="h-12 w-12 border-2 border-white flex-shrink-0 mt-1">
@@ -1771,11 +1772,11 @@ export const PublicBotChatPage = () => {
           </div>
         ) : (
           /* Regular Chat View */
-          <CardContent className="flex-1 flex flex-col p-0 relative">
+          <CardContent className="flex-1 flex flex-col p-0 relative min-h-0 overflow-hidden">
             <ScrollArea 
               ref={scrollAreaRef}
               onScroll={handleScrollAreaScroll}
-              className="flex-1 p-4"
+              className="flex-1 min-h-0 p-4"
             >
               {messages.length === 0 && (
                 <div className="text-center text-gray-400 py-8">
@@ -1911,8 +1912,8 @@ export const PublicBotChatPage = () => {
               <div ref={messagesEndRef} />
             </ScrollArea>
 
-              {/* Input Area - For non-video bots */}
-            <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+            {/* Fixed Input Area - For non-video bots */}
+            <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0 sticky bottom-0 z-10">
               {/* Handoff Status Alerts */}
               {handoffRequested && !isConnectedToAgent && (
                 <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
