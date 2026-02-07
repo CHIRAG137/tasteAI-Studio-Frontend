@@ -1224,18 +1224,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       )}
                     </Badge>
 
-                    <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 border-amber-200">
-                      {bot.primaryPurpose}
-                    </Badge>
-
-                    <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-700 border-pink-200">
-                      {bot.conversationalTone}
-                    </Badge>
-
-                    <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200">
-                      {bot.languages.join(", ")}
-                    </Badge>
-
                     {flowFinished ? (
                       <Badge variant="secondary" className="text-xs bg-teal-100 text-teal-700 border-teal-200">
                         Q&A Mode

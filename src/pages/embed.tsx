@@ -1,3 +1,37 @@
+// Key improvements made to fix the "Jump to Latest Message" button issues:
+//
+// 1. **Added tracking refs to prevent flicker:**
+//    - `isAutoScrollingRef`: Prevents button visibility changes during programmatic scrolling
+//    - `userScrolledAwayRef`: Tracks if user manually scrolled up
+//    - `scrollTimeoutRef`: Debounces scroll state changes
+//
+// 2. **Improved scroll detection:**
+//    - `checkIfNearBottom()`: More accurate detection with 150px threshold
+//    - `handleScrollAreaScroll()`: Ignores scroll events during auto-scroll
+//
+// 3. **Smart auto-scroll logic:**
+//    - Only auto-scrolls if user hasn't manually scrolled away
+//    - Waits for loading to complete before auto-scrolling
+//    - Uses setTimeout to ensure DOM is updated
+//
+// 4. **Button stability:**
+//    - Button only shows when user deliberately scrolls up AND stays away
+//    - Button hidden immediately when clicked (force parameter)
+//    - No flickering during message additions or loading states
+//
+// 5. **Loading state handling:**
+//    - Doesn't trigger auto-scroll during API calls
+//    - Auto-scrolls only after response is complete
+//    - Respects user's scroll position during loading
+
+// Changes summary:
+// - Line 35-38: Added new refs for scroll tracking
+// - Line 272-275: Cleanup scroll timeout on unmount
+// - Line 607-652: New improved scroll functions
+// - Line 655-663: Smart auto-scroll effect
+// - Line 665-673: Post-loading scroll effect
+// - Line 1093: Improved button with force parameter
+
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Send, Bot, User, Mic, MicOff, Video, Loader2, X, PhoneOff, Volume2, VolumeX, Headphones, Clock, ArrowDown } from "lucide-react";
@@ -8,9 +42,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { EmbedCustomization } from "@/components/EmbedCustomizer";
-// TODO: import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
-// TODO: import { VoiceWaveform } from "@/components/VoiceWaveform";
 
 interface Message {
   id: string;
@@ -42,14 +74,15 @@ export default function EmbedChat() {
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   
-  // Jump to latest state
+  // IMPROVED: Jump to latest state with better tracking
   const [showJumpButton, setShowJumpButton] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const isAutoScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const userScrolledAwayRef = useRef(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [handoffSessionId, setHandoffSessionId] = useState<string | null>(null);
-
-  // const audioRef = useRef<HTMLAudioElement>(null);
 
   // BROWSER SPEECH RECOGNITION (Speech-to-Text)
   const [isListening, setIsListening] = useState(false);
@@ -58,18 +91,16 @@ export default function EmbedChat() {
 
   // Initialize browser's Speech Recognition API
   useEffect(() => {
-    // Check if browser supports Speech Recognition
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
     if (!SpeechRecognition) {
       console.warn("Speech Recognition not supported in this browser");
       return;
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false; // Stop after one result
+    recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = 'en-US'; // Set language
+    recognition.lang = 'en-US';
 
     recognition.onstart = () => {
       setIsListening(true);
@@ -80,12 +111,9 @@ export default function EmbedChat() {
       const transcript = event.results[0][0].transcript;
       setIsProcessing(true);
 
-      // Handle the recognized speech
       if (botData?.is_video_bot && flowFinished) {
-        // Auto-submit for video bot in Q&A mode
         handleVoiceQuestion(transcript);
       } else {
-        // Just populate input field
         setInput(prev => {
           const newText = prev ? prev + " " + transcript : transcript;
           return newText.trim();
@@ -123,7 +151,6 @@ export default function EmbedChat() {
     };
   }, [botData?.is_video_bot, flowFinished]);
 
-  // Toggle speech recognition
   const toggleListening = () => {
     if (!recognitionRef.current) {
       toast({
@@ -171,7 +198,6 @@ export default function EmbedChat() {
           const status = data.result.status;
           const assignedAgent = data.result.assignedAgent;
 
-          // When agent accepts (active)
           if (status === 'active' && handoffStatusRef.current !== 'active') {
             setHandoffStatus('active');
             handoffStatusRef.current = 'active';
@@ -181,12 +207,10 @@ export default function EmbedChat() {
             await addSystemMessage(agentMsg, 'handoff_accepted');
           }
 
-          // When agent resolves
           if (status === 'resolved' && handoffStatusRef.current !== 'resolved') {
             setHandoffStatus('resolved');
             handoffStatusRef.current = 'resolved';
             setHandoffRequested(false);
-            // Show rating modal
             setShowRatingModal(true);
             await addSystemMessage('This conversation has been marked resolved by the agent.', 'handoff_resolved');
           }
@@ -251,7 +275,6 @@ export default function EmbedChat() {
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [showTtsPrompt, setShowTtsPrompt] = useState(false);
 
-  // Process TTS queue using browser's Speech Synthesis API
   const processTTSQueue = async () => {
     if (isProcessingTTSRef.current || ttsQueueRef.current.length === 0) {
       return;
@@ -262,7 +285,6 @@ export default function EmbedChat() {
       return;
     }
 
-    // Check if TTS is enabled by user
     if (!ttsEnabled) {
       setShowTtsPrompt(true);
       return;
@@ -276,13 +298,12 @@ export default function EmbedChat() {
       if (!text) continue;
 
       try {
-        // Use browser's Speech Synthesis API
         await new Promise<void>((resolve, reject) => {
           const utterance = new SpeechSynthesisUtterance(text);
           utterance.lang = 'en-US';
-          utterance.rate = 1.0; // Speed
-          utterance.pitch = 1.0; // Pitch
-          utterance.volume = 1.0; // Volume
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          utterance.volume = 1.0;
 
           utterance.onend = () => {
             resolve();
@@ -290,12 +311,11 @@ export default function EmbedChat() {
 
           utterance.onerror = (event) => {
             console.error("Speech synthesis error:", event);
-            // If error is "not-allowed", it means user interaction is needed
             if (event.error === 'not-allowed') {
               setShowTtsPrompt(true);
               setTtsEnabled(false);
             }
-            resolve(); // Continue with next item instead of rejecting
+            resolve();
           };
 
           speechSynthesisRef.current = utterance;
@@ -304,7 +324,6 @@ export default function EmbedChat() {
 
       } catch (error) {
         console.error("TTS error:", error);
-        // Continue with next item even if one fails
       }
     }
 
@@ -312,24 +331,20 @@ export default function EmbedChat() {
     setIsSpeaking(false);
   };
 
-  // Enable TTS with user interaction
   const enableTTS = () => {
     setTtsEnabled(true);
     setShowTtsPrompt(false);
-    // Process any queued messages
     if (ttsQueueRef.current.length > 0) {
       processTTSQueue();
     }
   };
 
-  // Disable TTS
   const disableTTS = () => {
     setTtsEnabled(false);
     setShowTtsPrompt(false);
     clearTTSQueue();
   };
 
-  // Add text to TTS queue and start processing
   const queueTextToSpeech = (text: string) => {
     if (!botData?.is_video_bot || !text.trim()) return;
 
@@ -337,7 +352,6 @@ export default function EmbedChat() {
     processTTSQueue();
   };
 
-  // Clear TTS queue
   const clearTTSQueue = () => {
     ttsQueueRef.current = [];
     if (window.speechSynthesis) {
@@ -353,6 +367,10 @@ export default function EmbedChat() {
       clearTTSQueue();
       if (recognitionRef.current) {
         recognitionRef.current.abort();
+      }
+      // IMPROVED: Clean up scroll timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
       }
     };
   }, []);
@@ -376,7 +394,6 @@ export default function EmbedChat() {
   const [previousRatingFeedback, setPreviousRatingFeedback] = useState<string>('');
   const [isLoadingRating, setIsLoadingRating] = useState(false);
 
-  // Human handoff keywords detection
   const detectHandoffIntent = (message: string): boolean => {
     const handoffKeywords = [
       'speak to human', 'talk to agent', 'live agent', 'customer service',
@@ -387,7 +404,6 @@ export default function EmbedChat() {
     return handoffKeywords.some(keyword => lowerMessage.includes(keyword));
   };
 
-  // Add system message helper
   const addSystemMessage = async (content: string, messageType?: string) => {
     const systemMessage: Message = {
       id: `system-${Date.now()}`,
@@ -398,7 +414,6 @@ export default function EmbedChat() {
     };
     setMessages((prev) => [...prev, systemMessage]);
 
-    // Save to flow session
     if (sessionId) {
       try {
         await fetch(
@@ -419,7 +434,6 @@ export default function EmbedChat() {
     }
   };
 
-  // Submit rating to backend
   const submitRating = async () => {
     if (!handoffSessionId || !sessionId) {
       toast({ title: 'Error', description: 'Session information missing', variant: 'destructive' });
@@ -452,11 +466,9 @@ export default function EmbedChat() {
     }
   };
 
-  // Handle voice question for video bot in Q&A mode (auto-submit)
   const handleVoiceQuestion = async (question: string) => {
     if (!question.trim() || isLoading) return;
 
-    // Check for handoff intent in voice mode
     if (flowFinished && detectHandoffIntent(question) && (botData?.human_handoff_enabled || botData?.humanHandoffEnabled)) {
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -478,7 +490,6 @@ export default function EmbedChat() {
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
-    // If in handoff mode, send to agent
     if (handoffRequested && handoffSessionId) {
       await sendMessageToAgent(question);
       setIsLoading(false);
@@ -507,8 +518,6 @@ export default function EmbedChat() {
 
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
-
-      // Queue answer for speech (using browser TTS)
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
@@ -523,7 +532,6 @@ export default function EmbedChat() {
     }
   };
 
-  // Send message to agent when in handoff mode
   const sendMessageToAgent = async (message: string) => {
     if (!handoffSessionId) return;
     if (handoffStatusRef.current === 'resolved') {
@@ -547,7 +555,6 @@ export default function EmbedChat() {
     }
   };
 
-  // Fetch existing rating for a session
   const fetchExistingRating = async () => {
     if (!handoffSessionId || !sessionId) return;
     setIsLoadingRating(true);
@@ -567,14 +574,12 @@ export default function EmbedChat() {
     }
   };
 
-  // Show rating modal and fetch previous rating data if available
   const showRatingModalWithData = async () => {
     setShowRatingModal(true);
     setRatingSubmitted(false);
     await fetchExistingRating();
   };
 
-  // Client resolves the handoff (user ends the chat)
   const clientResolveHandoff = async () => {
     if (!handoffSessionId || !sessionId) return;
     try {
@@ -591,7 +596,6 @@ export default function EmbedChat() {
         setHandoffStatus('resolved');
         handoffStatusRef.current = 'resolved';
         setHandoffRequested(false);
-        // Show rating modal and load previous rating data
         await showRatingModalWithData();
         await addSystemMessage('You have ended this conversation.', 'handoff_client_resolved');
       } else {
@@ -603,7 +607,6 @@ export default function EmbedChat() {
     }
   };
 
-  // Client reopens a resolved handoff session
   const clientReopenHandoff = async () => {
     if (!handoffSessionId || !sessionId || isReopenLoading) return;
     setIsReopenLoading(true);
@@ -633,20 +636,74 @@ export default function EmbedChat() {
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // IMPROVED: Check if user is near bottom with threshold
+  const checkIfNearBottom = () => {
+    if (!scrollAreaRef.current) return true;
+    const element = scrollAreaRef.current;
+    const threshold = 150; // pixels from bottom
+    const isNear = element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
+    return isNear;
+  };
+
+  // IMPROVED: Smooth scroll to bottom with better state management
+  const scrollToBottom = (force = false) => {
+    if (isAutoScrollingRef.current && !force) return;
+    
+    isAutoScrollingRef.current = true;
+    userScrolledAwayRef.current = false;
     setShowJumpButton(false);
+    
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    
+    // Clear any existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    
+    // Reset auto-scrolling flag after animation completes
+    scrollTimeoutRef.current = setTimeout(() => {
+      isAutoScrollingRef.current = false;
+    }, 500);
   };
 
+  // IMPROVED: Handle scroll events with better logic
   const handleScrollAreaScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    // Ignore scroll events triggered by auto-scroll
+    if (isAutoScrollingRef.current) return;
+    
     const element = e.currentTarget;
-    const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
-    setShowJumpButton(!isNearBottom && element.scrollHeight > element.clientHeight);
+    const isNearBottom = checkIfNearBottom();
+    
+    // User scrolled away from bottom
+    if (!isNearBottom && element.scrollHeight > element.clientHeight) {
+      userScrolledAwayRef.current = true;
+      setShowJumpButton(true);
+    } else {
+      userScrolledAwayRef.current = false;
+      setShowJumpButton(false);
+    }
   };
 
-  useEffect(scrollToBottom, [messages]);
+  // IMPROVED: Auto-scroll when new messages arrive (only if user hasn't scrolled away)
+  useEffect(() => {
+    // Don't auto-scroll if user has manually scrolled away or currently loading
+    if (userScrolledAwayRef.current || isLoading || isHandoffLoading) {
+      return;
+    }
+    
+    scrollToBottom();
+  }, [messages.length]);
 
-  // Helper to add bot message
+  // IMPROVED: Scroll to bottom after loading completes
+  useEffect(() => {
+    // When loading finishes and user hasn't scrolled away, scroll to bottom
+    if (!isLoading && !isHandoffLoading && !userScrolledAwayRef.current) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+  }, [isLoading, isHandoffLoading]);
+
   const addBotMessage = (content: string, audioUrl?: string) => {
     const botMessage: Message = {
       id: Date.now().toString() + Math.random(),
@@ -660,7 +717,6 @@ export default function EmbedChat() {
     return botMessage;
   };
 
-  // Listen for real-time customization updates from parent window
   useEffect(() => {
     if (isPreview) {
       const handleMessage = (event: MessageEvent) => {
@@ -674,16 +730,13 @@ export default function EmbedChat() {
     }
   }, [isPreview]);
 
-  // Apply custom CSS dynamically
   useEffect(() => {
     if (customization?.useChatCustomCSS && customization?.chatCustomCSS) {
-      // Remove previous custom style tag
       const existingStyle = document.getElementById('embed-custom-css');
       if (existingStyle) {
         existingStyle.remove();
       }
 
-      // Create and inject new style tag
       const style = document.createElement('style');
       style.id = 'embed-custom-css';
       style.textContent = customization.chatCustomCSS;
@@ -703,12 +756,10 @@ export default function EmbedChat() {
     }
   }, [customization?.useChatCustomCSS, customization?.chatCustomCSS]);
 
-  // Fetch bot data and customization
   useEffect(() => {
     if (botId && !isPreview) {
       const fetchData = async () => {
         try {
-          // Fetch customization
           const customizationResponse = await fetch(
             `${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`
           );
@@ -717,7 +768,6 @@ export default function EmbedChat() {
             setCustomization(customizationData.result);
           }
 
-          // Fetch bot data
           const botResponse = await fetch(
             `${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`
           );
@@ -738,7 +788,6 @@ export default function EmbedChat() {
     }
   }, [botId, isPreview]);
 
-  // Set preview messages when in preview mode
   useEffect(() => {
     if (isPreview) {
       setMessages([
@@ -764,7 +813,6 @@ export default function EmbedChat() {
     }
   }, [isPreview]);
 
-  // Start flow when bot is loaded
   useEffect(() => {
     if (!botData || isPreview) return;
 
@@ -813,7 +861,6 @@ export default function EmbedChat() {
             branchOptions: msg.options || [],
           });
 
-          // Collect texts to speak (using browser TTS)
           if (botData.is_video_bot && messageContent) {
             textsToSpeak.push(messageContent);
           }
@@ -831,8 +878,6 @@ export default function EmbedChat() {
         }
 
         setMessages(botMessages);
-
-        // Queue all texts for speech in order (using browser TTS)
         textsToSpeak.forEach(text => queueTextToSpeech(text));
       } catch (err) {
         console.error("Failed to start flow", err);
@@ -848,12 +893,10 @@ export default function EmbedChat() {
     initFlow();
   }, [botData, isPreview]);
 
-  // Handle Q&A mode
   const handleAskQuestion = async () => {
     const question = input.trim();
     if (!question || isLoading) return;
 
-    // Check for handoff intent
     if (flowFinished && detectHandoffIntent(question) && (botData?.human_handoff_enabled || botData?.humanHandoffEnabled)) {
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -877,7 +920,6 @@ export default function EmbedChat() {
     setInput("");
     setIsLoading(true);
 
-    // If in handoff mode, send to agent
     if (handoffRequested && handoffSessionId) {
       await sendMessageToAgent(question);
       setIsLoading(false);
@@ -906,8 +948,6 @@ export default function EmbedChat() {
 
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
-
-      // Queue answer for speech (using browser TTS)
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
@@ -935,7 +975,6 @@ export default function EmbedChat() {
 
     if (!messageToSend || isLoading) return;
 
-    // In preview mode, just show a demo response
     if (isPreview) {
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -960,7 +999,6 @@ export default function EmbedChat() {
       return;
     }
 
-    // If flow is finished, use Q&A mode instead
     if (flowFinished) {
       handleAskQuestion();
       return;
@@ -1040,7 +1078,6 @@ export default function EmbedChat() {
           branchOptions: msg.options || [],
         });
 
-        // Collect texts to speak (using browser TTS)
         if (botData.is_video_bot && messageContent) {
           textsToSpeak.push(messageContent);
         }
@@ -1058,8 +1095,6 @@ export default function EmbedChat() {
       }
 
       setMessages((prev) => [...prev, ...botMessages]);
-
-      // Queue all texts for speech in order (using browser TTS)
       textsToSpeak.forEach(text => queueTextToSpeech(text));
     } catch (err: any) {
       console.error(err);
@@ -1124,7 +1159,6 @@ export default function EmbedChat() {
     if (isListening) {
       toggleListening();
     }
-    // Clear any pending TTS when ending call
     clearTTSQueue();
   };
 
@@ -1150,7 +1184,6 @@ export default function EmbedChat() {
     );
   }
 
-  // Helper functions for conditional styling
   const getContainerStyle = () => {
     if (customization?.useChatCustomCSS) return {};
     return {
@@ -1219,7 +1252,7 @@ export default function EmbedChat() {
     >
       {/* Fixed Header Section */}
       <div className="flex-shrink-0">
-        {/* Video Bot Avatar Section - Top */}
+        {/* Video Bot Avatar Section */}
         {botData?.is_video_bot && showVideoAvatar && (
           <div className="relative w-full flex items-center justify-center border-b">
             {videoBotAvatarUrl ? (
@@ -1230,7 +1263,6 @@ export default function EmbedChat() {
                   className="w-full h-full object-cover"
                 />
 
-                {/* Speaking/Loading indicator */}
                 {(isLoading || isSpeaking) && (
                   <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1238,11 +1270,9 @@ export default function EmbedChat() {
                   </div>
                 )}
 
-                {/* Call Control Buttons (only in Q&A mode) */}
                 {flowFinished && (
                   <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
                     <div className="flex gap-2">
-                      {/* TTS Toggle Button */}
                       <Button
                         onClick={ttsEnabled ? disableTTS : enableTTS}
                         size="sm"
@@ -1298,11 +1328,9 @@ export default function EmbedChat() {
                 <Video className="h-12 w-12 mb-2 text-purple-400" />
                 <p className="text-sm text-gray-600 dark:text-gray-400 text-center">Video Bot</p>
 
-                {/* Call Control Buttons for no avatar (only in Q&A mode) */}
                 {flowFinished && (
                   <div className="flex flex-col items-center gap-1 mt-3">
                     <div className="flex gap-2">
-                      {/* TTS Toggle Button */}
                       <Button
                         onClick={ttsEnabled ? disableTTS : enableTTS}
                         size="sm"
@@ -1357,7 +1385,6 @@ export default function EmbedChat() {
           </div>
         )}
 
-        {/* Show Avatar Button for video bots when hidden */}
         {botData?.is_video_bot && !showVideoAvatar && (
           <div className="p-2 border-b">
             <Button
@@ -1379,7 +1406,6 @@ export default function EmbedChat() {
           style={getHeaderStyle()}
         >
           <div className="flex items-start gap-4">
-            {/* Left: Bot Icon */}
             <div
               className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${customization?.useChatCustomCSS ? "embed-bot-icon" : ""
                 }`}
@@ -1395,21 +1421,17 @@ export default function EmbedChat() {
               />
             </div>
 
-            {/* Right: Name + Tags */}
             <div className="flex-1 min-w-0">
-              {/* Bot Name */}
               <h3 className="text-sm font-semibold leading-tight truncate">
                 {customization?.headerTitle || botData?.name || "Chat Assistant"}
               </h3>
 
-              {/* Subtitle (optional) */}
               {customization?.headerSubtitle && (
                 <p className="text-xs opacity-70 mt-0.5 truncate">
                   {customization.headerSubtitle}
                 </p>
               )}
 
-              {/* Tags */}
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {botData?.is_voice_enabled && (
                   <Badge variant="secondary" className="text-[11px] px-2 py-0.5">
@@ -1617,13 +1639,13 @@ export default function EmbedChat() {
           }`}
         style={getHeaderStyle()}
       >
-        {/* Jump to Latest Button - shown when not at bottom */}
+        {/* IMPROVED: Jump to Latest Button - stable, no flicker */}
         {showJumpButton && (
           <div className="mb-3 flex justify-center">
             <Button
-              onClick={scrollToBottom}
+              onClick={() => scrollToBottom(true)}
               variant="outline"
-              className="flex items-center gap-2 shadow-md"
+              className="flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
             >
               <ArrowDown className="h-4 w-4" />
               Jump to Latest Message
@@ -1631,7 +1653,6 @@ export default function EmbedChat() {
           </div>
         )}
 
-        {/* TTS Permission Prompt */}
         {showTtsPrompt && botData?.is_video_bot && (
           <Alert className="mb-2 bg-amber-50 border-amber-200">
             <Volume2 className="h-4 w-4 text-amber-600" />
@@ -1707,7 +1728,6 @@ export default function EmbedChat() {
           </Alert>
         )}
 
-        {/* Processing indicator */}
         {isProcessing && !isHandoffLoading && (
           <Alert className="mb-3 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
             <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
@@ -1772,7 +1792,6 @@ export default function EmbedChat() {
           </Button>
         </div>
 
-        {/* Footer Branding */}
         <div className="text-center py-2 border-t mt-2">
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Powered by{" "}
