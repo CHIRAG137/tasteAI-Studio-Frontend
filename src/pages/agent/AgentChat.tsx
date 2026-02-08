@@ -84,158 +84,155 @@ interface ChatSummary {
 
 // Helper function to format history entry into readable message
 const formatHistoryEntry = (h: any): string => {
-  let content = "";
-  
   if (h.mode === "qa") {
-    content = h.answer || "No match found";
-  } else if (h.mode === "handoff") {
+    return h.answer || "No match found";
+  }
+  
+  if (h.mode === "handoff") {
+    // System messages
     if (h.systemMessage || h.type?.startsWith("handoff_")) {
-      // Special handling for each handoff event type
       switch (h.type) {
         case "handoff_connecting":
-          content = h.content || "Connecting you with a human agent...";
-          break;
+          return h.content || "Connecting you with a human agent...";
         case "handoff_initiated":
-          content = h.content || "User requested assistance";
-          break;
+          return h.content || "User requested assistance";
         case "handoff_agent_assigned":
-          content = h.content || "Your request has been received. An agent will respond as soon as possible.";
-          break;
+          return h.content || "Your request has been received. An agent will respond as soon as possible.";
         case "handoff_agent_offline":
-          content = h.content || "The agent is currently offline but will respond as soon as possible.";
-          break;
+          return h.content || "The agent is currently offline but will respond as soon as possible.";
         case "handoff_accepted":
-          content = h.content || "A human agent has accepted your request.";
-          break;
+          return h.content || "A human agent has accepted your request.";
         case "handoff_resolved":
-          content = h.content || "This conversation has been marked resolved by the agent.";
-          break;
+          return h.content || "This conversation has been marked resolved by the agent.";
         case "handoff_resolved_by_client":
-          content = "This conversation was marked resolved by the user.";
-          break;
+          return "This conversation was marked resolved by the user.";
         case "handoff_reopened":
-          content = "This conversation was reopened by the user.";
-          break;
+          return "This conversation was reopened by the user.";
         default:
-          content = h.content || "(handoff system message)";
+          return h.content || "(handoff system message)";
       }
-    } else if (h.sender === "agent" || (!h.fromUser && h.messageText)) {
-      content = `${h.messageText || h.content || "(message)"}`;
-    } else if (h.fromUser) {
-      content = `${h.messageText || h.content || "(message)"}`;
-    } else {
-      content = `${h.messageText || h.content || "(handoff event)"}`;
     }
-  } else if (h.mode === "flow") {
+    // User/agent handoff messages
+    return h.messageText || h.content || "(message)";
+  }
+  
+  if (h.mode === "flow") {
     switch (h.type) {
-      case "branch_select":
-        content = h.content?.selected 
-          ? `Selected: ${h.content.selected}` 
-          : `Branch selected`;
-        break;
-      case "user_input":
-        content = h.content || "(user input)";
-        break;
+      case "message":
+        return h.content || "[Empty message]";
       case "code":
         if (h.content?.success !== undefined) {
           const status = h.content.success ? '✓ Success' : '✗ Failed';
           const result = h.content.result ? `: ${JSON.stringify(h.content.result)}` : "";
-          content = `Code executed (${status})${result}`;
-        } else {
-          content = `Code executed`;
+          return `Code executed (${status})${result}`;
         }
-        break;
-      case "confirmation":
-        if (typeof h.content === "object" && h.content !== null) {
-          content = h.content.prompt || h.content.message || JSON.stringify(h.content);
-        } else {
-          content = h.content ? `${h.content}` : `Confirmation requested`;
-        }
-        break;
+        return "Code executed";
       case "question":
         if (h.awaitingInput) {
-          if (typeof h.content === "object" && h.content !== null) {
-            content = h.content.prompt || h.content.answer || JSON.stringify(h.content);
-          } else {
-            content = h.content ? `${h.content}` : `Question presented (awaiting response)`;
-          }
-        } else {
-          if (typeof h.content === "object" && h.content !== null) {
-            content = h.content.prompt || h.content.answer || JSON.stringify(h.content);
-          } else {
-            content = h.content || `Question`;
-          }
+          return typeof h.content === "string" ? h.content : (h.content?.prompt || "Question");
         }
-        break;
-      case "message":
-        content = h.content || "[Empty message]";
-        break;
-      case "redirect":
-        content = h.content 
-          ? `Redirected to: ${h.content}` 
-          : `Redirected`;
-        break;
+        return "";
+      case "confirmation":
+        if (h.awaitingInput) {
+          return typeof h.content === "string" ? h.content : (h.content?.prompt || "Confirmation");
+        }
+        return "";
+      case "branch":
+        return ""; // Branch prompts don't have text content
+      case "branch_select":
+        return h.content?.selected ? `Selected: ${h.content.selected}` : "Branch selected";
+      case "user_input":
+        return typeof h.content === "string" ? h.content : JSON.stringify(h.content);
       default:
-        if (h.content) {
-          content = typeof h.content === "object" 
-            ? JSON.stringify(h.content) 
-            : h.content;
-        } else {
-          content = `[${h.type || "System event"}]`;
-        }
-    }
-  } else {
-    if (h.type === "branch_select" && h.content?.selected) {
-      content = `Selected: ${h.content.selected}`;
-    } else if (typeof h.content === "object" && h.content !== null) {
-      content = JSON.stringify(h.content);
-    } else {
-      content = h.content || `[${h.type || "Event"}]`;
+        if (typeof h.content === "string") return h.content;
+        if (h.content) return JSON.stringify(h.content);
+        return `[${h.type || "Event"}]`;
     }
   }
   
-  return content;
+  // Fallback
+  if (typeof h.content === "string") return h.content;
+  if (h.content) return JSON.stringify(h.content);
+  return "[Event]";
 };
 
-// Map history to pre-handoff messages (before agent messages)
+// Determine if a history entry should be displayed as a message
+const shouldDisplayHistoryEntry = (h: any): boolean => {
+  // Always show handoff system messages
+  if (h.mode === "handoff" && (h.systemMessage || h.type?.startsWith("handoff_"))) {
+    return true;
+  }
+  
+  // Show handoff user/agent messages
+  if (h.mode === "handoff" && (h.sender === "user" || h.sender === "agent")) {
+    return true;
+  }
+  
+  // Flow mode messages
+  if (h.mode === "flow") {
+    // Message nodes - always show
+    if (h.type === "message") return true;
+    
+    // Code nodes - always show
+    if (h.type === "code") return true;
+    
+    // Question/Confirmation prompts (awaitingInput = true) - show as bot message
+    if (["question", "confirmation"].includes(h.type) && h.awaitingInput === true) {
+      return true;
+    }
+    
+    // User inputs - show as user message
+    if (h.type === "user_input" && h.fromUser === true) {
+      return true;
+    }
+    
+    // Branch prompts - show the options (awaitingInput = true)
+    if (h.type === "branch" && h.awaitingInput === true) {
+      return false; // Branch prompts don't have text, skip
+    }
+    
+    // Branch selections - show as user message
+    if (h.type === "branch_select" && h.fromUser === true) {
+      return true;
+    }
+    
+    // Skip answered question/confirmation objects (they have content as object with prompt/answer)
+    if (["question", "confirmation"].includes(h.type) && !h.awaitingInput && !h.fromUser) {
+      return false;
+    }
+    
+    return false;
+  }
+  
+  // QA mode - show both question and answer
+  if (h.mode === "qa") {
+    return true;
+  }
+  
+  return false;
+};
+
+// Map history to pre-handoff messages with proper ordering by timestamp
 const mapHistoryToPreHandoffMessages = (history: any[]): PreHandoffMessage[] => {
   const messages: PreHandoffMessage[] = [];
   
-  for (let i = 0; i < history.length; i++) {
-    const h = history[i];
+  // Sort history by timestamp first
+  const sortedHistory = [...history].sort((a, b) => 
+    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+  
+  for (let i = 0; i < sortedHistory.length; i++) {
+    const h = sortedHistory[i];
     
-    // Stop at handoff_initiated or when actual agent messages start
-    if (h.type === "handoff_initiated" || (h.mode === "handoff" && h.sender === "agent")) {
-      break;
-    }
-    
-    // Skip duplicate handoff events - only show system message version
-    if (h.mode === "handoff" && h.type?.startsWith("handoff_") && !h.systemMessage && h.type !== "handoff_connecting") {
-      const hasSystemMessage = history.some((item, idx) => 
-        idx > i && 
-        item.type === h.type && 
-        item.systemMessage === true &&
-        item.handoffSessionId === h.handoffSessionId
-      );
-      
-      if (hasSystemMessage) {
-        continue;
-      }
-    }
-    
-    // Include handoff system messages (connecting, assigned, offline, accepted, etc.)
-    if (h.mode === "handoff" && (h.systemMessage || h.type?.startsWith("handoff_"))) {
-      messages.push({
-        role: "assistant",
-        content: formatHistoryEntry(h),
-        timestamp: h.timestamp,
-        mode: "handoff",
-        type: h.type,
-        isSystemMessage: true,
-      });
+    // Skip entries that shouldn't be displayed
+    if (!shouldDisplayHistoryEntry(h)) {
       continue;
     }
     
+    const content = formatHistoryEntry(h);
+    if (!content) continue; // Skip empty content
+    
+    // Handle QA mode - split into question and answer
     if (h.mode === "qa") {
       if (h.question) {
         messages.push({
@@ -258,14 +255,36 @@ const mapHistoryToPreHandoffMessages = (history: any[]): PreHandoffMessage[] => 
       continue;
     }
     
-    if (h.mode === "flow" && h.type === "confirmation" && !h.fromUser) {
+    // Handle handoff system messages
+    if (h.mode === "handoff" && (h.systemMessage || h.type?.startsWith("handoff_"))) {
+      messages.push({
+        role: "assistant",
+        content,
+        timestamp: h.timestamp,
+        mode: "handoff",
+        type: h.type,
+        isSystemMessage: true,
+      });
+      continue;
+    }
+    
+    // Handle handoff user/agent messages (these will be shown in the main messages section)
+    if (h.mode === "handoff" && (h.sender === "user" || h.sender === "agent")) {
+      // Skip these as they're handled separately in the messages array from API
+      continue;
+    }
+    
+    // Handle flow mode confirmations
+    if (h.mode === "flow" && h.type === "confirmation" && h.awaitingInput) {
+      // Find if user responded to this confirmation
       let confirmationResponse: string | undefined;
-      for (let j = i + 1; j < history.length; j++) {
-        const nextH = history[j];
+      for (let j = i + 1; j < sortedHistory.length; j++) {
+        const nextH = sortedHistory[j];
         if (nextH.mode === "flow" && nextH.type === "user_input" && nextH.fromUser && nextH.nodeId === h.nodeId) {
-          confirmationResponse = nextH.content?.toLowerCase() === "yes" || nextH.content?.toLowerCase() === "no" 
-            ? nextH.content 
-            : undefined;
+          const answer = typeof nextH.content === "string" ? nextH.content.toLowerCase() : "";
+          if (answer === "yes" || answer === "no") {
+            confirmationResponse = nextH.content;
+          }
           break;
         }
         if (nextH.nodeId !== h.nodeId && nextH.type !== "user_input") {
@@ -275,7 +294,7 @@ const mapHistoryToPreHandoffMessages = (history: any[]): PreHandoffMessage[] => 
       
       messages.push({
         role: "assistant",
-        content: formatHistoryEntry(h),
+        content,
         timestamp: h.timestamp,
         mode: h.mode,
         type: h.type,
@@ -285,62 +304,50 @@ const mapHistoryToPreHandoffMessages = (history: any[]): PreHandoffMessage[] => 
       continue;
     }
     
+    // Handle flow mode user inputs for confirmations (yes/no) - skip as we show buttons
     if (h.mode === "flow" && h.type === "user_input" && h.fromUser) {
-      const prevConfirmation = history.slice(0, i).reverse().find(
-        (ph: any) => ph.nodeId === h.nodeId && ph.type === "confirmation"
+      const answer = typeof h.content === "string" ? h.content.toLowerCase() : "";
+      // Check if this is a confirmation response
+      const prevConfirmation = sortedHistory.slice(0, i).reverse().find(
+        (ph: any) => ph.nodeId === h.nodeId && ph.type === "confirmation" && ph.awaitingInput
       );
-      if (prevConfirmation && (h.content?.toLowerCase() === "yes" || h.content?.toLowerCase() === "no")) {
-        continue;
+      if (prevConfirmation && (answer === "yes" || answer === "no")) {
+        continue; // Skip - shown as button state
       }
     }
     
+    // Standard flow messages
     messages.push({
       role: h.fromUser ? "user" : "assistant",
-      content: formatHistoryEntry(h),
+      content,
       timestamp: h.timestamp,
       mode: h.mode,
       type: h.type,
     });
   }
   
-  return messages;
+  // Sort final messages by timestamp to ensure proper order
+  return messages.sort((a, b) => 
+    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
 };
 
-// Map history to handoff system messages (resolved, reopened, etc. that happen AFTER agent messages)
-const mapHistoryToHandoffSystemMessages = (history: any[]): PreHandoffMessage[] => {
+// Extract handoff system messages from history (for merging with agent messages timeline)
+const extractHandoffSystemMessages = (history: any[]): PreHandoffMessage[] => {
   const messages: PreHandoffMessage[] = [];
-  let agentMessagesStarted = false;
   
-  for (let i = 0; i < history.length; i++) {
-    const h = history[i];
-    
-    // Track when agent messages started
-    if (h.mode === "handoff" && h.sender === "agent") {
-      agentMessagesStarted = true;
-      continue;
-    }
-    
-    // Only collect handoff system messages that happen after agent messages started
-    if (agentMessagesStarted && h.mode === "handoff") {
-      // Skip duplicate handoff events
-      if (h.type?.startsWith("handoff_") && !h.systemMessage) {
-        const hasSystemMessage = history.some((item, idx) => 
-          idx > i && 
-          item.type === h.type && 
-          item.systemMessage === true &&
-          item.handoffSessionId === h.handoffSessionId
-        );
-        
-        if (hasSystemMessage) {
-          continue;
-        }
-      }
-      
-      // Include system messages (resolved, reopened, etc.)
-      if (h.systemMessage || h.type === "handoff_resolved_by_client" || h.type === "handoff_reopened") {
+  const sortedHistory = [...history].sort((a, b) => 
+    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+  
+  for (const h of sortedHistory) {
+    // Only include handoff system messages
+    if (h.mode === "handoff" && (h.systemMessage || h.type?.startsWith("handoff_"))) {
+      const content = formatHistoryEntry(h);
+      if (content) {
         messages.push({
           role: "assistant",
-          content: formatHistoryEntry(h),
+          content,
           timestamp: h.timestamp,
           mode: "handoff",
           type: h.type,
@@ -351,6 +358,21 @@ const mapHistoryToHandoffSystemMessages = (history: any[]): PreHandoffMessage[] 
   }
   
   return messages;
+};
+
+// Merge agent/user messages with system messages into a unified timeline
+const mergeHandoffMessagesWithSystem = (
+  handoffMessages: Message[],
+  systemMessages: PreHandoffMessage[]
+): Array<Message | PreHandoffMessage> => {
+  const allMessages: Array<(Message | PreHandoffMessage) & { timestamp: string }> = [
+    ...handoffMessages.map(m => ({ ...m, _type: 'handoff' as const })),
+    ...systemMessages.map(m => ({ ...m, _type: 'system' as const })),
+  ];
+  
+  return allMessages.sort((a, b) => 
+    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
 };
 
 const AgentChat = () => {
@@ -495,9 +517,12 @@ const AgentChat = () => {
   useEffect(() => {
     if (session?.flowSession?.history && session.flowSession.history.length > 0) {
       const mappedMessages = mapHistoryToPreHandoffMessages(session.flowSession.history);
-      setPreHandoffMessages(mappedMessages);
+      // Filter out system messages from pre-handoff (they'll be shown inline)
+      const nonSystemMessages = mappedMessages.filter(m => !m.isSystemMessage);
+      setPreHandoffMessages(nonSystemMessages);
       
-      const systemMessages = mapHistoryToHandoffSystemMessages(session.flowSession.history);
+      // Extract all handoff system messages for the unified timeline
+      const systemMessages = extractHandoffSystemMessages(session.flowSession.history);
       setHandoffSystemMessages(systemMessages);
     }
   }, [session?.flowSession?.history]);
@@ -1048,72 +1073,86 @@ const AgentChat = () => {
                   </>
                 )}
                 
-                {/* Handoff Messages (Agent-User conversation) */}
-                {messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex gap-3 ${
-                      message.sender === "agent" ? "flex-row-reverse" : ""
-                    }`}
-                  >
-                    <Avatar className="w-8 h-8 flex-shrink-0">
-                      <AvatarFallback className={
-                        message.sender === "agent"
-                          ? "bg-gradient-to-br from-emerald-500 to-teal-500"
-                          : "bg-gradient-to-br from-blue-500 to-purple-500"
-                      }>
-                        {message.sender === "agent" ? (
-                          <Headphones className="w-4 h-4 text-white" />
-                        ) : (
-                          <User className="w-4 h-4 text-white" />
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div
-                      className={`max-w-[75%] ${
-                        message.sender === "agent" ? "text-right" : ""
-                      }`}
-                    >
-                      <div className={`flex items-center gap-2 mb-1 ${message.sender === "agent" ? "justify-end" : ""}`}>
-                        <span className="text-xs font-medium capitalize text-muted-foreground">
-                          {message.sender === "agent" ? "You" : "User"}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(message.timestamp).toLocaleTimeString()}
-                        </span>
-                      </div>
+                {/* Handoff Messages (Agent-User conversation + System messages - merged timeline) */}
+                {(() => {
+                  // Merge messages and system messages into a unified timeline
+                  const mergedTimeline = mergeHandoffMessagesWithSystem(messages, handoffSystemMessages);
+                  
+                  return mergedTimeline.map((item, index) => {
+                    // Check if it's a system message (PreHandoffMessage with isSystemMessage)
+                    const isSystemMessage = 'isSystemMessage' in item && item.isSystemMessage;
+                    
+                    if (isSystemMessage) {
+                      const msg = item as PreHandoffMessage;
+                      return (
+                        <div key={`timeline-${index}`} className="flex justify-center">
+                          <div className="max-w-[85%]">
+                            <div
+                              className="inline-block px-4 py-2 rounded-2xl shadow-sm bg-orange-100 text-orange-900 border border-orange-200 dark:bg-orange-950 dark:text-orange-100 dark:border-orange-800 w-full text-center"
+                            >
+                              <div className="flex items-center justify-center gap-2 mb-1">
+                                <Info className="w-3 h-3" />
+                                <span className="text-xs font-medium">System Message</span>
+                              </div>
+                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(msg.timestamp).toLocaleTimeString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    // It's a regular handoff message
+                    const message = item as Message;
+                    return (
                       <div
-                        className={`inline-block px-4 py-2 rounded-2xl shadow-sm ${
-                          message.sender === "agent"
-                            ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-br-md"
-                            : "bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-bl-md"
+                        key={`timeline-${index}`}
+                        className={`flex gap-3 ${
+                          message.sender === "agent" ? "flex-row-reverse" : ""
                         }`}
                       >
-                        <p className="text-sm whitespace-pre-wrap">{message.message}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                
-                {/* Handoff System Messages (resolved, reopened, etc.) */}
-                {handoffSystemMessages.map((msg, index) => (
-                  <div key={`handoff-system-${index}`} className="flex justify-center">
-                    <div className="max-w-[85%]">
-                      <div
-                        className="inline-block px-4 py-2 rounded-2xl shadow-sm bg-orange-100 text-orange-900 border border-orange-200 dark:bg-orange-950 dark:text-orange-100 dark:border-orange-800 w-full text-center"
-                      >
-                        <div className="flex items-center justify-center gap-2 mb-1">
-                          <Info className="w-3 h-3" />
-                          <span className="text-xs font-medium">System Message</span>
+                        <Avatar className="w-8 h-8 flex-shrink-0">
+                          <AvatarFallback className={
+                            message.sender === "agent"
+                              ? "bg-gradient-to-br from-emerald-500 to-teal-500"
+                              : "bg-gradient-to-br from-blue-500 to-purple-500"
+                          }>
+                            {message.sender === "agent" ? (
+                              <Headphones className="w-4 h-4 text-white" />
+                            ) : (
+                              <User className="w-4 h-4 text-white" />
+                            )}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div
+                          className={`max-w-[75%] ${
+                            message.sender === "agent" ? "text-right" : ""
+                          }`}
+                        >
+                          <div className={`flex items-center gap-2 mb-1 ${message.sender === "agent" ? "justify-end" : ""}`}>
+                            <span className="text-xs font-medium capitalize text-muted-foreground">
+                              {message.sender === "agent" ? "You" : "User"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(message.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <div
+                            className={`inline-block px-4 py-2 rounded-2xl shadow-sm ${
+                              message.sender === "agent"
+                                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-br-md"
+                                : "bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-bl-md"
+                            }`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+                          </div>
                         </div>
-                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(msg.timestamp).toLocaleTimeString()}
-                        </p>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  });
+                })()}
                 
                 <div ref={messagesEndRef} />
               </div>
