@@ -1681,7 +1681,8 @@ export const PublicBotChatPage = () => {
                           : JSON.stringify(msg.content)}
                       </div>
                     )}
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      {msg.sender === "agent" && <Headphones className="h-3 w-3" />}
                       {msg.timestamp.toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit"
