@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { removeAgentAuthToken, removeAgentEmail, getAgentEmail, getAgentAuthHeaders, getAgentAuthToken } from "@/utils/agentAuth";
 import { logoutAgentUser } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
+import { getMeaningfulMessageCount } from "@/utils/flowSessionUtil";
 
 interface EscalationInfo {
   wasEscalated: boolean;
@@ -21,6 +22,21 @@ interface EscalationInfo {
   escalatedTo: string;
   escalatedAt: string;
   reason: string;
+}
+
+interface FlowHistoryItem {
+  mode: "flow" | "handoff";
+  type: string;
+  content: any;
+  timestamp: string;
+  fromUser: boolean;
+}
+
+interface FlowSession {
+  _id: string;
+  currentNodeId?: string;
+  currentMode: "flow" | "handoff";
+  history: FlowHistoryItem[];
 }
 
 interface HandoffSession {
@@ -37,6 +53,7 @@ interface HandoffSession {
   resolvedAt?: string;
   isCurrentAssignee: boolean;
   escalationInfo?: EscalationInfo;
+  flowSession?: FlowSession;
   messages: Array<{
     sender: string;
     message: string;
@@ -350,22 +367,22 @@ const AgentDashboard = () => {
     try {
       // First, set agent to offline
       await updateStatus(false, "offline");
-      
+
       // Call logout API
       const token = getAgentAuthToken();
       if (token) {
         await logoutAgentUser(token);
       }
-      
+
       // Clear tokens and email from localStorage
       removeAgentAuthToken();
       removeAgentEmail();
-      
+
       toast({
         title: "Success",
         description: "Logged out successfully",
       });
-      
+
       // Redirect to login page
       navigate("/agent/login", { replace: true });
     } catch (error) {
@@ -1295,7 +1312,9 @@ const SessionCard = ({
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <MessageSquare className="w-3 h-3" />
-                {session.messages.length}
+                {getMeaningfulMessageCount(
+                session.flowSession?.history
+                )}
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
