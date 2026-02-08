@@ -3,14 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Bot, User, Send, Mic, MicOff, Video, Loader2, PhoneOff, Volume2, VolumeX, Headphones, Clock, ArrowDown } from "lucide-react";
-// TODO: import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useToast } from "@/components/ui/use-toast";
-// TODO: import { VoiceWaveform } from "@/components/VoiceWaveform";
 
 interface Message {
   id: string;
@@ -40,14 +37,15 @@ export const PublicBotChatPage = () => {
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // Jump to latest state
+  // IMPROVED: Jump to latest state with better tracking
   const [showJumpButton, setShowJumpButton] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [shouldForceScroll, setShouldForceScroll] = useState(false);
+  const isAutoScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const userScrolledAwayRef = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // const audioRef = useRef<HTMLAudioElement>(null);
 
   // BROWSER SPEECH RECOGNITION (Speech-to-Text)
   const [isListening, setIsListening] = useState(false);
@@ -56,7 +54,6 @@ export const PublicBotChatPage = () => {
 
   // Initialize browser's Speech Recognition API
   useEffect(() => {
-    // Check if browser supports Speech Recognition
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
@@ -65,9 +62,9 @@ export const PublicBotChatPage = () => {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false; // Stop after one result
+    recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = 'en-US'; // Set language
+    recognition.lang = 'en-US';
 
     recognition.onstart = () => {
       setIsListening(true);
@@ -78,12 +75,9 @@ export const PublicBotChatPage = () => {
       const transcript = event.results[0][0].transcript;
       setIsProcessing(true);
 
-      // Handle the recognized speech
       if (bot?.is_video_bot && flowFinished) {
-        // Auto-submit for video bot in Q&A mode
         handleVoiceQuestion(transcript);
       } else {
-        // Just populate input field
         setInputMessage(prev => {
           const newText = prev ? prev + " " + transcript : transcript;
           return newText.trim();
@@ -121,7 +115,6 @@ export const PublicBotChatPage = () => {
     };
   }, [bot?.is_video_bot, flowFinished]);
 
-  // Toggle speech recognition
   const toggleListening = () => {
     if (!recognitionRef.current) {
       toast({
@@ -146,7 +139,6 @@ export const PublicBotChatPage = () => {
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [showTtsPrompt, setShowTtsPrompt] = useState(false);
 
-  // Process TTS queue using browser's Speech Synthesis API
   const processTTSQueue = async () => {
     if (isProcessingTTSRef.current || ttsQueueRef.current.length === 0) {
       return;
@@ -157,7 +149,6 @@ export const PublicBotChatPage = () => {
       return;
     }
 
-    // Check if TTS is enabled by user
     if (!ttsEnabled) {
       setShowTtsPrompt(true);
       return;
@@ -171,13 +162,12 @@ export const PublicBotChatPage = () => {
       if (!text) continue;
 
       try {
-        // Use browser's Speech Synthesis API
         await new Promise<void>((resolve, reject) => {
           const utterance = new SpeechSynthesisUtterance(text);
           utterance.lang = 'en-US';
-          utterance.rate = 1.0; // Speed
-          utterance.pitch = 1.0; // Pitch
-          utterance.volume = 1.0; // Volume
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          utterance.volume = 1.0;
 
           utterance.onend = () => {
             resolve();
@@ -185,12 +175,11 @@ export const PublicBotChatPage = () => {
 
           utterance.onerror = (event) => {
             console.error("Speech synthesis error:", event);
-            // If error is "not-allowed", it means user interaction is needed
             if (event.error === 'not-allowed') {
               setShowTtsPrompt(true);
               setTtsEnabled(false);
             }
-            resolve(); // Continue with next item instead of rejecting
+            resolve();
           };
 
           speechSynthesisRef.current = utterance;
@@ -199,7 +188,6 @@ export const PublicBotChatPage = () => {
 
       } catch (error) {
         console.error("TTS error:", error);
-        // Continue with next item even if one fails
       }
     }
 
@@ -207,94 +195,20 @@ export const PublicBotChatPage = () => {
     setIsSpeaking(false);
   };
 
-  // Enable TTS with user interaction
   const enableTTS = () => {
     setTtsEnabled(true);
     setShowTtsPrompt(false);
-    // Process any queued messages
     if (ttsQueueRef.current.length > 0) {
       processTTSQueue();
     }
   };
 
-  // Disable TTS
   const disableTTS = () => {
     setTtsEnabled(false);
     setShowTtsPrompt(false);
     clearTTSQueue();
   };
 
-  // TTS Queue management (COMMENTED OUT - Old API-based implementation)
-  // const processTTSQueue = async () => {
-  //   // If already processing or queue is empty, return
-  //   if (isProcessingTTSRef.current || ttsQueueRef.current.length === 0) {
-  //     return;
-  //   }
-
-  //   isProcessingTTSRef.current = true;
-
-  //   while (ttsQueueRef.current.length > 0) {
-  //     const text = ttsQueueRef.current.shift();
-  //     if (!text || !text.trim()) continue;
-
-  //     try {
-  //       setIsSpeaking(true);
-
-  //       const response = await fetch(
-  //         `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/text-to-speech`,
-  //         {
-  //           method: "POST",
-  //           headers: { "Content-Type": "application/json" },
-  //           body: JSON.stringify({ text, voiceId: bot.voice_id }),
-  //         }
-  //       );
-
-  //       if (!response.ok) {
-  //         throw new Error("Failed to generate speech");
-  //       }
-
-  //       const audioBlob = await response.blob();
-  //       const audioUrl = URL.createObjectURL(audioBlob);
-
-  //       // Wait for audio to finish playing before processing next item
-  //       await new Promise<void>((resolve, reject) => {
-  //         if (audioRef.current) {
-  //           audioRef.current.src = audioUrl;
-
-  //           const handleEnded = () => {
-  //             URL.revokeObjectURL(audioUrl);
-  //             audioRef.current?.removeEventListener('ended', handleEnded);
-  //             audioRef.current?.removeEventListener('error', handleError);
-  //             resolve();
-  //           };
-
-  //           const handleError = () => {
-  //             URL.revokeObjectURL(audioUrl);
-  //             audioRef.current?.removeEventListener('ended', handleEnded);
-  //             audioRef.current?.removeEventListener('error', handleError);
-  //             reject(new Error("Audio playback failed"));
-  //           };
-
-  //           audioRef.current.addEventListener('ended', handleEnded);
-  //           audioRef.current.addEventListener('error', handleError);
-
-  //           audioRef.current.play().catch(reject);
-  //         } else {
-  //           resolve();
-  //         }
-  //       });
-
-  //     } catch (error) {
-  //       console.error("TTS error:", error);
-  //       // Continue with next item even if one fails
-  //     }
-  //   }
-
-  //   setIsSpeaking(false);
-  //   isProcessingTTSRef.current = false;
-  // };
-
-  // Add text to TTS queue and start processing
   const queueTextToSpeech = (text: string) => {
     if (!bot?.is_video_bot || !text.trim()) return;
 
@@ -302,7 +216,6 @@ export const PublicBotChatPage = () => {
     processTTSQueue();
   };
 
-  // Clear TTS queue
   const clearTTSQueue = () => {
     ttsQueueRef.current = [];
     if (window.speechSynthesis) {
@@ -312,23 +225,15 @@ export const PublicBotChatPage = () => {
     setIsSpeaking(false);
   };
 
-  // Clear TTS queue (COMMENTED OUT - Old API-based implementation)
-  // const clearTTSQueue = () => {
-  //   ttsQueueRef.current = [];
-  //   if (audioRef.current) {
-  //     audioRef.current.pause();
-  //     audioRef.current.currentTime = 0;
-  //   }
-  //   isProcessingTTSRef.current = false;
-  //   setIsSpeaking(false);
-  // };
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       clearTTSQueue();
       if (recognitionRef.current) {
         recognitionRef.current.abort();
+      }
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
       }
     };
   }, []);
@@ -353,7 +258,6 @@ export const PublicBotChatPage = () => {
   const [previousRatingFeedback, setPreviousRatingFeedback] = useState<string>('');
   const [isLoadingRating, setIsLoadingRating] = useState(false);
 
-  // Human handoff keywords detection
   const detectHandoffIntent = (message: string): boolean => {
     const handoffKeywords = [
       'speak to human', 'talk to agent', 'live agent', 'customer service',
@@ -364,7 +268,6 @@ export const PublicBotChatPage = () => {
     return handoffKeywords.some(keyword => lowerMessage.includes(keyword));
   };
 
-  // Add system message helper
   const addSystemMessage = async (content: string, messageType?: string) => {
     const systemMessage: Message = {
       id: `system-${Date.now()}`,
@@ -375,7 +278,6 @@ export const PublicBotChatPage = () => {
     };
     setMessages((prev) => [...prev, systemMessage]);
 
-    // Save to flow session
     if (sessionId) {
       try {
         await fetch(
@@ -396,7 +298,6 @@ export const PublicBotChatPage = () => {
     }
   };
 
-  // Fetch existing rating for a session
   const fetchExistingRating = async () => {
     if (!handoffSessionId || !sessionId) return;
     setIsLoadingRating(true);
@@ -416,14 +317,12 @@ export const PublicBotChatPage = () => {
     }
   };
 
-  // Show rating modal and fetch previous rating data if available
   const showRatingModalWithData = async () => {
     setShowRatingModal(true);
     setRatingSubmitted(false);
     await fetchExistingRating();
   };
 
-  // Submit rating to backend
   const submitRating = async () => {
     if (!handoffSessionId || !sessionId) {
       toast({ title: 'Error', description: 'Session information missing', variant: 'destructive' });
@@ -456,11 +355,9 @@ export const PublicBotChatPage = () => {
     }
   };
 
-  // Handle voice question for video bot in Q&A mode (auto-submit)
   const handleVoiceQuestion = async (question: string) => {
     if (!question.trim() || isLoading) return;
 
-    // Check for handoff intent in voice mode
     if (flowFinished && detectHandoffIntent(question) && (bot?.human_handoff_enabled || bot?.humanHandoffEnabled)) {
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -469,7 +366,6 @@ export const PublicBotChatPage = () => {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, userMessage]);
-      setShouldForceScroll(true);
       await requestHumanHandoff(question);
       return;
     }
@@ -482,9 +378,7 @@ export const PublicBotChatPage = () => {
     };
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
-    setShouldForceScroll(true);
 
-    // If in handoff mode, send to agent
     if (handoffRequested && handoffSessionId) {
       await sendMessageToAgent(question);
       setIsLoading(false);
@@ -513,8 +407,6 @@ export const PublicBotChatPage = () => {
 
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
-
-      // Queue answer for speech (using browser TTS)
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
@@ -529,7 +421,6 @@ export const PublicBotChatPage = () => {
     }
   };
 
-  // Send message to agent when in handoff mode
   const sendMessageToAgent = async (message: string) => {
     if (!handoffSessionId) return;
     if (handoffStatusRef.current === 'resolved') {
@@ -553,7 +444,6 @@ export const PublicBotChatPage = () => {
     }
   };
 
-  // Client resolves the handoff (user ends the chat)
   const clientResolveHandoff = async () => {
     if (!handoffSessionId || !sessionId) return;
     try {
@@ -570,7 +460,6 @@ export const PublicBotChatPage = () => {
         setHandoffStatus('resolved');
         handoffStatusRef.current = 'resolved';
         setHandoffRequested(false);
-        // Show rating modal and load previous rating data
         await showRatingModalWithData();
         await addSystemMessage('You have ended this conversation.', 'handoff_client_resolved');
       } else {
@@ -582,7 +471,6 @@ export const PublicBotChatPage = () => {
     }
   };
 
-  // Client reopens a resolved handoff session
   const clientReopenHandoff = async () => {
     if (!handoffSessionId || !sessionId || isReopenLoading) return;
     setIsReopenLoading(true);
@@ -612,7 +500,6 @@ export const PublicBotChatPage = () => {
     }
   };
 
-  // Request human handoff
   const requestHumanHandoff = async (userQuestion: string) => {
     if (!bot?.human_handoff_enabled && !bot?.humanHandoffEnabled) {
       await addSystemMessage("Human support is not available for this bot.", "handoff_unavailable");
@@ -657,75 +544,81 @@ export const PublicBotChatPage = () => {
     }
   };
 
-  // COMMENTED OUT - Old useSpeechToText hook implementation
-  // const {
-  //   isListening,
-  //   isProcessing,
-  //   showSilenceWarning,
-  //   silenceCountdown,
-  //   audioLevels,
-  //   toggleListening
-  // } = useSpeechToText({
-  //   onResult: (text) => {
-  //     // Only auto-submit voice input when in Q&A mode (flowFinished) for video bots
-  //     if (bot?.is_video_bot && flowFinished) {
-  //       handleVoiceQuestion(text);
-  //     } else {
-  //       // Otherwise, just populate the input field
-  //       setInputMessage(prev => {
-  //         const newText = prev ? prev + " " + text : text;
-  //         return newText.trim();
-  //       });
-  //     }
-  //   },
-  //   onError: (err) => {
-  //     if (!err.includes('speak into the microphone')) {
-  //       toast({
-  //         title: "Speech Error",
-  //         description: err,
-  //         variant: "destructive"
-  //       });
-  //     }
-  //   },
-  //   language: "en-US",
-  //   silenceTimeout: 10,
-  //   stopTimeout: 5,
-  // });
+  // IMPROVED: Check if user is near bottom with threshold (SAME AS EMBED)
+  const checkIfNearBottom = () => {
+    if (!scrollAreaRef.current) return true;
+    const element = scrollAreaRef.current;
+    const threshold = 150;
+    const scrollTop = element.scrollTop;
+    const scrollHeight = element.scrollHeight;
+    const clientHeight = element.clientHeight;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    
+    const isNear = distanceFromBottom < threshold;
+    return isNear;
+  };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // IMPROVED: Smooth scroll to bottom with better state management
+  const scrollToBottom = (force = false) => {
+    if (isAutoScrollingRef.current && !force) return;
+    
+    isAutoScrollingRef.current = true;
+    userScrolledAwayRef.current = false;
     setShowJumpButton(false);
-  };
-
-  const handleScrollAreaScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const element = e.currentTarget;
-    const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
-    setShowJumpButton(!isNearBottom && element.scrollHeight > element.clientHeight);
-  };
-
-  // Auto-scroll with smart logic
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-      const element = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (element) {
-        const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
-
-        // Always scroll if user just sent a message, or if they're already near bottom
-        if (shouldForceScroll || isNearBottom) {
-          scrollToBottom();
-          setShouldForceScroll(false); // Reset the force scroll flag
-        }
-      }
+    
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
     }
-  }, [messages]);
+    
+    scrollTimeoutRef.current = setTimeout(() => {
+      isAutoScrollingRef.current = false;
+    }, 500);
+  };
+
+  // IMPROVED: Handle scroll events with better logic (SAME AS EMBED)
+  const handleScrollAreaScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    // Ignore scroll events triggered by auto-scroll
+    if (isAutoScrollingRef.current) return;
+    
+    const element = e.currentTarget;
+    const isNearBottom = checkIfNearBottom();
+    
+    // User scrolled away from bottom
+    if (!isNearBottom && element.scrollHeight > element.clientHeight) {
+      userScrolledAwayRef.current = true;
+      setShowJumpButton(true);
+    } else {
+      userScrolledAwayRef.current = false;
+      setShowJumpButton(false);
+    }
+  };
+
+  // IMPROVED: Auto-scroll when new messages arrive
+  useEffect(() => {
+    if (userScrolledAwayRef.current || isLoading || isHandoffLoading) {
+      return;
+    }
+    
+    scrollToBottom();
+  }, [messages.length]);
+
+  // IMPROVED: Scroll to bottom after loading completes
+  useEffect(() => {
+    if (!isLoading && !isHandoffLoading && !userScrolledAwayRef.current) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+  }, [isLoading, isHandoffLoading]);
 
   // Initial focus and scroll on mount
   useEffect(() => {
     inputRef.current?.focus();
-    scrollToBottom(); // Scroll to bottom on initial load
+    scrollToBottom();
   }, []);
 
-  // Helper to add bot message
   const addBotMessage = (content: string, audioUrl?: string) => {
     const botMessage: Message = {
       id: Date.now().toString() + Math.random(),
@@ -735,15 +628,6 @@ export const PublicBotChatPage = () => {
       audioUrl,
     };
     setMessages((prev) => [...prev, botMessage]);
-
-    // COMMENTED OUT - Old audio playback implementation
-    // Play audio if available
-    // if (audioUrl && audioRef.current) {
-    //   audioRef.current.src = audioUrl;
-    //   audioRef.current.play().catch(err => {
-    //     console.error('Error playing audio:', err);
-    //   });
-    // }
 
     return botMessage;
   };
@@ -818,7 +702,6 @@ export const PublicBotChatPage = () => {
             branchOptions: msg.options || [],
           });
 
-          // Collect texts to speak (using browser TTS)
           if (bot.is_video_bot && messageContent) {
             textsToSpeak.push(messageContent);
           }
@@ -836,8 +719,6 @@ export const PublicBotChatPage = () => {
         }
 
         setMessages(botMessages);
-
-        // Queue all texts for speech in order (using browser TTS)
         textsToSpeak.forEach(text => queueTextToSpeech(text));
       } catch (err) {
         console.error("Failed to start flow", err);
@@ -882,7 +763,6 @@ export const PublicBotChatPage = () => {
           const status = data.result.status;
           const assignedAgent = data.result.assignedAgent;
 
-          // When agent accepts (active)
           if (status === 'active' && handoffStatusRef.current !== 'active') {
             setHandoffStatus('active');
             handoffStatusRef.current = 'active';
@@ -892,12 +772,10 @@ export const PublicBotChatPage = () => {
             await addSystemMessage(agentMsg, 'handoff_accepted');
           }
 
-          // When agent resolves
           if (status === 'resolved' && handoffStatusRef.current !== 'resolved') {
             setHandoffStatus('resolved');
             handoffStatusRef.current = 'resolved';
             setHandoffRequested(false);
-            // Show rating modal
             setShowRatingModal(true);
             await addSystemMessage('This conversation has been marked resolved by the agent.', 'handoff_resolved');
           }
@@ -910,12 +788,10 @@ export const PublicBotChatPage = () => {
     return () => clearInterval(pollInterval);
   }, [handoffSessionId, sessionId]);
 
-  // Handle Q&A mode
   const handleAskQuestion = async () => {
     const question = inputMessage.trim();
     if (!question || isLoading) return;
 
-    // Check for handoff intent
     if (flowFinished && detectHandoffIntent(question) && (bot?.human_handoff_enabled || bot?.humanHandoffEnabled)) {
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -925,7 +801,6 @@ export const PublicBotChatPage = () => {
       };
       setMessages((prev) => [...prev, userMessage]);
       setInputMessage("");
-      setShouldForceScroll(true);
       await requestHumanHandoff(question);
       return;
     }
@@ -939,9 +814,7 @@ export const PublicBotChatPage = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
     setIsLoading(true);
-    setShouldForceScroll(true);
 
-    // If in handoff mode, send to agent
     if (handoffRequested && handoffSessionId) {
       await sendMessageToAgent(question);
       setIsLoading(false);
@@ -970,8 +843,6 @@ export const PublicBotChatPage = () => {
 
       const answerText = data.result.answer || "I couldn't find an answer to that question.";
       addBotMessage(answerText);
-
-      // Queue answer for speech (using browser TTS)
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
@@ -1004,9 +875,7 @@ export const PublicBotChatPage = () => {
     if (!messageToSend || isLoading || !sessionId) return;
 
     setCurrentPausedFor(null);
-    setShouldForceScroll(true);
 
-    // Check for handoff intent in flow mode
     if (!flowFinished && detectHandoffIntent(messageToSend) && (bot?.human_handoff_enabled || bot?.humanHandoffEnabled)) {
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -1089,7 +958,6 @@ export const PublicBotChatPage = () => {
           branchOptions: msg.options || [],
         });
 
-        // Collect texts to speak (using browser TTS)
         if (bot.is_video_bot && messageContent) {
           textsToSpeak.push(messageContent);
         }
@@ -1107,8 +975,6 @@ export const PublicBotChatPage = () => {
       }
 
       setMessages((prev) => [...prev, ...botMessages]);
-
-      // Queue all texts for speech in order (using browser TTS)
       textsToSpeak.forEach(text => queueTextToSpeech(text));
     } catch (err: any) {
       console.error(err);
@@ -1173,7 +1039,6 @@ export const PublicBotChatPage = () => {
     if (isListening) {
       toggleListening();
     }
-    // Clear any pending TTS when ending call
     clearTTSQueue();
   };
 
@@ -1186,12 +1051,10 @@ export const PublicBotChatPage = () => {
     currentPausedFor?.type !== "branch" &&
     !currentPausedFor?.showConfirmationButtons);
 
-  // Show mic button: for video bots only in flow mode, for non-video bots when voice is enabled
   const shouldShowMicButton = bot?.is_video_bot ? !flowFinished : (bot?.is_voice_enabled && canSendText);
 
   const videoBotAvatarUrl = bot?.video_bot_image_url || null;
 
-  // Get appropriate placeholder text
   const getPlaceholderText = () => {
     if (isListening) return "Listening... Speak now";
     if (isProcessing) return "Processing speech...";
@@ -1234,7 +1097,6 @@ export const PublicBotChatPage = () => {
                 <div className="flex items-center gap-2 flex-wrap">
                   <CardTitle className="text-xl text-white">{bot.name}</CardTitle>
                   <div className="flex gap-1.5 flex-wrap">
-                    {/* Handoff Status Badge */}
                     {handoffRequested && (
                       <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 border-orange-200 animate-pulse">
                         <Headphones className="h-3 w-3 mr-1" />
@@ -1305,7 +1167,7 @@ export const PublicBotChatPage = () => {
 
         {/* Video Bot View - Split Screen */}
         {bot.is_video_bot ? (
-          <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex overflow-hidden min-h-0">
             {/* Left Side - Video Bot Avatar (Conditional) */}
             {showVideoAvatar && (
               <div className="w-1/2 relative overflow-hidden flex items-center justify-center">
@@ -1317,7 +1179,6 @@ export const PublicBotChatPage = () => {
                       className="relative z-0 w-full h-full object-cover"
                     />
 
-                    {/* Speaking/Loading indicator */}
                     {(isLoading || isSpeaking) && (
                       <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-20 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -1325,11 +1186,9 @@ export const PublicBotChatPage = () => {
                       </div>
                     )}
 
-                    {/* Call Control Buttons Overlay (only show in Q&A mode) */}
                     {flowFinished && (
                       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-none">
                         <div className="flex gap-3 pointer-events-auto">
-                          {/* TTS Toggle Button */}
                           <Button
                             onClick={ttsEnabled ? disableTTS : enableTTS}
                             size="lg"
@@ -1346,7 +1205,6 @@ export const PublicBotChatPage = () => {
                             )}
                           </Button>
 
-                          {/* Mute/Unmute Button */}
                           <Button
                             onClick={handleMicToggle}
                             size="lg"
@@ -1368,7 +1226,6 @@ export const PublicBotChatPage = () => {
                             )}
                           </Button>
 
-                          {/* End Call Button */}
                           <Button
                             onClick={handleEndCall}
                             size="lg"
@@ -1405,11 +1262,9 @@ export const PublicBotChatPage = () => {
                       No avatar configured for this video bot
                     </p>
 
-                    {/* Call Control Buttons for no avatar (only in Q&A mode) */}
                     {flowFinished && (
                       <>
                         <div className="flex gap-3 justify-center">
-                          {/* TTS Toggle Button */}
                           <Button
                             onClick={ttsEnabled ? disableTTS : enableTTS}
                             size="lg"
@@ -1478,12 +1333,12 @@ export const PublicBotChatPage = () => {
             )}
 
             {/* Right Side - Chat Interface */}
-            <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-white dark:bg-gray-900 transition-all duration-300 relative`}>
-              {/* Chat Messages */}
-              <ScrollArea
+            <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-white dark:bg-gray-900 transition-all duration-300 relative min-h-0`}>
+              {/* Chat Messages - Scrollable Area */}
+              <div
                 ref={scrollAreaRef}
                 onScroll={handleScrollAreaScroll}
-                className="flex-1 p-4"
+                className="flex-1 p-4 min-h-0 overflow-y-auto overflow-x-hidden"
               >
                 {messages.length === 0 && (
                   <div className="text-center text-gray-400 py-8">
@@ -1610,25 +1465,25 @@ export const PublicBotChatPage = () => {
                   </div>
                 )}
 
-                {/* Jump to Latest Button - displayed in center of message area */}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input Area for Video Bot - Fixed at Bottom */}
+              <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+                {/* IMPROVED: Jump to Latest Button - only shown when stable */}
                 {showJumpButton && (
-                  <div className="flex justify-center my-4">
+                  <div className="mb-3 flex justify-center">
                     <Button
-                      onClick={scrollToBottom}
-                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center gap-2"
+                      onClick={() => scrollToBottom(true)}
+                      variant="outline"
+                      className="flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
                     >
                       <ArrowDown className="h-4 w-4" />
-                      Jump to Latest
+                      Jump to Latest Message
                     </Button>
                   </div>
                 )}
 
-                <div ref={messagesEndRef} />
-              </ScrollArea>
-
-              {/* Input Area for Video Bot */}
-              <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
-                {/* TTS Permission Prompt */}
                 {showTtsPrompt && bot.is_video_bot && (
                   <Alert className="mb-2 bg-amber-50 border-amber-200">
                     <Volume2 className="h-4 w-4 text-amber-600" />
@@ -1646,17 +1501,6 @@ export const PublicBotChatPage = () => {
                   </Alert>
                 )}
 
-                {/* REMOVED: Voice Waveform - replaced with simple status message */}
-                {/* Voice Waveform (only show when listening and not in Q&A mode with video bot, or always for non-video) */}
-                {/* {isListening && (!bot.is_video_bot || !flowFinished) && (
-                  <VoiceWaveform
-                    isListening={isListening}
-                    audioLevels={audioLevels}
-                    showSilenceWarning={showSilenceWarning}
-                    silenceCountdown={silenceCountdown}
-                  />
-                )} */}
-
                 {flowFinished && isListening && (
                   <Alert className="mb-2 bg-blue-50 border-blue-200">
                     <Mic className="h-4 w-4 text-blue-600" />
@@ -1664,7 +1508,6 @@ export const PublicBotChatPage = () => {
                   </Alert>
                 )}
 
-                {/* Processing indicator */}
                 {isProcessing && !isHandoffLoading && (
                   <Alert className="mb-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1723,7 +1566,6 @@ export const PublicBotChatPage = () => {
                   </Alert>
                 )}
 
-                {/* Show Avatar Button (when avatar is hidden) */}
                 {!showVideoAvatar && (
                   <div className="mb-3">
                     <Button
@@ -1795,10 +1637,10 @@ export const PublicBotChatPage = () => {
         ) : (
           /* Regular Chat View */
           <CardContent className="flex-1 flex flex-col p-0 relative min-h-0 overflow-hidden">
-            <ScrollArea
+            <div
               ref={scrollAreaRef}
               onScroll={handleScrollAreaScroll}
-              className="flex-1 min-h-0 p-4"
+              className="flex-1 min-h-0 p-4 overflow-y-auto overflow-x-hidden"
             >
               {messages.length === 0 && (
                 <div className="text-center text-gray-400 py-8">
@@ -1827,7 +1669,11 @@ export const PublicBotChatPage = () => {
                       <div
                         className={`rounded-lg p-3 ${msg.sender === "user"
                           ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                          : msg.sender === "agent"
+                            ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                            : msg.isSystemMessage
+                              ? "bg-orange-100 text-orange-900 border border-orange-200"
+                              : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           }`}
                       >
                         {typeof msg.content === "string"
@@ -1921,25 +1767,25 @@ export const PublicBotChatPage = () => {
                 </div>
               )}
 
-              {/* Jump to Latest Button - displayed in center of message area */}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Fixed Input Area - For non-video bots */}
+            <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0 sticky bottom-0 z-10">
+              {/* IMPROVED: Jump to Latest Button */}
               {showJumpButton && (
-                <div className="flex justify-center my-4">
+                <div className="mb-3 flex justify-center">
                   <Button
-                    onClick={scrollToBottom}
-                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center gap-2"
+                    onClick={() => scrollToBottom(true)}
+                    variant="outline"
+                    className="flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
                   >
                     <ArrowDown className="h-4 w-4" />
-                    Jump to Latest
+                    Jump to Latest Message
                   </Button>
                 </div>
               )}
 
-              <div ref={messagesEndRef} />
-            </ScrollArea>
-
-            {/* Fixed Input Area - For non-video bots */}
-            <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0 sticky bottom-0 z-10">
-              {/* Handoff Status Alerts */}
               {handoffRequested && !isConnectedToAgent && (
                 <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
                   {isHandoffLoading ? (
@@ -1977,7 +1823,6 @@ export const PublicBotChatPage = () => {
                 </Alert>
               )}
 
-              {/* TTS Permission Prompt */}
               {showTtsPrompt && bot.is_video_bot && (
                 <Alert className="mb-2 bg-amber-50 border-amber-200">
                   <Volume2 className="h-4 w-4 text-amber-600" />
@@ -2029,7 +1874,7 @@ export const PublicBotChatPage = () => {
                 </Alert>
               )}
 
-              {!showVideoAvatar && (
+              {!showVideoAvatar && bot.is_video_bot && (
                 <div className="mb-3">
                   <Button
                     onClick={handleBringBackAvatar}
@@ -2095,10 +1940,6 @@ export const PublicBotChatPage = () => {
             </div>
           </CardContent>
         )}
-
-        {/* Hidden audio element for playing TTS */}
-        {/* COMMENTED OUT - No longer needed with browser TTS */}
-        {/* <audio ref={audioRef} className="hidden" /> */}
       </Card>
 
       {/* Footer Branding */}
