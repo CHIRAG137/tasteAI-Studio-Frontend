@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -78,9 +77,12 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const [previousRatingFeedback, setPreviousRatingFeedback] = useState<string>('');
   const [isLoadingRating, setIsLoadingRating] = useState(false);
   
-  // Jump to latest state
+  // IMPROVED: Jump to latest state with better tracking
   const [showJumpButton, setShowJumpButton] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const isAutoScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const userScrolledAwayRef = useRef(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -716,6 +718,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       if (recognitionRef.current) {
         recognitionRef.current.abort();
       }
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -788,18 +793,74 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // IMPROVED: Check if user is near bottom with threshold (SAME AS EMBED)
+  const checkIfNearBottom = () => {
+    if (!scrollAreaRef.current) return true;
+    const element = scrollAreaRef.current;
+    const threshold = 150;
+    const scrollTop = element.scrollTop;
+    const scrollHeight = element.scrollHeight;
+    const clientHeight = element.clientHeight;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    
+    const isNear = distanceFromBottom < threshold;
+    return isNear;
+  };
+
+  // IMPROVED: Smooth scroll to bottom with better state management (SAME AS EMBED)
+  const scrollToBottom = (force = false) => {
+    if (isAutoScrollingRef.current && !force) return;
+    
+    isAutoScrollingRef.current = true;
+    userScrolledAwayRef.current = false;
     setShowJumpButton(false);
+    
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    
+    scrollTimeoutRef.current = setTimeout(() => {
+      isAutoScrollingRef.current = false;
+    }, 500);
   };
 
+  // IMPROVED: Handle scroll events with better logic (SAME AS EMBED)
   const handleScrollAreaScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    // Ignore scroll events triggered by auto-scroll
+    if (isAutoScrollingRef.current) return;
+    
     const element = e.currentTarget;
-    const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
-    setShowJumpButton(!isNearBottom && element.scrollHeight > element.clientHeight);
+    const isNearBottom = checkIfNearBottom();
+    
+    // User scrolled away from bottom
+    if (!isNearBottom && element.scrollHeight > element.clientHeight) {
+      userScrolledAwayRef.current = true;
+      setShowJumpButton(true);
+    } else {
+      userScrolledAwayRef.current = false;
+      setShowJumpButton(false);
+    }
   };
 
-  useEffect(scrollToBottom, [messages]);
+  // IMPROVED: Auto-scroll when new messages arrive (SAME AS EMBED)
+  useEffect(() => {
+    if (userScrolledAwayRef.current || isLoading || isHandoffLoading) {
+      return;
+    }
+    
+    scrollToBottom();
+  }, [messages.length]);
+
+  // IMPROVED: Scroll to bottom after loading completes (SAME AS EMBED)
+  useEffect(() => {
+    if (!isLoading && !isHandoffLoading && !userScrolledAwayRef.current) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+  }, [isLoading, isHandoffLoading]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -1260,7 +1321,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         </DialogHeader>
 
         {bot.isVideoBot ? (
-          <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex overflow-hidden min-h-0">
             {showVideoAvatar && (
               <div className="w-1/2 relative overflow-hidden flex items-center justify-center">
                 {videoBotAvatarUrl ? (
@@ -1426,7 +1487,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               </div>
             )}
 
-            <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-white dark:bg-gray-900 transition-all duration-300 relative`}>
+            <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-white dark:bg-gray-900 transition-all duration-300 relative min-h-0`}>
               <div 
                 ref={scrollAreaRef}
                 onScroll={handleScrollAreaScroll}
@@ -1565,6 +1626,20 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               </div>
 
               <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+                {/* IMPROVED: Jump to Latest Button - only shown when stable */}
+                {showJumpButton && (
+                  <div className="mb-3 flex justify-center">
+                    <Button
+                      onClick={() => scrollToBottom(true)}
+                      variant="outline"
+                      className="flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                      Jump to Latest Message
+                    </Button>
+                  </div>
+                )}
+
                 {handoffRequested && !isConnectedToAgent && (
                 <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
                   {isHandoffLoading ? (
@@ -1725,7 +1800,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             <div 
               ref={scrollAreaRef}
               onScroll={handleScrollAreaScroll}
-              className="flex-1 overflow-y-auto overflow-x-hidden p-4"
+              className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-h-0"
             >
               <div className="space-y-4">
                 {messages.length === 0 && (
@@ -1860,6 +1935,20 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             </div>
 
             <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+              {/* IMPROVED: Jump to Latest Button */}
+              {showJumpButton && (
+                <div className="mb-3 flex justify-center">
+                  <Button
+                    onClick={() => scrollToBottom(true)}
+                    variant="outline"
+                    className="flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                    Jump to Latest Message
+                  </Button>
+                </div>
+              )}
+
               {handoffRequested && !isConnectedToAgent && (
                 <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
                   {isHandoffLoading ? (
@@ -1929,20 +2018,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     </Button>
                   </div>
                 </Alert>
-              )}
-
-              {/* Jump to Latest Button - shown when not at bottom */}
-              {showJumpButton && (
-                <div className="mb-3 flex justify-center">
-                  <Button
-                    onClick={scrollToBottom}
-                    variant="outline"
-                    className="flex items-center gap-2 shadow-md"
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                    Jump to Latest Message
-                  </Button>
-                </div>
               )}
 
               <div className="flex gap-2">
