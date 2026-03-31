@@ -423,24 +423,25 @@ export const BotBuilder = () => {
     }
   };
 
+  const botBuilderRef = useRef<HTMLDivElement>(null);
+  const yourBotsRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBuilder = () => {
+    botBuilderRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const scrollToBots = () => {
+    yourBotsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-background py-12 px-4">
-        <div id="bot-builder" className="max-w-6xl mx-auto space-y-8 scroll-mt-20">
-          <div className="text-center space-y-4">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-2xl shadow-medium mb-4">
-              <Bot className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-4xl font-bold bg-gradient-hero bg-clip-text text-transparent">
-              tasteAI Studio
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Create intelligent, customized AI bots tailored to your specific needs.
-              Configure everything from personality to capabilities with our intuitive builder.
-            </p>
-          </div>
+      <div className="min-h-screen bg-background">
+        {/* Hero Section */}
+        <HeroSection onCreateBot={scrollToBuilder} onViewBots={scrollToBots} />
 
+        {/* Bot Builder */}
+        <div ref={botBuilderRef} id="bot-builder" className="max-w-6xl mx-auto px-4 py-12 space-y-8 scroll-mt-20">
           <BotCreationWizard
             botConfig={botConfig}
             updateConfig={updateConfig}
