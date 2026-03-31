@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Bot, Sparkles, Bell, BellRing } from "lucide-react";
 import { BotCreationWizard } from "./BotBuilder/BotCreationWizard";
@@ -9,6 +9,7 @@ import { ChatBot } from "@/components/ChatBot";
 import { useNavigate } from "react-router-dom";
 import { getAuthHeaders, isAuthenticated } from "@/utils/auth";
 import { Navbar } from "@/components/Navbar";
+import { HeroSection } from "@/components/HeroSection";
 import { BotCardSkeleton } from "./BotCardSkeleton";
 import { BotFilters, BotFilterState } from "./BotFilters";
 interface BotConfig {
