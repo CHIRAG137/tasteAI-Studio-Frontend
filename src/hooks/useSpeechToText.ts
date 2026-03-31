@@ -24,13 +24,13 @@ export const useSpeechToText = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
-  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const stopTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const silenceCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const audioLevelIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const silenceCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioLevelIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const silenceStartTimeRef = useRef<number | null>(null);
 
   // Cleanup function

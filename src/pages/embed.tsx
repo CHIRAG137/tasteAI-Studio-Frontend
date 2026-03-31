@@ -78,7 +78,7 @@ export default function EmbedChat() {
   const [showJumpButton, setShowJumpButton] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const isAutoScrollingRef = useRef(false);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userScrolledAwayRef = useRef(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);

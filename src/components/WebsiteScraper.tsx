@@ -35,7 +35,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
   const [scrapeJob, setScrapeJob] = useState<ScrapeJob | null>(null);
 
   // Step 3: Results polling
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   const [scrapeProgress, setScrapeProgress] = useState(0);
   const [scrapeResults, setScrapeResults] = useState<any[]>([]);
 
