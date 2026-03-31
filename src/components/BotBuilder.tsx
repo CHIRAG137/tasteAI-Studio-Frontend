@@ -426,7 +426,7 @@ export const BotBuilder = () => {
     <>
       <Navbar />
       <div className="min-h-screen bg-background py-12 px-4">
-        <div id="bot-builder" className="max-w-4xl mx-auto space-y-8 scroll-mt-20">
+        <div id="bot-builder" className="max-w-6xl mx-auto space-y-8 scroll-mt-20">
           <div className="text-center space-y-4">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-2xl shadow-medium mb-4">
               <Bot className="w-8 h-8 text-white" />
