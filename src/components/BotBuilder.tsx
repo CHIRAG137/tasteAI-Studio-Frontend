@@ -452,7 +452,7 @@ export const BotBuilder = () => {
           />
         </div>
 
-        <div id="your-bots" className="w-full px-4 py-12 scroll-mt-20">
+        <div ref={yourBotsRef} id="your-bots" className="w-full px-4 py-12 scroll-mt-20">
           <div className="max-w-7xl mx-auto space-y-8">
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-bold text-foreground">Your Bots</h2>
