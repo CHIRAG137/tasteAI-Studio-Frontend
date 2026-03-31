@@ -440,95 +440,14 @@ export const BotBuilder = () => {
             </p>
           </div>
 
-          <Card className="shadow-strong border-0">
-            <CardHeader className="space-y-1 pb-8">
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-primary" />
-                Configure Your Bot
-              </CardTitle>
-              <CardDescription className="text-base">
-                Fill in the details below to create your custom AI assistant
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-6">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <CollapsibleSection title="Basic Information" icon={<User className="w-5 h-5 text-primary" />} defaultOpen={true}>
-                  <BasicInfoSection botConfig={botConfig} updateConfig={updateConfig} />
-                </CollapsibleSection>
-                <CollapsibleSection title="Website & Content" icon={<Globe className="w-5 h-5 text-primary" />}>
-                  <WebsiteSection botConfig={botConfig} updateConfig={updateConfig} />
-                </CollapsibleSection>
-                <CollapsibleSection title="Video Bot" icon={<Video className="w-5 h-5 text-primary" />}>
-                  <VideoBotSection botConfig={botConfig} updateConfig={updateConfig} />
-                </CollapsibleSection>
-                {!botConfig.isVideoBot && (
-                  <CollapsibleSection title="Voice Configuration" icon={<Mic className="w-5 h-5 text-primary" />}>
-                    <VoiceSection botConfig={botConfig} updateConfig={updateConfig} />
-                  </CollapsibleSection>
-                )}
-                <CollapsibleSection title="Language Support" icon={<Languages className="w-5 h-5 text-primary" />}>
-                  <LanguageSection botConfig={botConfig} updateConfig={updateConfig} />
-                </CollapsibleSection>
-                <CollapsibleSection title="Persona & Behavior" icon={<Brain className="w-5 h-5 text-primary" />}>
-                  <PersonaSection botConfig={botConfig} updateConfig={updateConfig} />
-                </CollapsibleSection>
-                <CollapsibleSection title="Add Bot to Slack Channel" icon={<MessageSquare className="w-5 h-5 text-primary" />}>
-                  <SlackSection botConfig={botConfig} updateConfig={updateConfig} />
-                </CollapsibleSection>
-
-                <CollapsibleSection title="Talk to Human" icon={<Users className="w-5 h-5 text-primary" />}>
-                  <HumanHandoffSection botConfig={botConfig} updateConfig={updateConfig} />
-                </CollapsibleSection>
-
-                <ConversationFlowSection
-                  onFlowSave={(nodes, edges) => {
-                    updateConfig('conversationFlow', { nodes, edges });
-                    toast({
-                      title: "Flow Saved",
-                      description: "Conversation flow has been saved to your bot configuration.",
-                    });
-                  }}
-                  onFlowChange={(nodes, edges) => {
-                    // Auto-update the bot config whenever the flow changes
-                    updateConfig('conversationFlow', { nodes, edges });
-                  }}
-                  initialNodes={botConfig.conversationFlow?.nodes}
-                  initialEdges={botConfig.conversationFlow?.edges}
-                />
-
-                <div className="flex justify-end pt-6 gap-3 items-center">
-                  {isCreatingBot && (
-                    <Button
-                      type="button"
-                      variant={notifyOnComplete ? "default" : "outline"}
-                      size="lg"
-                      onClick={() => setNotifyOnComplete(!notifyOnComplete)}
-                      className={notifyOnComplete 
-                        ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white animate-pulse" 
-                        : ""}
-                    >
-                      {notifyOnComplete ? (
-                        <BellRing className="w-5 h-5 mr-2" />
-                      ) : (
-                        <Bell className="w-5 h-5 mr-2" />
-                      )}
-                      {notifyOnComplete ? "Will Notify" : "Notify Me"}
-                    </Button>
-                  )}
-                  <Button
-                    type="submit"
-                    size="lg"
-                    className="bg-gradient-primary hover:opacity-90 shadow-medium px-8 py-3 text-lg font-semibold"
-                    disabled={isCreatingBot}
-                  >
-                    <Bot className="w-5 h-5 mr-2" />
-                    {isCreatingBot ? "Creating..." : "Create Bot"}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+          <BotCreationWizard
+            botConfig={botConfig}
+            updateConfig={updateConfig}
+            onSubmit={handleSubmit}
+            isCreatingBot={isCreatingBot}
+            notifyOnComplete={notifyOnComplete}
+            setNotifyOnComplete={setNotifyOnComplete}
+          />
         </div>
 
         <div id="your-bots" className="w-full px-4 py-12 scroll-mt-20">
