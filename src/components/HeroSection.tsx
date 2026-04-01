@@ -122,7 +122,7 @@ export const HeroSection = ({ onCreateBot, onViewBots }: HeroSectionProps) => {
             <Button
               onClick={onCreateBot}
               size="lg"
-              className="bg-gradient-primary hover:opacity-90 text-white px-8 py-6 text-lg rounded-xl shadow-strong hover:shadow-strong transition-all group"
+              className="bg-gradient-primary hover:opacity-90 text-white px-8 py-6 text-lg rounded-xl shadow-strong hover:shadow-strong transition-all group animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite] hover:animate-none"
             >
               <Zap className="w-5 h-5 mr-2 group-hover:animate-bounce" />
               Create Your Bot
