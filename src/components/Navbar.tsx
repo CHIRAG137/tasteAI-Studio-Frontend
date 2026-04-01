@@ -59,15 +59,15 @@ export const Navbar = () => {
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
-            onClick={() => scrollToSection('your-bots')}
+            onClick={() => navigate('/bots')}
             className="text-sm"
           >
             <Bot className="w-4 h-4 mr-2" />
             Your Bots
           </Button>
           <Button
-            onClick={() => scrollToSection('bot-builder')}
-            className="bg-gradient-primary hover:opacity-90 transition-all hover:animate-none [animation:slow-zoom_6s_ease-in-out_infinite] [@keyframes_slow-zoom:{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}]"
+            onClick={() => navigate('/create')}
+            className="bg-gradient-primary hover:opacity-90 transition-all"
           >
             <Plus className="w-4 h-4 mr-2" />
             Create Bot

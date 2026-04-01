@@ -61,6 +61,22 @@ const App = () => (
             } 
           />
           <Route 
+            path="/create" 
+            element={
+              <ProtectedRoute>
+                <CreateBot />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/bots" 
+            element={
+              <ProtectedRoute>
+                <MyBots />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/embed" 
             element={
               <ProtectedRoute>
