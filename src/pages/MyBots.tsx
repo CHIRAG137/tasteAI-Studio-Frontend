@@ -116,7 +116,6 @@ const MyBots = () => {
 
   return (
     <>
-      <Navbar />
       <div className="min-h-screen bg-background">
         {/* Top bar */}
         <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-[57px] z-40">

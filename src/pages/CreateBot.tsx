@@ -202,7 +202,6 @@ const CreateBot = () => {
 
   return (
     <>
-      <Navbar />
       <div className="min-h-screen bg-background">
         {/* Top bar with back button */}
         <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-[57px] z-40">
