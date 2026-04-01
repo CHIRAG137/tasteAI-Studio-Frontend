@@ -16,12 +16,6 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
 
   const handleLogout = async () => {
     try {
