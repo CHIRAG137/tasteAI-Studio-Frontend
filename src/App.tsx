@@ -13,6 +13,8 @@ import Sessions from "./pages/Sessions";
 import EditBot from "./pages/EditBot";
 import Profile from "./pages/Profile";
 import BotAnalytics from "./pages/BotAnalytics";
+import CreateBot from "./pages/CreateBot";
+import MyBots from "./pages/MyBots";
 import { PublicBotChatPage } from "@/components/PublicBotChatPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PublicRoute } from "@/components/PublicRoute";
@@ -55,6 +57,22 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <EditBot />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/create" 
+            element={
+              <ProtectedRoute>
+                <CreateBot />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/bots" 
+            element={
+              <ProtectedRoute>
+                <MyBots />
               </ProtectedRoute>
             } 
           />
