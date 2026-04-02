@@ -2,7 +2,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
 import { Target, MessageCircle, Palette, Users, Hash, Settings } from "lucide-react";
 import { useEffect } from "react";
 
@@ -24,8 +23,8 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Primary Purpose */}
-        <Card className="p-4 border border-border/50 bg-card/50">
-          <Label className="text-sm font-medium flex items-center gap-2 mb-2">
+        <div className="space-y-2">
+          <Label className="text-sm font-medium flex items-center gap-2">
             <Target className="w-4 h-4 text-primary" />
             Primary Purpose
           </Label>
@@ -47,11 +46,11 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
               <SelectItem value="content-creator">Content Creator</SelectItem>
             </SelectContent>
           </Select>
-        </Card>
+        </div>
 
         {/* Conversational Tone */}
-        <Card className="p-4 border border-border/50 bg-card/50">
-          <Label className="text-sm font-medium flex items-center gap-2 mb-2">
+        <div className="space-y-2">
+          <Label className="text-sm font-medium flex items-center gap-2">
             <MessageCircle className="w-4 h-4 text-primary" />
             Conversational Tone
           </Label>
@@ -73,11 +72,11 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
               <SelectItem value="humorous">Humorous</SelectItem>
             </SelectContent>
           </Select>
-        </Card>
+        </div>
 
         {/* Response Style */}
-        <Card className="p-4 border border-border/50 bg-card/50">
-          <Label className="text-sm font-medium flex items-center gap-2 mb-2">
+        <div className="space-y-2">
+          <Label className="text-sm font-medium flex items-center gap-2">
             <Palette className="w-4 h-4 text-primary" />
             Response Style
           </Label>
@@ -97,11 +96,11 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
               <SelectItem value="technical">Technical & Precise</SelectItem>
             </SelectContent>
           </Select>
-        </Card>
+        </div>
 
         {/* Target Audience */}
-        <Card className="p-4 border border-border/50 bg-card/50">
-          <Label className="text-sm font-medium flex items-center gap-2 mb-2">
+        <div className="space-y-2">
+          <Label className="text-sm font-medium flex items-center gap-2">
             <Users className="w-4 h-4 text-primary" />
             Target Audience
           </Label>
@@ -123,12 +122,12 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
               <SelectItem value="seniors">Seniors</SelectItem>
             </SelectContent>
           </Select>
-        </Card>
+        </div>
       </div>
 
       {/* Specialization Area */}
-      <Card className="p-4 border border-border/50 bg-card/50">
-        <Label htmlFor="specializationArea" className="text-sm font-medium flex items-center gap-2 mb-2">
+      <div className="space-y-2">
+        <Label htmlFor="specializationArea" className="text-sm font-medium flex items-center gap-2">
           <Settings className="w-4 h-4 text-primary" />
           Specialization Area
         </Label>
@@ -139,11 +138,11 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
           onChange={(e) => updateConfig("specializationArea", e.target.value)}
           className="h-11"
         />
-      </Card>
+      </div>
 
       {/* Key Topics */}
-      <Card className="p-4 border border-border/50 bg-card/50">
-        <Label htmlFor="keyTopics" className="text-sm font-medium flex items-center gap-2 mb-2">
+      <div className="space-y-2">
+        <Label htmlFor="keyTopics" className="text-sm font-medium flex items-center gap-2">
           <Hash className="w-4 h-4 text-primary" />
           Key Topics
         </Label>
@@ -154,11 +153,11 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
           onChange={(e) => updateConfig("keyTopics", e.target.value)}
           className="min-h-[80px] resize-none"
         />
-      </Card>
+      </div>
 
       {/* Keywords */}
-      <Card className="p-4 border border-border/50 bg-card/50">
-        <Label htmlFor="keywords" className="text-sm font-medium flex items-center gap-2 mb-2">
+      <div className="space-y-2">
+        <Label htmlFor="keywords" className="text-sm font-medium flex items-center gap-2">
           <Hash className="w-4 h-4 text-primary" />
           Keywords
         </Label>
@@ -169,11 +168,11 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
           onChange={(e) => updateConfig("keywords", e.target.value)}
           className="h-11"
         />
-      </Card>
+      </div>
 
       {/* Custom Instructions */}
-      <Card className="p-4 border border-border/50 bg-card/50">
-        <Label htmlFor="customInstructions" className="text-sm font-medium flex items-center gap-2 mb-2">
+      <div className="space-y-2">
+        <Label htmlFor="customInstructions" className="text-sm font-medium flex items-center gap-2">
           <Settings className="w-4 h-4 text-primary" />
           Custom Instructions
         </Label>
@@ -184,7 +183,7 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
           onChange={(e) => updateConfig("customInstructions", e.target.value)}
           className="min-h-[120px] resize-none"
         />
-      </Card>
+      </div>
     </div>
   );
 };
