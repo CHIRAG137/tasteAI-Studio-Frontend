@@ -84,19 +84,35 @@ const ALL_STEPS: Step[] = [
   },
   {
     id: "language",
-    title: "Language & Persona",
-    subtitle: "Define personality & languages",
+    title: "Language Support",
+    subtitle: "Configure supported languages",
     description:
-      "Choose which languages your bot supports and configure its personality, tone, and behavioral characteristics.",
+      "Choose which languages your bot can understand and respond in for a multilingual experience.",
+    icon: <Languages className="w-5 h-5" />,
+  },
+  {
+    id: "persona",
+    title: "Persona & Behavior",
+    subtitle: "Define personality & tone",
+    description:
+      "Configure your bot's personality, conversational tone, response style, and behavioral characteristics.",
     icon: <Brain className="w-5 h-5" />,
   },
   {
-    id: "integrations",
-    title: "Integrations",
-    subtitle: "Connect external services",
+    id: "slack",
+    title: "Slack Integration",
+    subtitle: "Deploy bot in Slack channels",
     description:
-      "Set up Slack integration to deploy your bot in channels, and enable human handoff so users can escalate to live agents.",
+      "Connect your bot to Slack and deploy it in specific channels for team communication.",
     icon: <MessageSquare className="w-5 h-5" />,
+  },
+  {
+    id: "handoff",
+    title: "Human Handoff",
+    subtitle: "Escalate to live agents",
+    description:
+      "Enable users to request a conversation with a human agent when the bot can't fully help.",
+    icon: <Users className="w-5 h-5" />,
   },
   {
     id: "flow",
