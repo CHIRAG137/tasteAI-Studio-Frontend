@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MessageSquareText, Maximize2, Minimize2 } from 'lucide-react';
-import { CollapsibleSection } from '@/components/CollapsibleSection';
 import { FlowBuilder } from '@/components/FlowBuilder/FlowBuilder';
 import { Node, Edge } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
