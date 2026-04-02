@@ -194,34 +194,13 @@ export const BotCreationWizard = ({
       case "voice":
         return <VoiceSection botConfig={botConfig} updateConfig={updateConfig} />;
       case "language":
-        return (
-          <div className="space-y-8">
-            <LanguageSection botConfig={botConfig} updateConfig={updateConfig} />
-            <div className="border-t border-border pt-6">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-                Persona & Behavior
-              </h4>
-              <PersonaSection botConfig={botConfig} updateConfig={updateConfig} />
-            </div>
-          </div>
-        );
-      case "integrations":
-        return (
-          <div className="space-y-8">
-            <div>
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4" /> Slack
-              </h4>
-              <SlackSection botConfig={botConfig} updateConfig={updateConfig} />
-            </div>
-            <div className="border-t border-border pt-6">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Users className="w-4 h-4" /> Human Handoff
-              </h4>
-              <HumanHandoffSection botConfig={botConfig} updateConfig={updateConfig} />
-            </div>
-          </div>
-        );
+        return <LanguageSection botConfig={botConfig} updateConfig={updateConfig} />;
+      case "persona":
+        return <PersonaSection botConfig={botConfig} updateConfig={updateConfig} />;
+      case "slack":
+        return <SlackSection botConfig={botConfig} updateConfig={updateConfig} />;
+      case "handoff":
+        return <HumanHandoffSection botConfig={botConfig} updateConfig={updateConfig} />;
       case "flow":
         return (
           <ConversationFlowSection
