@@ -229,8 +229,8 @@ export const BotCreationWizard = ({
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-0">
-      <div className="flex gap-0 min-h-[560px] rounded-xl border border-border overflow-hidden bg-card shadow-strong">
+    <form onSubmit={onSubmit} className="h-full">
+      <div className="flex gap-0 h-full overflow-hidden bg-card">
         {/* Left Sidebar - Step Navigation & Info */}
         <div className="w-[320px] flex-shrink-0 bg-gradient-to-b from-muted/80 to-muted/30 border-r border-border flex flex-col">
           {/* Step List */}
