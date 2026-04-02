@@ -202,9 +202,9 @@ const CreateBot = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-background">
+      <div className="h-screen flex flex-col bg-background overflow-hidden">
         {/* Top bar with back button */}
-        <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
+        <div className="border-b border-border bg-card/50 backdrop-blur-sm flex-shrink-0 z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
             <Button
               variant="ghost"
@@ -233,7 +233,7 @@ const CreateBot = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+          className="flex-1 min-h-0"
         >
           <BotCreationWizard
             botConfig={botConfig}
