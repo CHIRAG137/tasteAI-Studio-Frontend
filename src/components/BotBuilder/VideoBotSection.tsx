@@ -522,7 +522,7 @@ export const VideoBotSection = ({
       </div>
 
       {botConfig.isVideoBot && (
-        <div className="p-4 border rounded-lg space-y-4">
+        <div className="space-y-4">
           <div className="flex items-center gap-2">
             <ImageIcon className="w-5 h-5 text-primary" />
             <Label className="text-base font-medium">
