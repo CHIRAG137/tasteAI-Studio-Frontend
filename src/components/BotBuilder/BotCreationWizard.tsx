@@ -224,6 +224,27 @@ export const BotCreationWizard = ({
     }
   };
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollDown(el.scrollHeight - el.scrollTop - el.clientHeight > 20);
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+  }, [currentStep, checkScroll]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(checkScroll);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [checkScroll]);
+
   return (
     <form onSubmit={onSubmit} className="h-full">
       <div className="flex gap-0 h-full overflow-hidden bg-card">
