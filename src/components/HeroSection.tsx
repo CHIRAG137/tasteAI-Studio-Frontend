@@ -169,6 +169,23 @@ export const HeroSection = ({ onCreateBot, onViewBots }: HeroSectionProps) => {
           </div>
         </motion.div>
 
+        {/* Platform Illustration */}
+        <motion.div
+          custom={4}
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          className="max-w-5xl mx-auto mb-20"
+        >
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">
+            Your Complete Bot Platform
+          </h2>
+          <p className="text-muted-foreground text-center mb-8 max-w-lg mx-auto">
+            Create, embed, share, and analyse — all from one place
+          </p>
+          <HeroIllustration />
+        </motion.div>
+
         {/* Feature Cards */}
         <div className="max-w-5xl mx-auto mb-20">
           <motion.h2
