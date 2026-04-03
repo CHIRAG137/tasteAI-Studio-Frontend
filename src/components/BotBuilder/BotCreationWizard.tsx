@@ -361,7 +361,31 @@ export const BotCreationWizard = ({
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-8">{renderStepContent()}</div>
+          <div className="relative flex-1 min-h-0">
+            <div
+              ref={scrollRef}
+              onScroll={checkScroll}
+              className="h-full overflow-y-auto p-8"
+            >
+              {renderStepContent()}
+            </div>
+            {/* Scroll down indicator */}
+            {canScrollDown && (
+              <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
+                <div className="h-16 bg-gradient-to-t from-card to-transparent" />
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 pointer-events-auto">
+                  <button
+                    type="button"
+                    onClick={() => scrollRef.current?.scrollBy({ top: 200, behavior: 'smooth' })}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors animate-bounce bg-card/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-border shadow-sm"
+                  >
+                    <ChevronDown className="w-3 h-3" />
+                    Scroll for more
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Footer Navigation */}
           <div className="px-8 py-4 border-t border-border bg-card flex items-center justify-between">
