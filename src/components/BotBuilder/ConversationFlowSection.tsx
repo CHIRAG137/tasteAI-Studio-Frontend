@@ -41,10 +41,10 @@ export function ConversationFlowSection({
           </p>
           <Button
             type="button"
-            variant="outline"
+            variant="default"
             size="sm"
             onClick={() => setIsMaximized(true)}
-            className="shrink-0 ml-4"
+            className="shrink-0 ml-4 animate-[btn-breathe_3s_ease-in-out_infinite] hover:[animation-play-state:paused]"
           >
             <Maximize2 className="w-4 h-4 mr-2" />
             Maximize
