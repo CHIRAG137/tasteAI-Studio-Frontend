@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Bot, Video, Mic, Globe, Zap, Clock, ArrowRight, Sparkles, MessageSquare, Code2 } from "lucide-react";
+import { HeroIllustration } from "./HeroIllustration";
 import { Button } from "@/components/ui/button";
 
 const fadeUp = {
