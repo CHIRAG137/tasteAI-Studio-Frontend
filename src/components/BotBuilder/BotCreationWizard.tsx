@@ -47,6 +47,8 @@ interface BotCreationWizardProps {
   isCreatingBot: boolean;
   notifyOnComplete: boolean;
   setNotifyOnComplete: (val: boolean) => void;
+  isEditMode?: boolean;
+  botId?: string;
 }
 
 const ALL_STEPS: Step[] = [
