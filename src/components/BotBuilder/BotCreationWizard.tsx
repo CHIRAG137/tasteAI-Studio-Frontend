@@ -47,6 +47,8 @@ interface BotCreationWizardProps {
   isCreatingBot: boolean;
   notifyOnComplete: boolean;
   setNotifyOnComplete: (val: boolean) => void;
+  isEditMode?: boolean;
+  botId?: string;
 }
 
 const ALL_STEPS: Step[] = [
@@ -132,6 +134,8 @@ export const BotCreationWizard = ({
   isCreatingBot,
   notifyOnComplete,
   setNotifyOnComplete,
+  isEditMode = false,
+  botId,
 }: BotCreationWizardProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const { toast } = useToast();
@@ -205,6 +209,7 @@ export const BotCreationWizard = ({
       case "flow":
         return (
           <ConversationFlowSection
+            botId={botId}
             onFlowSave={(nodes, edges) => {
               updateConfig("conversationFlow", { nodes, edges });
               toast({
@@ -443,7 +448,10 @@ export const BotCreationWizard = ({
                     disabled={isCreatingBot}
                   >
                     <Bot className="w-4 h-4" />
-                    {isCreatingBot ? "Creating..." : "Create Bot"}
+                    {isCreatingBot 
+                      ? (isEditMode ? "Updating..." : "Creating...") 
+                      : (isEditMode ? "Update Bot" : "Create Bot")
+                    }
                   </Button>
                 </div>
               ) : (
