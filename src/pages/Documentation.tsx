@@ -20,7 +20,7 @@ import {
   Info
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { EmbedCustomizer, EmbedCustomization } from "@/components/EmbedCustomizer";
+import { EmbedCustomization } from "@/components/EmbedCustomizer";
 import axios from "axios";
 
 interface Bot {
