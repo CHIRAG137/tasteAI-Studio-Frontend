@@ -14,6 +14,7 @@ import EditBot from "./pages/EditBot";
 import Profile from "./pages/Profile";
 import BotAnalytics from "./pages/BotAnalytics";
 import CreateBot from "./pages/CreateBot";
+import CustomizeEmbed from "./pages/CustomizeEmbed";
 import MyBots from "./pages/MyBots";
 import { PublicBotChatPage } from "@/components/PublicBotChatPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
