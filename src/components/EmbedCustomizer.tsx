@@ -386,6 +386,7 @@ export const EmbedCustomizer = ({
   botId,
   botName,
   onSave,
+  fullPage = false,
 }: EmbedCustomizerProps) => {
   const { toast } = useToast();
   const chatPreviewRef = useRef<HTMLDivElement>(null);
