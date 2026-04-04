@@ -134,6 +134,8 @@ export const BotCreationWizard = ({
   isCreatingBot,
   notifyOnComplete,
   setNotifyOnComplete,
+  isEditMode = false,
+  botId,
 }: BotCreationWizardProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const { toast } = useToast();
