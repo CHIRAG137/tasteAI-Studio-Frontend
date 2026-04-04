@@ -65,6 +65,7 @@ interface EmbedCustomizerProps {
   botId: string;
   botName: string;
   onSave: (customization: EmbedCustomization) => void;
+  fullPage?: boolean;
 }
 
 const defaultCustomization: Omit<EmbedCustomization, 'botId'> = {
@@ -385,6 +386,7 @@ export const EmbedCustomizer = ({
   botId,
   botName,
   onSave,
+  fullPage = false,
 }: EmbedCustomizerProps) => {
   const { toast } = useToast();
   const chatPreviewRef = useRef<HTMLDivElement>(null);
@@ -796,16 +798,8 @@ export const EmbedCustomizer = ({
     };
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle className="text-2xl flex items-center gap-2">
-            <Palette className="h-6 w-6 text-primary" />
-            Customize Embed Widget - {botName}
-          </DialogTitle>
-        </DialogHeader>
-
+  const content = (
+    <>
         <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="chat" className="flex items-center gap-2">
@@ -1740,6 +1734,27 @@ export const EmbedCustomizer = ({
             Save Customization
           </Button>
         </div>
+    </>
+  );
+
+  if (fullPage) {
+    return (
+      <div className="container mx-auto p-6 max-w-6xl">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle className="text-2xl flex items-center gap-2">
+            <Palette className="h-6 w-6 text-primary" />
+            Customize Embed Widget - {botName}
+          </DialogTitle>
+        </DialogHeader>
+        {content}
       </DialogContent>
     </Dialog>
   );

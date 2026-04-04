@@ -20,7 +20,7 @@ import {
   Info
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { EmbedCustomizer, EmbedCustomization } from "@/components/EmbedCustomizer";
+import { EmbedCustomization } from "@/components/EmbedCustomizer";
 import axios from "axios";
 
 interface Bot {
@@ -39,7 +39,6 @@ export default function Documentation() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [bot, setBot] = useState<Bot | null>(null);
-  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [customization, setCustomization] = useState<EmbedCustomization | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
@@ -273,7 +272,7 @@ export default function Documentation() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={() => setIsCustomizerOpen(true)}
+                onClick={() => navigate(`/customize/${botId}`)}
                 className="flex items-center gap-2"
               >
                 <Palette className="h-4 w-4" />
@@ -597,14 +596,7 @@ export default function Documentation() {
         </CardContent>
       </Card>
 
-      {/* Customizer Modal */}
-      <EmbedCustomizer
-        isOpen={isCustomizerOpen}
-        onClose={() => setIsCustomizerOpen(false)}
-        botId={botId!}
-        botName={bot.name}
-        onSave={handleCustomizationSave}
-      />
+
       </div>
     </div>
   );
