@@ -102,6 +102,14 @@ const App = () => (
             } 
           />
           <Route 
+            path="/customize/:botId" 
+            element={
+              <ProtectedRoute>
+                <CustomizeEmbed />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/profile" 
             element={
               <ProtectedRoute>
