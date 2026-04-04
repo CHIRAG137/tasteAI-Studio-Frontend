@@ -596,14 +596,7 @@ export default function Documentation() {
         </CardContent>
       </Card>
 
-      {/* Customizer Modal */}
-      <EmbedCustomizer
-        isOpen={isCustomizerOpen}
-        onClose={() => setIsCustomizerOpen(false)}
-        botId={botId!}
-        botName={bot.name}
-        onSave={handleCustomizationSave}
-      />
+
       </div>
     </div>
   );
