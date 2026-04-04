@@ -445,7 +445,10 @@ export const BotCreationWizard = ({
                     disabled={isCreatingBot}
                   >
                     <Bot className="w-4 h-4" />
-                    {isCreatingBot ? "Creating..." : "Create Bot"}
+                    {isCreatingBot 
+                      ? (isEditMode ? "Updating..." : "Creating...") 
+                      : (isEditMode ? "Update Bot" : "Create Bot")
+                    }
                   </Button>
                 </div>
               ) : (
