@@ -65,6 +65,7 @@ interface EmbedCustomizerProps {
   botId: string;
   botName: string;
   onSave: (customization: EmbedCustomization) => void;
+  fullPage?: boolean;
 }
 
 const defaultCustomization: Omit<EmbedCustomization, 'botId'> = {
