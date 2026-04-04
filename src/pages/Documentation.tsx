@@ -39,7 +39,6 @@ export default function Documentation() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [bot, setBot] = useState<Bot | null>(null);
-  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [customization, setCustomization] = useState<EmbedCustomization | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
