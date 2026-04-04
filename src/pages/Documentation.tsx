@@ -273,7 +273,7 @@ export default function Documentation() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={() => setIsCustomizerOpen(true)}
+                onClick={() => navigate(`/customize/${botId}`)}
                 className="flex items-center gap-2"
               >
                 <Palette className="h-4 w-4" />
