@@ -209,6 +209,7 @@ export const BotCreationWizard = ({
       case "flow":
         return (
           <ConversationFlowSection
+            botId={botId}
             onFlowSave={(nodes, edges) => {
               updateConfig("conversationFlow", { nodes, edges });
               toast({
