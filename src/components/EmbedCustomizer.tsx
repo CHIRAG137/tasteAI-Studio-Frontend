@@ -1703,20 +1703,20 @@ export const EmbedCustomizer = ({
               </div>
 
               {/* Button Preview */}
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
+              <div className={`space-y-4 ${fullPage ? "lg:sticky lg:top-24" : ""}`}>
+                <Card className={fullPage ? "border-0 shadow-medium bg-background overflow-hidden" : ""}>
+                  <CardHeader className={fullPage ? "bg-muted/50 border-b" : ""}>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <Eye className="h-5 w-5" />
+                      <Eye className="h-5 w-5 text-primary" />
                       Button Preview
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className={fullPage ? "p-4" : ""}>
                     <div 
                       ref={buttonPreviewRef}
-                      className="border rounded-lg h-[320px] bg-gradient-to-br from-gray-50 to-gray-100 relative"
+                      className={`border rounded-xl ${fullPage ? "h-[400px]" : "h-[320px]"} bg-gradient-to-br from-muted/50 to-muted relative shadow-soft`}
                     />
-                    <p className="text-xs text-muted-foreground mt-2">
+                    <p className="text-xs text-muted-foreground mt-3">
                       Hover over the button to see hover effects
                     </p>
                   </CardContent>
