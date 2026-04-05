@@ -1725,7 +1725,7 @@ export const EmbedCustomizer = ({
                   <CardContent className={fullPage ? "p-4" : ""}>
                     <div 
                       ref={buttonPreviewRef}
-                      className={`border rounded-xl ${fullPage ? "h-[400px]" : "h-[320px]"} bg-gradient-to-br from-muted/50 to-muted relative shadow-soft`}
+                      className={`border rounded-xl ${fullPage ? "h-[calc(100vh-280px)]" : "h-[320px]"} bg-gradient-to-br from-muted/50 to-muted relative shadow-soft`}
                     />
                     <p className="text-xs text-muted-foreground mt-3">
                       Hover over the button to see hover effects
