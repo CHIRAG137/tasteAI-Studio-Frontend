@@ -1286,9 +1286,9 @@ export const EmbedCustomizer = ({
 
           {/* BUTTON TAB */}
           <TabsContent value="button" className="mt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 ${fullPage ? "items-start" : ""}`}>
               {/* Button Customization Form */}
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+              <div className={`space-y-4 ${fullPage ? "max-h-[calc(100vh-200px)]" : "max-h-[60vh]"} overflow-y-auto pr-2 scrollbar-thin`}>
                 <Tabs value={buttonSubTab} onValueChange={setButtonSubTab}>
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="visual" className="flex items-center gap-2">
