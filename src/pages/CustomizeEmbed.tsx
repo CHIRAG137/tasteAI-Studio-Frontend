@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Palette, Save, RotateCcw } from "lucide-react";
+import { ArrowLeft, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { EmbedCustomizer, EmbedCustomization } from "@/components/EmbedCustomizer";
 import axios from "axios";
@@ -25,45 +25,45 @@ export default function CustomizeEmbed() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      {/* Modern Header */}
-      <div className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur-lg">
-        <div className="container mx-auto px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(`/docs/${botId}`)}
-                className="gap-2 text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Integration Guide
-              </Button>
-              <div className="h-6 w-px bg-border" />
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-primary rounded-xl shadow-soft">
-                  <Palette className="w-4 h-4 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-semibold leading-tight">Customize Widget</h1>
-                  <p className="text-xs text-muted-foreground">{botName || "Loading..."}</p>
-                </div>
+    <div className="h-screen flex flex-col overflow-hidden bg-muted/30">
+      {/* Compact Header */}
+      <div className="flex-shrink-0 border-b bg-background/80 backdrop-blur-lg z-20">
+        <div className="px-6 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`/docs/${botId}`)}
+              className="gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+            <div className="h-5 w-px bg-border" />
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 bg-gradient-primary rounded-lg">
+                <Palette className="w-3.5 h-3.5 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-sm font-semibold leading-tight">Customize Widget</h1>
+                <p className="text-[11px] text-muted-foreground leading-tight">{botName || "Loading..."}</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Full page customizer */}
-      <EmbedCustomizer
-        isOpen={true}
-        onClose={() => navigate(`/docs/${botId}`)}
-        botId={botId || ""}
-        botName={botName}
-        onSave={handleSave}
-        fullPage={true}
-      />
+      {/* Full page customizer - takes remaining height */}
+      <div className="flex-1 min-h-0">
+        <EmbedCustomizer
+          isOpen={true}
+          onClose={() => navigate(`/docs/${botId}`)}
+          botId={botId || ""}
+          botName={botName}
+          onSave={handleSave}
+          fullPage={true}
+        />
+      </div>
     </div>
   );
 }
