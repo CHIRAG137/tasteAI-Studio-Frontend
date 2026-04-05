@@ -801,16 +801,18 @@ export const EmbedCustomizer = ({
   const content = (
     <>
         <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Chat Window
-            </TabsTrigger>
-            <TabsTrigger value="button" className="flex items-center gap-2">
-              <MousePointer className="h-4 w-4" />
-              Chat Button
-            </TabsTrigger>
-          </TabsList>
+          <div className={fullPage ? "flex items-center gap-3 mb-6" : "mb-4"}>
+            <TabsList className={fullPage ? "bg-background border shadow-soft p-1 h-12" : "grid w-full grid-cols-2"}>
+              <TabsTrigger value="chat" className={`flex items-center gap-2 ${fullPage ? "px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all" : ""}`}>
+                <MessageSquare className="h-4 w-4" />
+                Chat Window
+              </TabsTrigger>
+              <TabsTrigger value="button" className={`flex items-center gap-2 ${fullPage ? "px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all" : ""}`}>
+                <MousePointer className="h-4 w-4" />
+                Chat Button
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* CHAT TAB */}
           <TabsContent value="chat" className="mt-0">
