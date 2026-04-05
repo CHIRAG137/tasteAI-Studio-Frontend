@@ -800,25 +800,36 @@ export const EmbedCustomizer = ({
 
   const content = (
     <>
-        <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
-          <div className={fullPage ? "flex items-center gap-3 mb-6" : "mb-4"}>
-            <TabsList className={fullPage ? "bg-background border shadow-soft p-1 h-12" : "grid w-full grid-cols-2"}>
-              <TabsTrigger value="chat" className={`flex items-center gap-2 ${fullPage ? "px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all" : ""}`}>
+        <Tabs value={mainTab} onValueChange={setMainTab} className={`w-full ${fullPage ? "h-full flex flex-col" : ""}`}>
+          <div className={fullPage ? "flex items-center justify-between gap-3 mb-4 flex-shrink-0" : "mb-4"}>
+            <TabsList className={fullPage ? "bg-background border shadow-soft p-1 h-10" : "grid w-full grid-cols-2"}>
+              <TabsTrigger value="chat" className={`flex items-center gap-2 ${fullPage ? "px-5 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all text-sm" : ""}`}>
                 <MessageSquare className="h-4 w-4" />
                 Chat Window
               </TabsTrigger>
-              <TabsTrigger value="button" className={`flex items-center gap-2 ${fullPage ? "px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all" : ""}`}>
+              <TabsTrigger value="button" className={`flex items-center gap-2 ${fullPage ? "px-5 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all text-sm" : ""}`}>
                 <MousePointer className="h-4 w-4" />
                 Chat Button
               </TabsTrigger>
             </TabsList>
+            {fullPage && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleReset} className="flex items-center gap-2 shadow-soft">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset
+                </Button>
+                <Button size="sm" onClick={handleSave} className="flex items-center gap-2 shadow-soft" variant="gradient">
+                  <Save className="h-3.5 w-3.5" />
+                  Save
+                </Button>
+              </div>
+            )}
           </div>
 
-          {/* CHAT TAB */}
-          <TabsContent value="chat" className="mt-0">
-            <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 ${fullPage ? "items-start" : ""}`}>
+          <TabsContent value="chat" className={`mt-0 ${fullPage ? "flex-1 min-h-0" : ""}`}>
+            <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${fullPage ? "items-start h-full" : ""}`}>
               {/* Chat Customization Form */}
-              <div className={`space-y-4 ${fullPage ? "max-h-[calc(100vh-200px)]" : "max-h-[60vh]"} overflow-y-auto pr-2 scrollbar-thin`}>
+              <div className={`space-y-4 ${fullPage ? "h-[calc(100vh-160px)]" : "max-h-[60vh]"} overflow-y-auto pr-2 scrollbar-thin`}>
                 <Tabs value={chatSubTab} onValueChange={setChatSubTab}>
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="visual" className="flex items-center gap-2">
@@ -1118,7 +1129,7 @@ export const EmbedCustomizer = ({
               </div>
 
               {/* Chat Preview */}
-              <div className={`space-y-4 ${fullPage ? "lg:sticky lg:top-24" : ""}`}>
+              <div className={`space-y-4 ${fullPage ? "lg:sticky lg:top-4" : ""}`}>
                 <Card className={fullPage ? "border-0 shadow-medium bg-background overflow-hidden" : ""}>
                   <CardHeader className={fullPage ? "bg-muted/50 border-b" : ""}>
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -1129,7 +1140,7 @@ export const EmbedCustomizer = ({
                   <CardContent className={fullPage ? "p-4" : "p-0"}>
                     <div 
                       ref={chatPreviewRef}
-                      className={`flex flex-col ${fullPage ? "h-[500px]" : "h-[370px]"} border rounded-xl overflow-hidden shadow-soft ${
+                      className={`flex flex-col ${fullPage ? "h-[calc(100vh-240px)]" : "h-[370px]"} border rounded-xl overflow-hidden shadow-soft ${
                         customization?.useChatCustomCSS ? 'embed-chat-container' : ''
                       }`}
                       style={getContainerStyle()}
@@ -1285,10 +1296,10 @@ export const EmbedCustomizer = ({
           </TabsContent>
 
           {/* BUTTON TAB */}
-          <TabsContent value="button" className="mt-0">
-            <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 ${fullPage ? "items-start" : ""}`}>
+          <TabsContent value="button" className={`mt-0 ${fullPage ? "flex-1 min-h-0" : ""}`}>
+            <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${fullPage ? "items-start h-full" : ""}`}>
               {/* Button Customization Form */}
-              <div className={`space-y-4 ${fullPage ? "max-h-[calc(100vh-200px)]" : "max-h-[60vh]"} overflow-y-auto pr-2 scrollbar-thin`}>
+              <div className={`space-y-4 ${fullPage ? "h-[calc(100vh-160px)]" : "max-h-[60vh]"} overflow-y-auto pr-2 scrollbar-thin`}>
                 <Tabs value={buttonSubTab} onValueChange={setButtonSubTab}>
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="visual" className="flex items-center gap-2">
@@ -1703,9 +1714,9 @@ export const EmbedCustomizer = ({
               </div>
 
               {/* Button Preview */}
-              <div className={`space-y-4 ${fullPage ? "lg:sticky lg:top-24" : ""}`}>
+              <div className={`space-y-4 ${fullPage ? "lg:sticky lg:top-4" : ""}`}>
                 <Card className={fullPage ? "border-0 shadow-medium bg-background overflow-hidden" : ""}>
-                  <CardHeader className={fullPage ? "bg-muted/50 border-b" : ""}>
+                  <CardHeader className={fullPage ? "bg-muted/50 border-b py-3" : ""}>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Eye className="h-5 w-5 text-primary" />
                       Button Preview
@@ -1714,7 +1725,7 @@ export const EmbedCustomizer = ({
                   <CardContent className={fullPage ? "p-4" : ""}>
                     <div 
                       ref={buttonPreviewRef}
-                      className={`border rounded-xl ${fullPage ? "h-[400px]" : "h-[320px]"} bg-gradient-to-br from-muted/50 to-muted relative shadow-soft`}
+                      className={`border rounded-xl ${fullPage ? "h-[calc(100vh-280px)]" : "h-[320px]"} bg-gradient-to-br from-muted/50 to-muted relative shadow-soft`}
                     />
                     <p className="text-xs text-muted-foreground mt-3">
                       Hover over the button to see hover effects
@@ -1726,22 +1737,24 @@ export const EmbedCustomizer = ({
           </TabsContent>
         </Tabs>
 
-        <div className={`flex justify-between items-center mt-6 pt-4 border-t ${fullPage ? "pb-6" : ""}`}>
-          <Button variant="outline" onClick={handleReset} className="flex items-center gap-2 shadow-soft">
-            <RotateCcw className="h-4 w-4" />
-            Reset to Default
-          </Button>
-          <Button onClick={handleSave} className="flex items-center gap-2 shadow-soft" variant={fullPage ? "gradient" : "default"}>
-            <Save className="h-4 w-4" />
-            Save Customization
-          </Button>
-        </div>
+        {!fullPage && (
+          <div className="flex justify-between items-center mt-6 pt-4 border-t">
+            <Button variant="outline" onClick={handleReset} className="flex items-center gap-2 shadow-soft">
+              <RotateCcw className="h-4 w-4" />
+              Reset to Default
+            </Button>
+            <Button onClick={handleSave} className="flex items-center gap-2 shadow-soft">
+              <Save className="h-4 w-4" />
+              Save Customization
+            </Button>
+          </div>
+        )}
     </>
   );
 
   if (fullPage) {
     return (
-      <div className="container mx-auto px-6 py-8 max-w-7xl">
+      <div className="h-full px-6 py-4 overflow-hidden">
         {content}
       </div>
     );
