@@ -1754,7 +1754,7 @@ export const EmbedCustomizer = ({
 
   if (fullPage) {
     return (
-      <div className="container mx-auto px-6 py-8 max-w-7xl">
+      <div className="h-full px-6 py-4 overflow-hidden">
         {content}
       </div>
     );
