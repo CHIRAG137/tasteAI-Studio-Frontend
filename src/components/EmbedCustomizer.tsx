@@ -1714,9 +1714,9 @@ export const EmbedCustomizer = ({
               </div>
 
               {/* Button Preview */}
-              <div className={`space-y-4 ${fullPage ? "lg:sticky lg:top-24" : ""}`}>
+              <div className={`space-y-4 ${fullPage ? "lg:sticky lg:top-4" : ""}`}>
                 <Card className={fullPage ? "border-0 shadow-medium bg-background overflow-hidden" : ""}>
-                  <CardHeader className={fullPage ? "bg-muted/50 border-b" : ""}>
+                  <CardHeader className={fullPage ? "bg-muted/50 border-b py-3" : ""}>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Eye className="h-5 w-5 text-primary" />
                       Button Preview
