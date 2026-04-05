@@ -1129,7 +1129,7 @@ export const EmbedCustomizer = ({
               </div>
 
               {/* Chat Preview */}
-              <div className={`space-y-4 ${fullPage ? "lg:sticky lg:top-24" : ""}`}>
+              <div className={`space-y-4 ${fullPage ? "lg:sticky lg:top-4" : ""}`}>
                 <Card className={fullPage ? "border-0 shadow-medium bg-background overflow-hidden" : ""}>
                   <CardHeader className={fullPage ? "bg-muted/50 border-b" : ""}>
                     <CardTitle className="text-lg flex items-center gap-2">
