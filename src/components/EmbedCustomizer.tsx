@@ -800,18 +800,30 @@ export const EmbedCustomizer = ({
 
   const content = (
     <>
-        <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
-          <div className={fullPage ? "flex items-center gap-3 mb-6" : "mb-4"}>
-            <TabsList className={fullPage ? "bg-background border shadow-soft p-1 h-12" : "grid w-full grid-cols-2"}>
-              <TabsTrigger value="chat" className={`flex items-center gap-2 ${fullPage ? "px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all" : ""}`}>
+        <Tabs value={mainTab} onValueChange={setMainTab} className={`w-full ${fullPage ? "h-full flex flex-col" : ""}`}>
+          <div className={fullPage ? "flex items-center justify-between gap-3 mb-4 flex-shrink-0" : "mb-4"}>
+            <TabsList className={fullPage ? "bg-background border shadow-soft p-1 h-10" : "grid w-full grid-cols-2"}>
+              <TabsTrigger value="chat" className={`flex items-center gap-2 ${fullPage ? "px-5 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all text-sm" : ""}`}>
                 <MessageSquare className="h-4 w-4" />
                 Chat Window
               </TabsTrigger>
-              <TabsTrigger value="button" className={`flex items-center gap-2 ${fullPage ? "px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all" : ""}`}>
+              <TabsTrigger value="button" className={`flex items-center gap-2 ${fullPage ? "px-5 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all text-sm" : ""}`}>
                 <MousePointer className="h-4 w-4" />
                 Chat Button
               </TabsTrigger>
             </TabsList>
+            {fullPage && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleReset} className="flex items-center gap-2 shadow-soft">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset
+                </Button>
+                <Button size="sm" onClick={handleSave} className="flex items-center gap-2 shadow-soft" variant="gradient">
+                  <Save className="h-3.5 w-3.5" />
+                  Save
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* CHAT TAB */}
