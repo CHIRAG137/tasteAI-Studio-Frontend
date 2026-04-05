@@ -1117,12 +1117,12 @@ export const EmbedCustomizer = ({
                 </Tabs>
               </div>
 
-              {/* Chat Preview - Now matching embed structure */}
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
+              {/* Chat Preview */}
+              <div className={`space-y-4 ${fullPage ? "lg:sticky lg:top-24" : ""}`}>
+                <Card className={fullPage ? "border-0 shadow-medium bg-background overflow-hidden" : ""}>
+                  <CardHeader className={fullPage ? "bg-muted/50 border-b" : ""}>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <Eye className="h-5 w-5" />
+                      <Eye className="h-5 w-5 text-primary" />
                       Chat Window Preview
                     </CardTitle>
                   </CardHeader>
