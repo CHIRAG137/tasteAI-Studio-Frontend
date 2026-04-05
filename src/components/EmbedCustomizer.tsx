@@ -1126,10 +1126,10 @@ export const EmbedCustomizer = ({
                       Chat Window Preview
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-0">
+                  <CardContent className={fullPage ? "p-4" : "p-0"}>
                     <div 
                       ref={chatPreviewRef}
-                      className={`flex flex-col h-[370px] border rounded-lg overflow-hidden ${
+                      className={`flex flex-col ${fullPage ? "h-[500px]" : "h-[370px]"} border rounded-xl overflow-hidden shadow-soft ${
                         customization?.useChatCustomCSS ? 'embed-chat-container' : ''
                       }`}
                       style={getContainerStyle()}
