@@ -1726,12 +1726,12 @@ export const EmbedCustomizer = ({
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-between items-center mt-2 pt-2 border-t">
-          <Button variant="outline" onClick={handleReset} className="flex items-center gap-2">
+        <div className={`flex justify-between items-center mt-6 pt-4 border-t ${fullPage ? "pb-6" : ""}`}>
+          <Button variant="outline" onClick={handleReset} className="flex items-center gap-2 shadow-soft">
             <RotateCcw className="h-4 w-4" />
             Reset to Default
           </Button>
-          <Button onClick={handleSave} className="flex items-center gap-2">
+          <Button onClick={handleSave} className="flex items-center gap-2 shadow-soft" variant={fullPage ? "gradient" : "default"}>
             <Save className="h-4 w-4" />
             Save Customization
           </Button>
@@ -1741,7 +1741,7 @@ export const EmbedCustomizer = ({
 
   if (fullPage) {
     return (
-      <div className="container mx-auto p-6 max-w-6xl">
+      <div className="container mx-auto px-6 py-8 max-w-7xl">
         {content}
       </div>
     );
