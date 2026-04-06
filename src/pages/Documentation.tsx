@@ -17,7 +17,8 @@ import {
   RefreshCw,
   CheckCircle2,
   XCircle,
-  Info
+  Info,
+  Monitor
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { EmbedCustomization } from "@/components/EmbedCustomizer";
