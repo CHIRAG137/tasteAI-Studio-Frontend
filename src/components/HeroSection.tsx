@@ -186,54 +186,6 @@ export const HeroSection = ({ onCreateBot, onViewBots }: HeroSectionProps) => {
           <HeroIllustration />
         </motion.div>
 
-        {/* Feature Cards */}
-        <div className="max-w-5xl mx-auto mb-20">
-          <motion.h2
-            custom={4}
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-            className="text-2xl md:text-3xl font-bold text-center mb-3"
-          >
-            Everything You Need
-          </motion.h2>
-          <motion.p
-            custom={5}
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-            className="text-muted-foreground text-center mb-10 max-w-lg mx-auto"
-          >
-            From video avatars to voice conversations — deploy anywhere in minutes
-          </motion.p>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {features.map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                custom={i}
-                variants={scaleIn}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                whileHover={{ y: -8, transition: { duration: 0.3 } }}
-                className="group relative p-6 rounded-2xl border border-border/50 bg-card hover:border-primary/30 transition-colors cursor-default overflow-hidden"
-              >
-                {/* Hover glow */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
-                <div className="relative">
-                  <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} mb-4 shadow-medium`}>
-                    <feature.icon className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">{feature.title}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
         {/* How it Works */}
         <div className="max-w-4xl mx-auto">
           <motion.h2
