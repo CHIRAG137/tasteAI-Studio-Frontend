@@ -5,6 +5,7 @@ import { ArrowLeft, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { EmbedCustomizer, EmbedCustomization } from "@/components/EmbedCustomizer";
 import axios from "axios";
+import { getAuthHeaders } from "@/utils/auth";
 
 export default function CustomizeEmbed() {
   const { botId } = useParams();
@@ -14,7 +15,9 @@ export default function CustomizeEmbed() {
 
   useEffect(() => {
     if (botId) {
-      axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`)
+      axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`, {
+        headers: getAuthHeaders(),
+      })
         .then(res => setBotName(res.data.result.name))
         .catch(() => {});
     }

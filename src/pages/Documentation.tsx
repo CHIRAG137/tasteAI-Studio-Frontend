@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { EmbedCustomization } from "@/components/EmbedCustomizer";
 import axios from "axios";
+import { getAuthHeaders } from "@/utils/auth";
 
 interface Bot {
   id: string;
@@ -57,7 +58,10 @@ export default function Documentation() {
 
   const fetchBot = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`);
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`,
+        { headers: getAuthHeaders() }
+      );
       const botData = response.data.result;
       setBot({
         id: botData._id,

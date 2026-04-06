@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import axios from "axios";
+import { getAuthHeaders } from "@/utils/auth";
 
 interface DevicePreset {
   label: string;
@@ -49,7 +50,9 @@ export default function TestEmbed() {
 
   useEffect(() => {
     if (botId) {
-      axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`)
+      axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`, {
+        headers: getAuthHeaders(),
+      })
         .then(res => setBotName(res.data.result.name))
         .catch(() => {});
     }
