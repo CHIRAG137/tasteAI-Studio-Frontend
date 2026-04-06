@@ -1,73 +1,138 @@
-# Welcome to your Lovable project
+# TasteAI Studio Frontend
 
-## Project info
+Modern React dashboard for building, testing, and deploying AI voice/chat bots with Auth0-secured visitor and agent flows.
 
-**URL**: https://lovable.dev/projects/547bb90b-6d81-4eaa-9010-0b3b8945705d
+## Stack
 
-## How can I edit this code?
+- React 18 + TypeScript + Vite
+- shadcn/ui + Tailwind CSS + Radix
+- React Router + React Query
+- Auth0 (`@auth0/auth0-react`) + Google OAuth
 
-There are several ways of editing your application.
+## Features
 
-**Use Lovable**
+- Bot creation wizard (content, persona, flow, voice/video, handoff)
+- Bot playground and embedded chat preview
+- Public bot chat with optional Auth0 visitor identity gate
+- Agent portal (Auth0 + credential login)
+- Analytics, sessions, and profile/integrations
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/547bb90b-6d81-4eaa-9010-0b3b8945705d) and start prompting.
+## Why Auth0 Makes TasteAI Better
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Stronger identity guarantees**: users, visitors, and agents are validated with standards-based OAuth/OIDC tokens.
+- **Safer public bot usage**: visitor-protected bots require Auth0 access tokens before chat APIs are called.
+- **Reduced abuse and impersonation risk**: identity-linked sessions prevent one user from reusing another user's flow/handoff session.
+- **Better enterprise readiness**: supports centralized identity governance, account lifecycle management, and future SSO expansion.
+- **Token Vault-ready architecture**: frontend acquires proper audience-scoped access tokens that backend can exchange securely.
 
-**Use your preferred IDE**
+## Where Auth0 Is Used in Frontend
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Dashboard auth**: `/login` and `/register` include `Continue with Auth0`; callback handled at `/callback`.
+- **Agent auth**: `/agent/login` supports Auth0 sign-in; callback handled at `/agent/callback`.
+- **Visitor identity gate**: `VisitorAuth0Gate` protects public/embed chats when bot config enables visitor identity.
+- **Token propagation**: visitor access token is attached in `Authorization` header for flow/ask/handoff calls.
+- **Auth-aware logout**: Auth0 logout listeners clear hosted sessions for both dashboard and agent flows.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Project Structure
 
-Follow these steps:
+```text
+src/
+  api/                  # API clients
+  components/           # shared and feature components
+  components/visitor/   # Auth0 visitor gate
+  components/agent/     # agent auth guards and UI
+  pages/                # route pages
+  pages/agent/          # agent portal pages
+  utils/                # auth/session helpers
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Prerequisites
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- Node.js 18+ (recommended 20+)
+- npm 9+
+- Backend running locally (default: `http://localhost:5000`)
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Environment Variables
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Create `.env` in this folder:
+
+```bash
+VITE_BACKEND_URL=http://localhost:5000
+VITE_FRONTEND_URL=http://localhost:8080
+
+# Google OAuth (optional)
+VITE_GOOGLE_CLIENT_ID=
+
+# Auth0 SPA
+VITE_AUTH0_DOMAIN=
+VITE_AUTH0_CLIENT_ID=
+VITE_AUTH0_AUDIENCE=
+
+# Optional realtime/video integrations
+VITE_LIVEKIT_WS_URL=
+```
+
+Auth0 callback URLs should include:
+
+- `http://localhost:8080/callback`
+- `http://localhost:8080/agent/callback`
+- Any production equivalents for both routes
+
+## Auth0 Setup (Frontend) - Step by Step
+
+1. Create (or open) an Auth0 **Single Page Application**.
+2. Configure these settings:
+   - **Allowed Callback URLs**:  
+     `http://localhost:8080/callback`, `http://localhost:8080/agent/callback`
+   - **Allowed Logout URLs**:  
+     `http://localhost:8080/login`, `http://localhost:8080/agent/login`
+   - **Allowed Web Origins**:  
+     `http://localhost:8080`
+3. In Auth0, create/configure an **API** (identifier must match backend + frontend audience).
+4. Populate frontend `.env`:
+   - `VITE_AUTH0_DOMAIN`
+   - `VITE_AUTH0_CLIENT_ID`
+   - `VITE_AUTH0_AUDIENCE`
+5. Start frontend and backend; verify:
+   - Dashboard Auth0 login returns to `/callback` and lands in app.
+   - Agent Auth0 login returns to `/agent/callback` and lands in `/agent`.
+   - Visitor-protected bot prompts for identity before chat.
+
+## Local Setup
+
+```bash
+# 1) install dependencies
+npm install
+
+# 2) start dev server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+App runs at `http://localhost:8080`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Available Scripts
 
-**Use GitHub Codespaces**
+- `npm run dev` - start Vite dev server
+- `npm run build` - production build
+- `npm run preview` - preview production build
+- `npm run lint` - lint source
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Build for Production
 
-## What technologies are used for this project?
+```bash
+npm run build
+npm run preview
+```
 
-This project is built with:
+## Security Notes
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- Never commit real secrets into `.env`.
+- Visitor-protected bots require Auth0 access token propagation from UI.
+- For production, set strict Auth0 allowed origins/callback/logout URLs.
+- Keep frontend `VITE_AUTH0_AUDIENCE` exactly equal to backend `AUTH0_AUDIENCE`.
 
-## How can I deploy this project?
+## Troubleshooting
 
-Simply open [Lovable](https://lovable.dev/projects/547bb90b-6d81-4eaa-9010-0b3b8945705d) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- **Auth redirect mismatch**: verify Auth0 callback URLs exactly match local/prod URLs.
+- **401 on public chat**: check `VITE_AUTH0_AUDIENCE` and backend `AUTH0_AUDIENCE` match.
+- **CORS issues**: ensure backend allows your frontend origin.
