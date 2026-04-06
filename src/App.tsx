@@ -28,6 +28,7 @@ import AgentSetPassword from "./pages/agent/AgentSetPassword";
 import AgentProfile from "./pages/agent/AgentProfile";
 import AgentAuthCallback from "./pages/agent/AgentAuthCallback";
 import AuthCallback from "./pages/AuthCallback";
+import TestEmbed from "./pages/TestEmbed";
 
 const queryClient = new QueryClient();
 
