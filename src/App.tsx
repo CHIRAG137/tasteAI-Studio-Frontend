@@ -28,6 +28,7 @@ import AgentSetPassword from "./pages/agent/AgentSetPassword";
 import AgentProfile from "./pages/agent/AgentProfile";
 import AgentAuthCallback from "./pages/agent/AgentAuthCallback";
 import AuthCallback from "./pages/AuthCallback";
+import TestEmbed from "./pages/TestEmbed";
 
 const queryClient = new QueryClient();
 
@@ -143,6 +144,14 @@ const App = () => (
 
           {/* Public bot chat page - accessible to everyone */}
           <Route path="/bot/:botId" element={<PublicBotChatPage />} />
+          <Route 
+            path="/test/:botId" 
+            element={
+              <ProtectedRoute>
+                <TestEmbed />
+              </ProtectedRoute>
+            } 
+          />
 
           {/* Agent Routes */}
           <Route path="/agent/login" element={<AgentLogin />} />

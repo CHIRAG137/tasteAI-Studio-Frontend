@@ -17,7 +17,8 @@ import {
   RefreshCw,
   CheckCircle2,
   XCircle,
-  Info
+  Info,
+  Monitor
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { EmbedCustomization } from "@/components/EmbedCustomizer";
@@ -280,10 +281,10 @@ export default function Documentation() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => window.open(embedUrl, '_blank')}
+                onClick={() => navigate(`/test/${botId}`)}
                 className="flex items-center gap-2"
               >
-                <ExternalLink className="h-4 w-4" />
+                <Monitor className="h-4 w-4" />
                 Test Chat
               </Button>
             </div>
