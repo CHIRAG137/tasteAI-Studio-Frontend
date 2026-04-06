@@ -35,6 +35,7 @@ interface BotConfig {
   voiceId?: string;
   humanHandoffEnabled?: boolean;
   humanHandoffEmails?: string;
+  requireVisitorAuth0Identity?: boolean;
 }
 
 const CreateBot = () => {
@@ -82,6 +83,7 @@ const CreateBot = () => {
     voiceId: "",
     humanHandoffEnabled: false,
     humanHandoffEmails: "",
+    requireVisitorAuth0Identity: false,
   });
 
   const updateConfig = (field: keyof BotConfig, value: any) => {
@@ -159,6 +161,7 @@ const CreateBot = () => {
         voice_id: botConfig.voiceId || "",
         human_handoff_enabled: (botConfig.humanHandoffEnabled || false).toString(),
         human_handoff_emails: botConfig.humanHandoffEmails || "",
+        require_visitor_auth0_identity: (botConfig.requireVisitorAuth0Identity || false).toString(),
       }).forEach(([key, value]) => formData.append(key, value as string));
 
       if (botConfig.scrapedMarkdown?.length)

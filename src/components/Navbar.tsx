@@ -8,7 +8,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { removeAuthToken, getAuthToken } from "@/utils/auth";
+import {
+  removeAuthToken,
+  getAuthToken,
+  getLoginProvider,
+  clearLoginProvider,
+} from "@/utils/auth";
 import { logoutBotUser } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,27 +23,39 @@ export const Navbar = () => {
 
 
   const handleLogout = async () => {
+    const auth0Enabled = !!(
+      import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID
+    );
+    const provider = getLoginProvider();
+
     try {
       const token = getAuthToken();
       if (token) {
-        // Call logout API
         await logoutBotUser(token);
       }
-      
-      // Clear token from localStorage
+
       removeAuthToken();
-      
+      clearLoginProvider();
+
       toast({
         title: "Success",
         description: "Logged out successfully",
       });
-      
-      // Redirect to login page
+
+      if (auth0Enabled && provider === "auth0") {
+        window.dispatchEvent(new CustomEvent("auth0:logout"));
+        return;
+      }
+
       navigate("/login", { replace: true });
     } catch (error) {
       console.error("Logout error:", error);
-      // Clear token anyway even if API call fails
       removeAuthToken();
+      clearLoginProvider();
+      if (auth0Enabled && provider === "auth0") {
+        window.dispatchEvent(new CustomEvent("auth0:logout"));
+        return;
+      }
       navigate("/login", { replace: true });
     }
   };

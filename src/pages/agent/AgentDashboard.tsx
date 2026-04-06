@@ -11,7 +11,14 @@ import {
   Timer, AlertTriangle, ArrowUpRight, History, X, ArrowDownRight, Bell
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { removeAgentAuthToken, removeAgentEmail, getAgentEmail, getAgentAuthHeaders, getAgentAuthToken } from "@/utils/agentAuth";
+import {
+  removeAgentAuthToken,
+  removeAgentEmail,
+  getAgentEmail,
+  getAgentAuthHeaders,
+  getAgentAuthToken,
+  getAgentLoginProvider,
+} from "@/utils/agentAuth";
 import { logoutAgentUser } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
 import { getMeaningfulMessageCount } from "@/utils/flowSessionUtil";
@@ -364,17 +371,19 @@ const AgentDashboard = () => {
   };
 
   const handleLogout = async () => {
+    const auth0Enabled = !!(
+      import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID
+    );
+    const loginProvider = getAgentLoginProvider();
+
     try {
-      // First, set agent to offline
       await updateStatus(false, "offline");
 
-      // Call logout API
       const token = getAgentAuthToken();
       if (token) {
         await logoutAgentUser(token);
       }
 
-      // Clear tokens and email from localStorage
       removeAgentAuthToken();
       removeAgentEmail();
 
@@ -383,13 +392,20 @@ const AgentDashboard = () => {
         description: "Logged out successfully",
       });
 
-      // Redirect to login page
+      if (auth0Enabled && loginProvider === "auth0") {
+        window.dispatchEvent(new CustomEvent("agent-auth0:logout"));
+        return;
+      }
+
       navigate("/agent/login", { replace: true });
     } catch (error) {
       console.error("Logout error:", error);
-      // Clear tokens anyway even if API call fails
       removeAgentAuthToken();
       removeAgentEmail();
+      if (auth0Enabled && loginProvider === "auth0") {
+        window.dispatchEvent(new CustomEvent("agent-auth0:logout"));
+        return;
+      }
       navigate("/agent/login", { replace: true });
     }
   };

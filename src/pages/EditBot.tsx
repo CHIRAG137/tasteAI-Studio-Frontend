@@ -35,6 +35,7 @@ interface BotConfig {
   videoBotImagePublicId?: string;
   humanHandoffEnabled?: boolean;
   humanHandoffEmails?: string;
+  requireVisitorAuth0Identity?: boolean;
 }
 
 const EditBot = () => {
@@ -112,6 +113,7 @@ const EditBot = () => {
           videoBotImagePublicId: bot.video_bot_image_public_id || "",
           humanHandoffEnabled: bot.human_handoff_enabled || false,
           humanHandoffEmails: bot.human_handoff_emails || "",
+          requireVisitorAuth0Identity: !!bot.require_visitor_auth0_identity,
         });
       } catch (err) {
         toast({
@@ -175,6 +177,10 @@ const EditBot = () => {
       formData.append("voice_id", botConfig.voiceId || "");
       formData.append("human_handoff_enabled", (botConfig.humanHandoffEnabled || false).toString());
       formData.append("human_handoff_emails", botConfig.humanHandoffEmails || "");
+      formData.append(
+        "require_visitor_auth0_identity",
+        (botConfig.requireVisitorAuth0Identity || false).toString()
+      );
 
       if (botConfig.scrapedMarkdown?.length)
         formData.append("scraped_content", JSON.stringify(botConfig.scrapedMarkdown));

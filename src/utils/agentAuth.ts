@@ -1,4 +1,22 @@
 // Agent Authentication utility functions
+const AGENT_LOGIN_PROVIDER_KEY = "agentLoginProvider";
+
+export type AgentLoginProvider = "local" | "auth0";
+
+export const setAgentLoginProvider = (provider: AgentLoginProvider): void => {
+  localStorage.setItem(AGENT_LOGIN_PROVIDER_KEY, provider);
+};
+
+export const getAgentLoginProvider = (): AgentLoginProvider | null => {
+  const v = localStorage.getItem(AGENT_LOGIN_PROVIDER_KEY);
+  if (v === "local" || v === "auth0") return v;
+  return null;
+};
+
+export const clearAgentLoginProvider = (): void => {
+  localStorage.removeItem(AGENT_LOGIN_PROVIDER_KEY);
+};
+
 export const getAgentAuthToken = (): string | null => {
   return localStorage.getItem('agentAuthToken');
 };
@@ -8,7 +26,9 @@ export const setAgentAuthToken = (token: string): void => {
 };
 
 export const removeAgentAuthToken = (): void => {
-  localStorage.removeItem('agentAuthToken');
+  localStorage.removeItem("agentAuthToken");
+  localStorage.removeItem("agentId");
+  clearAgentLoginProvider();
 };
 
 export const getAgentAuthHeaders = (): Record<string, string> => {

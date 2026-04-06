@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Bot, User, Send, Mic, MicOff, Video, Loader2, PhoneOff, Volume2, VolumeX, Headphones, Clock, ArrowDown } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { VisitorAuth0Gate } from "@/components/visitor/VisitorAuth0Gate";
+import { visitorHeaders, getVisitorIdentity } from "@/utils/visitorIdentity";
 
 interface Message {
   id: string;
@@ -26,6 +28,9 @@ export const PublicBotChatPage = () => {
   const { botId } = useParams<{ botId: string }>();
   const { toast } = useToast();
   const [bot, setBot] = useState<any>(null);
+  const flowStartedRef = useRef(false);
+  const getVisitorHdrs = (): Record<string, string> =>
+    bot?.require_visitor_auth0_identity && botId ? visitorHeaders(botId) : {};
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -284,7 +289,7 @@ export const PublicBotChatPage = () => {
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
             body: JSON.stringify({
               message: content,
               messageType: messageType || "system",
@@ -303,7 +308,8 @@ export const PublicBotChatPage = () => {
     setIsLoadingRating(true);
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rating?flowSessionId=${sessionId}`
+        `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rating?flowSessionId=${sessionId}`,
+        { headers: { ...getVisitorHdrs() } }
       );
       const data = await res.json();
       if (res.ok && data.userRating) {
@@ -338,7 +344,7 @@ export const PublicBotChatPage = () => {
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
         body: JSON.stringify({ flowSessionId: sessionId, rating: ratingValue, feedback: ratingFeedback }),
       });
       const data = await res.json();
@@ -390,7 +396,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
           body: JSON.stringify({
             question,
             botId: bot._id,
@@ -434,7 +440,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-message`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
           body: JSON.stringify({ message, flowSessionId: sessionId }),
         }
       );
@@ -451,7 +457,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-resolve`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
           body: JSON.stringify({ flowSessionId: sessionId }),
         }
       );
@@ -479,7 +485,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-reopen`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
           body: JSON.stringify({ flowSessionId: sessionId }),
         }
       );
@@ -518,7 +524,7 @@ export const PublicBotChatPage = () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/request`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
         body: JSON.stringify({ botId: bot._id, flowSessionId: sessionId, userQuestion, userIpAddress: '', userAgent: navigator.userAgent }),
       });
       const data = await response.json();
@@ -657,15 +663,23 @@ export const PublicBotChatPage = () => {
   useEffect(() => {
     if (!bot) return;
 
+    flowStartedRef.current = false;
     const initFlow = async () => {
+      if (flowStartedRef.current) return;
+      if (bot.require_visitor_auth0_identity && botId && !getVisitorIdentity(botId)?.sub) {
+        return;
+      }
       try {
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/start/${bot._id}`,
-          { method: "POST" }
+          { method: "POST", headers: { ...getVisitorHdrs() } }
         );
         const data = await res.json();
 
-        if (data.sessionId) setSessionId(data.sessionId);
+        if (data.sessionId) {
+          flowStartedRef.current = true;
+          setSessionId(data.sessionId);
+        }
 
         const botMessages: Message[] = [];
         const textsToSpeak: string[] = [];
@@ -731,7 +745,13 @@ export const PublicBotChatPage = () => {
     };
 
     initFlow();
-  }, [bot]);
+    const onVisitorReady = (e: Event) => {
+      const d = (e as CustomEvent<{ botId?: string }>).detail;
+      if (d?.botId === botId) initFlow();
+    };
+    window.addEventListener("visitor-auth-ready", onVisitorReady);
+    return () => window.removeEventListener("visitor-auth-ready", onVisitorReady);
+  }, [bot, botId]);
 
   // Poll for agent messages when handoff is active
   useEffect(() => {
@@ -740,7 +760,8 @@ export const PublicBotChatPage = () => {
     const pollInterval = setInterval(async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-messages?flowSessionId=${sessionId}`
+          `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-messages?flowSessionId=${sessionId}`,
+          { headers: { ...getVisitorHdrs() } }
         );
         const data = await response.json();
 
@@ -826,7 +847,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
           body: JSON.stringify({
             question,
             botId: bot._id,
@@ -912,7 +933,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/respond`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
           body: JSON.stringify(requestBody),
         }
       );
@@ -1082,6 +1103,7 @@ export const PublicBotChatPage = () => {
   }
 
   return (
+    <VisitorAuth0Gate botId={botId!} enabled={!!bot.require_visitor_auth0_identity}>
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <Card className={`w-full ${bot.is_video_bot ? (showVideoAvatar ? 'max-w-6xl' : 'max-w-2xl') : 'max-w-2xl'} h-[600px] flex flex-col shadow-2xl rounded-xl overflow-hidden transition-all duration-300`}>
         {/* Fixed Header */}
@@ -1994,5 +2016,6 @@ export const PublicBotChatPage = () => {
         </div>
       )}
     </div>
+    </VisitorAuth0Gate>
   );
 };

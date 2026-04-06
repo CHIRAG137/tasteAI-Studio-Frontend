@@ -26,6 +26,8 @@ import AgentChat from "./pages/agent/AgentChat";
 import AgentConversationLink from "./pages/agent/AgentConversationLink";
 import AgentSetPassword from "./pages/agent/AgentSetPassword";
 import AgentProfile from "./pages/agent/AgentProfile";
+import AgentAuthCallback from "./pages/agent/AgentAuthCallback";
+import AuthCallback from "./pages/AuthCallback";
 
 const queryClient = new QueryClient();
 
@@ -135,6 +137,9 @@ const App = () => (
               </PublicRoute>
             } 
           />
+
+          <Route path="/callback" element={<AuthCallback />} />
+          <Route path="/agent/callback" element={<AgentAuthCallback />} />
 
           {/* Public bot chat page - accessible to everyone */}
           <Route path="/bot/:botId" element={<PublicBotChatPage />} />

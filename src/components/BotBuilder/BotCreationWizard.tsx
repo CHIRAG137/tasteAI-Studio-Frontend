@@ -19,6 +19,7 @@ import {
   Bot,
   Bell,
   BellRing,
+  Shield
 } from "lucide-react";
 import { BasicInfoSection } from "./BasicInfoSection";
 import { WebsiteSection } from "./WebsiteSection";
@@ -29,6 +30,7 @@ import { PersonaSection } from "./PersonaSection";
 import { SlackSection } from "./SlackSection";
 import { HumanHandoffSection } from "./HumanHandoffSection";
 import { ConversationFlowSection } from "./ConversationFlowSection";
+import { VisitorIdentitySection } from "./VisitorIdentitySection";
 import { useToast } from "@/hooks/use-toast";
 
 interface Step {
@@ -100,6 +102,14 @@ const ALL_STEPS: Step[] = [
     description:
       "Configure your bot's personality, conversational tone, response style, and behavioral characteristics.",
     icon: <Brain className="w-5 h-5" />,
+  },
+  {
+    id: "visitor-identity",
+    title: "Visitor identity",
+    subtitle: "Auth0 for end users",
+    description:
+      "Optionally require visitors to verify who they are with Auth0 before they can use your bot.",
+    icon: <Shield className="w-5 h-5" />,
   },
   {
     id: "slack",
@@ -202,6 +212,8 @@ export const BotCreationWizard = ({
         return <LanguageSection botConfig={botConfig} updateConfig={updateConfig} />;
       case "persona":
         return <PersonaSection botConfig={botConfig} updateConfig={updateConfig} />;
+      case "visitor-identity":
+        return <VisitorIdentitySection botConfig={botConfig} updateConfig={updateConfig} />;
       case "slack":
         return <SlackSection botConfig={botConfig} updateConfig={updateConfig} />;
       case "handoff":

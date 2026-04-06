@@ -39,3 +39,30 @@ export const logoutAgentUser = async (token: string) => {
   });
   return res.json();
 };
+
+export const exchangeTokenVaultToken = async (
+  appJwt: string,
+  auth0AccessToken: string,
+  connection: string
+) => {
+  const res = await fetch(`${API_BASE_URL}/api/auth/token-vault/exchange`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${appJwt}`,
+    },
+    body: JSON.stringify({
+      accessToken: auth0AccessToken,
+      connection,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    return {
+      status: "error" as const,
+      message: data.message || "Token exchange failed",
+      error: data.error,
+    };
+  }
+  return data;
+};

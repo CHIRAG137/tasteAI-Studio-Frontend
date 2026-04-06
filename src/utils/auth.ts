@@ -1,4 +1,8 @@
 // Authentication utility functions
+const LOGIN_PROVIDER_KEY = 'loginProvider';
+
+export type LoginProvider = 'local' | 'google' | 'auth0';
+
 export const getAuthToken = (): string | null => {
   return localStorage.getItem('authToken');
 };
@@ -9,6 +13,20 @@ export const setAuthToken = (token: string): void => {
 
 export const removeAuthToken = (): void => {
   localStorage.removeItem('authToken');
+};
+
+export const setLoginProvider = (provider: LoginProvider): void => {
+  localStorage.setItem(LOGIN_PROVIDER_KEY, provider);
+};
+
+export const getLoginProvider = (): LoginProvider | null => {
+  const v = localStorage.getItem(LOGIN_PROVIDER_KEY);
+  if (v === 'local' || v === 'google' || v === 'auth0') return v;
+  return null;
+};
+
+export const clearLoginProvider = (): void => {
+  localStorage.removeItem(LOGIN_PROVIDER_KEY);
 };
 
 export const getAuthHeaders = (): Record<string, string> => {

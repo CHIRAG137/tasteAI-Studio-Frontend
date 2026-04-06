@@ -76,6 +76,7 @@ const MyBots = () => {
         videoBotImagePublicId: bot.video_bot_image_public_id,
         voiceId: bot.voice_id,
         humanHandoffEnabled: bot.human_handoff_enabled,
+        requireVisitorAuth0Identity: !!bot.require_visitor_auth0_identity,
       }));
       setSavedBots((prev) => (append ? [...prev, ...mappedBots] : mappedBots));
       setHasNextPage(pagination.hasNextPage);

@@ -8,11 +8,20 @@ import { User, ArrowLeft, ExternalLink, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isAuthenticated, getAuthHeaders } from "@/utils/auth";
 import { API_BASE_URL } from "@/api/auth";
+import { TokenVaultProfileSection } from "@/components/profile/TokenVaultProfileSection";
+
+const auth0Configured = !!(
+  import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID
+);
 
 const Profile = () => {
   const navigate = useNavigate();
   const [isConnecting, setIsConnecting] = useState(false);
-  const [userDetails, setUserDetails] = useState<{ name?: string; email?: string } | null>(null);
+  const [userDetails, setUserDetails] = useState<{
+    name?: string;
+    email?: string;
+    auth0Id?: string;
+  } | null>(null);
   const [slackIntegration, setSlackIntegration] = useState<{ teamName?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -114,6 +123,12 @@ const Profile = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {auth0Configured && (
+              <TokenVaultProfileSection
+                hasAuth0Linked={!!userDetails?.auth0Id}
+              />
+            )}
 
             {/* Integrations Card */}
             <Card>

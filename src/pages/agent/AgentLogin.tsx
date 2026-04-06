@@ -5,8 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Eye, EyeOff, Headphones, MessageSquare, LogIn, Mail, Lock } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { setAgentAuthToken, setAgentEmail } from "@/utils/agentAuth";
+import { setAgentAuthToken, setAgentEmail, setAgentLoginProvider } from "@/utils/agentAuth";
 import { useToast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
+import { AgentAuth0LoginButton } from "@/components/agent/AgentAuth0LoginButton";
 
 const AgentLogin = () => {
   const { toast } = useToast();
@@ -18,6 +20,10 @@ const AgentLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const from = (location.state as any)?.from?.pathname || "/agent";
+
+  const auth0Configured = !!(
+    import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +59,8 @@ const AgentLogin = () => {
         // Store the JWT token using your utility functions
         setAgentAuthToken(data.result.token);
         setAgentEmail(data.result.agent.email);
-        
+        setAgentLoginProvider("local");
+
         // Also store agent ID for future use
         localStorage.setItem("agentId", data.result.agent.id);
 
@@ -119,7 +126,26 @@ const AgentLogin = () => {
               Use your registered agent email to sign in
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
+            {auth0Configured && (
+              <>
+                <AgentAuth0LoginButton />
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator className="w-full" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">
+                      Or email & password
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  Auth0 must use the same email you were invited with. New agents still complete the
+                  invite email first.
+                </p>
+              </>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
