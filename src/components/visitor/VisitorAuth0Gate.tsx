@@ -5,6 +5,7 @@ import { Shield } from "lucide-react";
 import {
   saveVisitorIdentity,
   clearVisitorIdentity,
+  saveVisitorAccessToken,
 } from "@/utils/visitorIdentity";
 
 type Props = {
@@ -15,20 +16,40 @@ type Props = {
 };
 
 function VisitorAuth0GateInner({ botId, children }: { botId: string; children: React.ReactNode }) {
-  const { isAuthenticated, user, loginWithRedirect, logout, isLoading } = useAuth0();
+  const {
+    isAuthenticated,
+    user,
+    loginWithRedirect,
+    logout,
+    isLoading,
+    getAccessTokenSilently,
+  } = useAuth0();
 
   useEffect(() => {
-    if (isAuthenticated && user?.sub) {
+    if (!isAuthenticated || !user?.sub) return;
+
+    (async () => {
       saveVisitorIdentity(botId, {
         sub: user.sub,
         email: user.email,
         name: user.name,
       });
+
+      try {
+        const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
+        const token = await getAccessTokenSilently(
+          audience ? { authorizationParams: { audience } } : undefined
+        );
+        if (token) saveVisitorAccessToken(botId, token);
+      } catch {
+        // If token can't be retrieved silently, backend will reject and user can retry login.
+      }
+
       window.dispatchEvent(
         new CustomEvent("visitor-auth-ready", { detail: { botId } })
       );
-    }
-  }, [isAuthenticated, user, botId]);
+    })();
+  }, [isAuthenticated, user, botId, getAccessTokenSilently]);
 
   if (isLoading) {
     return (
