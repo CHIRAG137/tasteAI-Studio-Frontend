@@ -144,6 +144,14 @@ const App = () => (
 
           {/* Public bot chat page - accessible to everyone */}
           <Route path="/bot/:botId" element={<PublicBotChatPage />} />
+          <Route 
+            path="/test/:botId" 
+            element={
+              <ProtectedRoute>
+                <TestEmbed />
+              </ProtectedRoute>
+            } 
+          />
 
           {/* Agent Routes */}
           <Route path="/agent/login" element={<AgentLogin />} />
