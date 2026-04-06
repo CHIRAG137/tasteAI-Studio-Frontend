@@ -10,6 +10,7 @@ import { Bot, User, Send, Mic, MicOff, Video, Loader2, PhoneOff, Volume2, Volume
 import { useToast } from "@/components/ui/use-toast";
 import { VisitorAuth0Gate } from "@/components/visitor/VisitorAuth0Gate";
 import { visitorHeaders, getVisitorIdentity } from "@/utils/visitorIdentity";
+import { useAuth0 } from "@auth0/auth0-react";
 
 interface Message {
   id: string;
@@ -27,10 +28,14 @@ interface Message {
 export const PublicBotChatPage = () => {
   const { botId } = useParams<{ botId: string }>();
   const { toast } = useToast();
+  const { loginWithRedirect } = useAuth0();
   const [bot, setBot] = useState<any>(null);
+  const [forceVisitorAuth, setForceVisitorAuth] = useState(false);
   const flowStartedRef = useRef(false);
   const getVisitorHdrs = (): Record<string, string> =>
-    bot?.require_visitor_auth0_identity && botId ? visitorHeaders(botId) : {};
+    (bot?.require_visitor_auth0_identity || forceVisitorAuth) && botId
+      ? visitorHeaders(botId)
+      : {};
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -642,8 +647,34 @@ export const PublicBotChatPage = () => {
   useEffect(() => {
     const fetchBot = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`);
+        const res = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`,
+          { headers: { ...getVisitorHdrs() } }
+        );
         const data = await res.json();
+
+        if (!res.ok) {
+          // If backend requires Auth0 visitor token, trigger visitor auth flow.
+          if (
+            res.status === 401 &&
+            (data?.message?.toLowerCase?.().includes("auth0") ||
+              data?.result?.code === "auth0_access_token_required" ||
+              data?.error === "auth0_access_token_required")
+          ) {
+            setForceVisitorAuth(true);
+            // If we already have identity, retry will happen on visitor-auth-ready.
+            if (!getVisitorIdentity(botId!)?.sub) {
+              await loginWithRedirect({
+                appState: {
+                  returnTo: `${window.location.pathname}${window.location.search}`,
+                },
+              });
+            }
+            return;
+          }
+          throw new Error(data?.message || "Failed to load bot");
+        }
+
         setBot(data.result);
       } catch (err) {
         console.error("Failed to fetch bot:", err);
@@ -657,6 +688,13 @@ export const PublicBotChatPage = () => {
       }
     };
     fetchBot();
+
+    const onVisitorReady = (e: Event) => {
+      const d = (e as CustomEvent<{ botId?: string }>).detail;
+      if (d?.botId === botId) fetchBot();
+    };
+    window.addEventListener("visitor-auth-ready", onVisitorReady);
+    return () => window.removeEventListener("visitor-auth-ready", onVisitorReady);
   }, [botId]);
 
   // Start flow when bot is loaded
@@ -1103,7 +1141,10 @@ export const PublicBotChatPage = () => {
   }
 
   return (
-    <VisitorAuth0Gate botId={botId!} enabled={!!bot.require_visitor_auth0_identity}>
+    <VisitorAuth0Gate
+      botId={botId!}
+      enabled={!!bot.require_visitor_auth0_identity || forceVisitorAuth}
+    >
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <Card className={`w-full ${bot.is_video_bot ? (showVideoAvatar ? 'max-w-6xl' : 'max-w-2xl') : 'max-w-2xl'} h-[600px] flex flex-col shadow-2xl rounded-xl overflow-hidden transition-all duration-300`}>
         {/* Fixed Header */}
