@@ -29,6 +29,10 @@ import AgentProfile from "./pages/agent/AgentProfile";
 import AgentAuthCallback from "./pages/agent/AgentAuthCallback";
 import AuthCallback from "./pages/AuthCallback";
 import TestEmbed from "./pages/TestEmbed";
+import Workflows from "./pages/Workflows";
+import CreateWorkflow from "./pages/CreateWorkflow";
+import WorkflowBuilder from "./pages/WorkflowBuilder";
+import SlackInstall from "./pages/SlackInstall";
 
 const queryClient = new QueryClient();
 
@@ -149,6 +153,48 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <TestEmbed />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Workflow Routes */}
+          <Route 
+            path="/workflows" 
+            element={
+              <ProtectedRoute>
+                <Workflows />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/workflows/create" 
+            element={
+              <ProtectedRoute>
+                <CreateWorkflow />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/workflows/install" 
+            element={
+              <ProtectedRoute>
+                <SlackInstall />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/workflows/:workflowId/builder" 
+            element={
+              <ProtectedRoute>
+                <WorkflowBuilder />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/workflows/new/builder" 
+            element={
+              <ProtectedRoute>
+                <WorkflowBuilder />
               </ProtectedRoute>
             } 
           />

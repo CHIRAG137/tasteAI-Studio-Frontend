@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { User, Plus, Bot, LogOut } from "lucide-react";
+import { User, Plus, Bot, LogOut, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -75,6 +75,14 @@ export const Navbar = () => {
           >
             <Bot className="w-4 h-4 mr-2" />
             Your Bots
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/workflows')}
+            className="text-sm"
+          >
+            <Zap className="w-4 h-4 mr-2" />
+            Workflows
           </Button>
           <Button
             onClick={() => navigate('/create')}
