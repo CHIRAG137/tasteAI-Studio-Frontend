@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getAuthHeaders, getAuthToken, isAuthenticated } from "@/utils/auth";
+import { API_BASE_URL } from "@/api/auth";
 import {
   ArrowLeft,
   Slack,
@@ -54,12 +56,51 @@ export default function SlackInstall() {
   const navigate = useNavigate();
   const [isConnected, setIsConnected] = useState(false);
   const [workspace, setWorkspace] = useState<{ name: string; icon?: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      setIsLoading(true);
+      setHasError(false);
+
+      if (!isAuthenticated()) {
+        navigate('/login');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+          headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load Slack status');
+        }
+
+        const data = await response.json();
+        const slackIntegration = data.result?.slackIntegration;
+        setIsConnected(!!slackIntegration);
+        setWorkspace(slackIntegration ? { name: slackIntegration.teamName } : null);
+      } catch (error) {
+        console.error('Failed to fetch Slack integration status:', error);
+        setHasError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStatus();
+  }, [navigate]);
 
   const handleInstall = () => {
-    // In production, this would redirect to the Slack OAuth flow
-    // For now, simulate a connection
-    setIsConnected(true);
-    setWorkspace({ name: "Acme Corp" });
+    const token = getAuthToken();
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    window.location.href = `${API_BASE_URL}/api/slack/install?token=${token}`;
   };
 
   return (
@@ -120,7 +161,7 @@ export default function SlackInstall() {
               </div>
               {isConnected ? (
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button variant="outline" size="sm" onClick={handleInstall} className="gap-2">
                     <RefreshCw className="w-4 h-4" />
                     Reconnect
                   </Button>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { getAuthHeaders } from "@/utils/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,6 +111,7 @@ export default function CreateWorkflow() {
 
   const [notifyOnComplete, setNotifyOnComplete] = useState(true);
   const [dmRequester, setDmRequester] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canProceed = () => {
     if (step === 1) return !!selectedType;
@@ -118,11 +120,57 @@ export default function CreateWorkflow() {
     return true;
   };
 
-  const handleCreate = () => {
-    if (selectedType === "custom") {
-      navigate("/workflows/new/builder");
-    } else {
+  const handleCreate = async () => {
+    if (!selectedType) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const workflowPayload = {
+      name,
+      description,
+      type: selectedType,
+      triggerType,
+      triggerValue,
+      channel,
+      status: selectedType === "custom" ? "draft" : "active",
+      settings: {
+        approvalSteps,
+        formFields,
+        triageRules,
+        notifyOnComplete,
+        dmRequester,
+      },
+    };
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/workflows`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(workflowPayload),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create workflow");
+      }
+
+      const data = await response.json();
+      const workflow = data.result;
+
+      if (selectedType === "custom") {
+        navigate(`/workflows/${workflow._id}/builder`);
+      } else {
+        navigate("/workflows");
+      }
+    } catch (error) {
+      console.error("Failed to create workflow:", error);
       navigate("/workflows");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -164,9 +212,17 @@ export default function CreateWorkflow() {
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Button onClick={handleCreate} className="bg-gradient-primary gap-2">
+                <Button
+                  onClick={handleCreate}
+                  disabled={isSubmitting}
+                  className="bg-gradient-primary gap-2"
+                >
                   <CheckCircle2 className="w-4 h-4" />
-                  {selectedType === "custom" ? "Open Flow Builder" : "Create Workflow"}
+                  {isSubmitting
+                    ? "Saving..."
+                    : selectedType === "custom"
+                    ? "Open Flow Builder"
+                    : "Create Workflow"}
                 </Button>
               )}
             </div>
