@@ -13,7 +13,7 @@ interface BotConfig {
   name: string;
   websiteUrl: string;
   description: string;
-  file: File | null;
+  files: File[];
   voiceEnabled: boolean;
   languages: string[];
   primaryPurpose: string;
@@ -36,6 +36,9 @@ interface BotConfig {
   humanHandoffEnabled?: boolean;
   humanHandoffEmails?: string;
   requireVisitorAuth0Identity?: boolean;
+  customLLMProvider?: string | null;
+  customApiKey?: string;
+  customModel?: string;
 }
 
 const CreateBot = () => {
@@ -49,7 +52,7 @@ const CreateBot = () => {
     name: "",
     websiteUrl: "",
     description: "",
-    file: null,
+    files: [],
     voiceEnabled: false,
     languages: ["English"],
     primaryPurpose: "",
@@ -84,6 +87,9 @@ const CreateBot = () => {
     humanHandoffEnabled: false,
     humanHandoffEmails: "",
     requireVisitorAuth0Identity: false,
+    customLLMProvider: null,
+    customApiKey: "",
+    customModel: "",
   });
 
   const updateConfig = (field: keyof BotConfig, value: any) => {
@@ -162,13 +168,18 @@ const CreateBot = () => {
         human_handoff_enabled: (botConfig.humanHandoffEnabled || false).toString(),
         human_handoff_emails: botConfig.humanHandoffEmails || "",
         require_visitor_auth0_identity: (botConfig.requireVisitorAuth0Identity || false).toString(),
+        custom_llm_provider: botConfig.customLLMProvider || "",
+        custom_api_key: botConfig.customApiKey || "",
+        custom_model: botConfig.customModel || "",
       }).forEach(([key, value]) => formData.append(key, value as string));
 
       if (botConfig.scrapedMarkdown?.length)
         formData.append("scraped_content", JSON.stringify(botConfig.scrapedMarkdown));
       if (botConfig.scrapedUrls?.length)
         formData.append("scraped_urls", JSON.stringify(botConfig.scrapedUrls));
-      if (botConfig.file) formData.append("file", botConfig.file);
+      if (botConfig.files?.length) {
+        botConfig.files.forEach((file) => formData.append("files", file));
+      }
 
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/create`, {
         method: "POST",

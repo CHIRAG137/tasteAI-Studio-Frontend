@@ -17,7 +17,7 @@ interface BotConfig {
   name: string;
   websiteUrl: string;
   description: string;
-  file: File | null;
+  files: File[];
   voiceEnabled: boolean;
   languages: string[];
   primaryPurpose: string;
@@ -50,7 +50,7 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
     name: "",
     websiteUrl: "",
     description: "",
-    file: null,
+    files: [],
     voiceEnabled: false,
     languages: ["English"],
     primaryPurpose: "",
@@ -74,7 +74,7 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
         name: bot.name || "",
         websiteUrl: bot.websiteUrl || "",
         description: bot.description || "",
-        file: null,
+        files: [],
         voiceEnabled: bot.voiceEnabled || false,
         languages: bot.languages || ["English"],
         primaryPurpose: bot.primaryPurpose || "",
@@ -120,8 +120,8 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
       formData.append("conversationFlow", JSON.stringify(botConfig.conversationFlow));
       formData.append("is_video_bot", botConfig.isVideoBot.toString());
 
-      if (botConfig.file) {
-        formData.append("file", botConfig.file);
+      if (botConfig.files?.length) {
+        botConfig.files.forEach((file) => formData.append("files", file));
       }
 
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${bot.id}`, {

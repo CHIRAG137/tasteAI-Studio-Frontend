@@ -39,17 +39,25 @@ export const BasicInfoSection = ({ botConfig, updateConfig }: BasicInfoSectionPr
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="file" className="text-sm font-medium flex items-center gap-1">
+        <Label htmlFor="files" className="text-sm font-medium flex items-center gap-1">
           <Upload className="w-4 h-4" />
-          Upload File
+          Upload Files
         </Label>
         <Input
-          id="file"
+          id="files"
           type="file"
-          onChange={(e) => updateConfig("file", e.target.files?.[0] || null)}
+          multiple
+          onChange={(e) => updateConfig("files", e.target.files ? Array.from(e.target.files) : [])}
           className="h-11 cursor-pointer file:cursor-pointer"
-          accept=".pdf,.doc,.docx,.txt,.json"
+          accept=".pdf,.doc,.docx,.txt,.xls,.xlsx"
         />
+        {botConfig.files?.length ? (
+          <p className="text-sm text-muted-foreground">
+            {botConfig.files.length} file(s) selected: {botConfig.files.map((file) => file.name).join(', ')}
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">Upload PDF, TXT, DOC/DOCX, or XLS/XLSX files for training.</p>
+        )}
       </div>
     </div>
   );

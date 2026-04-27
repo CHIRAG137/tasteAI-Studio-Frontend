@@ -12,7 +12,7 @@ interface BotConfig {
   name: string;
   websiteUrl: string;
   description: string;
-  file: File | null;
+  files: File[];
   voiceEnabled: boolean;
   voiceId?: string;
   languages: string[];
@@ -36,6 +36,9 @@ interface BotConfig {
   humanHandoffEnabled?: boolean;
   humanHandoffEmails?: string;
   requireVisitorAuth0Identity?: boolean;
+  customLLMProvider?: string | null;
+  customApiKey?: string;
+  customModel?: string;
 }
 
 const EditBot = () => {
@@ -50,7 +53,7 @@ const EditBot = () => {
     name: "",
     websiteUrl: "",
     description: "",
-    file: null,
+    files: [],
     voiceEnabled: false,
     voiceId: "",
     languages: ["English"],
@@ -73,6 +76,9 @@ const EditBot = () => {
     videoBotImagePublicId: "",
     humanHandoffEnabled: false,
     humanHandoffEmails: "",
+    customLLMProvider: null,
+    customApiKey: "",
+    customModel: "",
   });
 
   useEffect(() => {
@@ -90,7 +96,7 @@ const EditBot = () => {
           name: bot.name || "",
           websiteUrl: bot.website_url || "",
           description: bot.description || "",
-          file: null,
+          files: [],
           voiceEnabled: bot.is_voice_enabled || false,
           voiceId: bot.voice_id || "",
           languages: bot.supported_languages || ["English"],
@@ -114,6 +120,9 @@ const EditBot = () => {
           humanHandoffEnabled: bot.human_handoff_enabled || false,
           humanHandoffEmails: bot.human_handoff_emails || "",
           requireVisitorAuth0Identity: !!bot.require_visitor_auth0_identity,
+          customLLMProvider: bot.custom_llm_provider || null,
+          customApiKey: "",
+          customModel: bot.custom_model || "",
         });
       } catch (err) {
         toast({
@@ -181,12 +190,17 @@ const EditBot = () => {
         "require_visitor_auth0_identity",
         (botConfig.requireVisitorAuth0Identity || false).toString()
       );
+      formData.append("custom_llm_provider", botConfig.customLLMProvider || "");
+      formData.append("custom_api_key", botConfig.customApiKey || "");
+      formData.append("custom_model", botConfig.customModel || "");
 
       if (botConfig.scrapedMarkdown?.length)
         formData.append("scraped_content", JSON.stringify(botConfig.scrapedMarkdown));
       if (botConfig.scrapedUrls?.length)
         formData.append("scraped_urls", JSON.stringify(botConfig.scrapedUrls));
-      if (botConfig.file) formData.append("file", botConfig.file);
+      if (botConfig.files?.length) {
+        botConfig.files.forEach((file) => formData.append("files", file));
+      }
 
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`, {
         method: "PUT",

@@ -19,7 +19,8 @@ import {
   Bot,
   Bell,
   BellRing,
-  Shield
+  Shield,
+  Zap
 } from "lucide-react";
 import { BasicInfoSection } from "./BasicInfoSection";
 import { WebsiteSection } from "./WebsiteSection";
@@ -31,6 +32,7 @@ import { SlackSection } from "./SlackSection";
 import { HumanHandoffSection } from "./HumanHandoffSection";
 import { ConversationFlowSection } from "./ConversationFlowSection";
 import { VisitorIdentitySection } from "./VisitorIdentitySection";
+import { CustomLLMSection } from "./CustomLLMSection";
 import { useToast } from "@/hooks/use-toast";
 
 interface Step {
@@ -110,6 +112,14 @@ const ALL_STEPS: Step[] = [
     description:
       "Optionally require visitors to verify who they are with Auth0 before they can use your bot.",
     icon: <Shield className="w-5 h-5" />,
+  },
+  {
+    id: "custom-llm",
+    title: "Custom LLM",
+    subtitle: "Use your own AI model",
+    description:
+      "Optionally add your own OpenAI or Google Gemini API key to use your preferred LLM provider.",
+    icon: <Zap className="w-5 h-5" />,
   },
   {
     id: "slack",
@@ -214,6 +224,16 @@ export const BotCreationWizard = ({
         return <PersonaSection botConfig={botConfig} updateConfig={updateConfig} />;
       case "visitor-identity":
         return <VisitorIdentitySection botConfig={botConfig} updateConfig={updateConfig} />;
+      case "custom-llm":
+        return (
+          <CustomLLMSection
+            customLLMProvider={botConfig.customLLMProvider}
+            customModel={botConfig.customModel}
+            onProviderChange={(provider) => updateConfig("customLLMProvider", provider)}
+            onApiKeyChange={(key) => updateConfig("customApiKey", key)}
+            onModelChange={(model) => updateConfig("customModel", model)}
+          />
+        );
       case "slack":
         return <SlackSection botConfig={botConfig} updateConfig={updateConfig} />;
       case "handoff":

@@ -1,7 +1,7 @@
 // Agent Authentication utility functions
 const AGENT_LOGIN_PROVIDER_KEY = "agentLoginProvider";
 
-export type AgentLoginProvider = "local" | "auth0";
+export type AgentLoginProvider = "local" | "auth0" | "google";
 
 export const setAgentLoginProvider = (provider: AgentLoginProvider): void => {
   localStorage.setItem(AGENT_LOGIN_PROVIDER_KEY, provider);
@@ -9,7 +9,7 @@ export const setAgentLoginProvider = (provider: AgentLoginProvider): void => {
 
 export const getAgentLoginProvider = (): AgentLoginProvider | null => {
   const v = localStorage.getItem(AGENT_LOGIN_PROVIDER_KEY);
-  if (v === "local" || v === "auth0") return v;
+  if (v === "local" || v === "auth0" || v === "google") return v;
   return null;
 };
 

@@ -18,6 +18,24 @@ export const loginUser = async (data: any) => {
   return res.json();
 };
 
+export const googleLoginUser = async (token: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  return res.json();
+};
+
+export const auth0LoginUser = async (accessToken: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/auth/auth0-login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accessToken }),
+  });
+  return res.json();
+};
+
 export const logoutBotUser = async (token: string) => {
   const res = await fetch(`${API_BASE_URL}/api/auth/logout/bot`, {
     method: "POST",
@@ -36,6 +54,33 @@ export const logoutAgentUser = async (token: string) => {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`
     },
+  });
+  return res.json();
+};
+
+export const humanAgentLogin = async (data: any) => {
+  const res = await fetch(`${API_BASE_URL}/api/human-agent/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+};
+
+export const humanAgentGoogleLogin = async (token: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/human-agent/google-login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  return res.json();
+};
+
+export const humanAgentAuth0Login = async (accessToken: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/human-agent/auth0-login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accessToken }),
   });
   return res.json();
 };

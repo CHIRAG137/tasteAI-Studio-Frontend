@@ -9,6 +9,7 @@ import { setAgentAuthToken, setAgentEmail, setAgentLoginProvider } from "@/utils
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { AgentAuth0LoginButton } from "@/components/agent/AgentAuth0LoginButton";
+import { AgentGoogleLoginButton } from "@/components/agent/AgentGoogleLoginButton";
 
 const AgentLogin = () => {
   const { toast } = useToast();
@@ -127,25 +128,24 @@ const AgentLogin = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {auth0Configured && (
-              <>
-                <AgentAuth0LoginButton />
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <Separator className="w-full" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">
-                      Or email & password
-                    </span>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground text-center">
-                  Auth0 must use the same email you were invited with. New agents still complete the
-                  invite email first.
-                </p>
-              </>
-            )}
+            <div className="space-y-4">
+              <AgentGoogleLoginButton />
+              {auth0Configured && <AgentAuth0LoginButton />}
+            </div>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator className="w-full" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  Or email & password
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Auth0 and Google must use the same email you were invited with. New agents still complete the
+              invite email first.
+            </p>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
