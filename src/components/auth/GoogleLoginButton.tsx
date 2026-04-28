@@ -42,8 +42,7 @@ export function GoogleLoginButton({ mode = "login", isAgent = false }: Props) {
   return (
     <Button
       type="button"
-      variant="outline"
-      className="w-full"
+      className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600 text-white"
       onClick={() => googleLogin()}
     >
       <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
