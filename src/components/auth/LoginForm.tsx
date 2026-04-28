@@ -3,12 +3,15 @@ import { Auth0LoginButton } from "@/components/auth/Auth0LoginButton";
 import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 import { EmailPasswordForm } from "@/components/auth/EmailPasswordForm";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle2 } from "lucide-react";
 
 export const LoginForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = (location.state as any)?.from?.pathname || "/";
+  const message = (location.state as any)?.message;
 
   const auth0Configured = !!(
     import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID
@@ -18,6 +21,14 @@ export const LoginForm = () => {
 
   return (
     <div className="space-y-6">
+      {message && (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            {message}
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="space-y-4">
         {googleConfigured && <GoogleLoginButton mode="login" />}
         {auth0Configured && <Auth0LoginButton mode="login" />}

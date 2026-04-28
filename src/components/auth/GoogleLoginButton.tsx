@@ -16,13 +16,14 @@ export function GoogleLoginButton({ mode = "login", isAgent = false }: Props) {
   const from = (location.state as any)?.from?.pathname || "/";
 
   const googleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
+    onSuccess: async (tokenResponse: any) => {
       try {
         const apiCall = isAgent ? humanAgentGoogleLogin : googleLoginUser;
-        const response = await apiCall(tokenResponse.access_token);
+        const token = tokenResponse.access_token;
+        const response = await apiCall(token);
 
-        if (response.success) {
-          setAuthToken(response.data.token);
+        if (response.status === "success") {
+          setAuthToken(response.result.token);
           setLoginProvider("google");
           toast.success("Login successful!");
           navigate(from, { replace: true });

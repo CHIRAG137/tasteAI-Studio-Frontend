@@ -34,11 +34,19 @@ export function EmailPasswordForm({ mode, isAgent = false }: Props) {
         response = await apiCall({ email, password });
       }
 
-      if (response.success) {
-        setAuthToken(response.data.token);
-        setLoginProvider("local");
-        toast.success(mode === "register" ? "Registration successful!" : "Login successful!");
-        navigate(from, { replace: true });
+      if (response.status === "success") {
+        if (mode === "register") {
+          toast.success("Registration successful! Please login now.");
+          navigate("/login", { 
+            replace: true,
+            state: { message: "Registration successful! Please login with your credentials." }
+          });
+        } else {
+          setAuthToken(response.result.token);
+          setLoginProvider("local");
+          toast.success("Login successful!");
+          navigate(from, { replace: true });
+        }
       } else {
         toast.error(response.message || `${mode === "register" ? "Registration" : "Login"} failed`);
       }
