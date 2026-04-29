@@ -10,10 +10,12 @@ import { BotCardSkeleton } from "@/components/BotCardSkeleton";
 import { BotFilters, BotFilterState } from "@/components/BotFilters";
 import { ChatBot } from "@/components/ChatBot";
 import { motion } from "framer-motion";
+import { useBotCreation } from "@/contexts/BotCreationContext";
 
 const MyBots = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { botsInProgress, newlyCreatedBots, clearNewlyCreatedBots } = useBotCreation();
   const [savedBots, setSavedBots] = useState<any[]>([]);
   const [selectedBotForTest, setSelectedBotForTest] = useState<any | null>(null);
   const [page, setPage] = useState(1);
@@ -91,6 +93,22 @@ const MyBots = () => {
 
   useEffect(() => { fetchBots(1); }, []);
 
+  // Add newly created bots to the list immediately
+  useEffect(() => {
+    if (newlyCreatedBots.length > 0) {
+      setSavedBots((prev) => {
+        // Filter out any bots that are already in the list
+        const newBots = newlyCreatedBots.filter(
+          (newBot) => !prev.some((existingBot) => existingBot.id === newBot.id)
+        );
+        // Add new bots to the beginning of the list
+        return [...newBots, ...prev];
+      });
+      // Clear the newly created bots from context after adding them
+      clearNewlyCreatedBots();
+    }
+  }, [newlyCreatedBots, clearNewlyCreatedBots]);
+
   const handleLoadMore = () => {
     if (hasNextPage && !isLoadingMore) fetchBots(page + 1, true);
   };
@@ -166,9 +184,20 @@ const MyBots = () => {
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Show bots in progress first */}
+            {botsInProgress.map((botProgress) => (
+              <BotCardSkeleton
+                key={botProgress.id}
+                progress={botProgress.progress}
+                botName={botProgress.name}
+                type={botProgress.type}
+              />
+            ))}
+
+            {/* Then show regular bots */}
             {isFetchingBots
               ? Array.from({ length: 6 }).map((_, i) => <BotCardSkeleton key={i} />)
-              : filteredBots.length === 0 ? (
+              : filteredBots.length === 0 && botsInProgress.length === 0 ? (
                 <div className="col-span-full text-center py-16">
                   <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
                     <Bot className="h-8 w-8 text-muted-foreground" />

@@ -7,6 +7,7 @@ import { Node, Edge } from "@xyflow/react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
 import { motion } from "framer-motion";
+import { useBotCreation } from "@/contexts/BotCreationContext";
 
 interface BotConfig {
   name: string;
@@ -45,9 +46,11 @@ const EditBot = () => {
   const { botId } = useParams<{ botId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { startBotCreation, updateBotProgress, completeBotCreation } = useBotCreation();
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [notifyOnComplete, setNotifyOnComplete] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const [botConfig, setBotConfig] = useState<BotConfig>({
     name: "",
@@ -163,6 +166,33 @@ const EditBot = () => {
 
     try {
       setIsUpdating(true);
+      setProgress(5);
+      
+      // Start bot update tracking and redirect immediately
+      if (botId) {
+        startBotCreation(botId, botConfig.name, 'editing');
+        navigate("/bots");
+      }
+
+      // Smoother progress increment that slows down as it approaches 90%
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => {
+          let newProgress = prev;
+          if (prev < 30) {
+            newProgress = prev + Math.random() * 8 + 2; // 2-10% increment
+          } else if (prev < 60) {
+            newProgress = prev + Math.random() * 6 + 1; // 1-7% increment
+          } else if (prev < 85) {
+            newProgress = prev + Math.random() * 3; // 0-3% increment
+          } else {
+            newProgress = prev + Math.random() * 1; // 0-1% increment
+          }
+          const capped = Math.min(newProgress, 90);
+          if (botId) updateBotProgress(botId, capped);
+          return capped;
+        });
+      }, 500); // Update more frequently for smoother effect
+
       const formData = new FormData();
       formData.append("name", botConfig.name);
       formData.append("website_url", botConfig.websiteUrl);
@@ -208,15 +238,40 @@ const EditBot = () => {
         body: formData,
       });
 
+      clearInterval(progressInterval);
+      setProgress(100);
+      if (botId) updateBotProgress(botId, 100);
+
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Update failed");
+
+      // Extract updated bot data to pass to context
+      const updatedBot = result.result || result.data || {};
+      const botData = {
+        id: botId,
+        name: updatedBot.name || botConfig.name,
+        description: updatedBot.description || botConfig.description,
+        websiteUrl: updatedBot.website_url || botConfig.websiteUrl,
+        voiceEnabled: updatedBot.is_voice_enabled || botConfig.voiceEnabled,
+        languages: updatedBot.supported_languages || botConfig.languages || ["English"],
+        primaryPurpose: updatedBot.primary_purpose || botConfig.primaryPurpose,
+        conversationalTone: updatedBot.conversation_tone || botConfig.conversationalTone,
+        isVideoBot: updatedBot.is_video_bot || botConfig.isVideoBot,
+        videoBotImageUrl: updatedBot.video_bot_image_url || botConfig.videoBotImageUrl,
+        videoBotImagePublicId: updatedBot.video_bot_image_public_id || botConfig.videoBotImagePublicId,
+        voiceId: updatedBot.voice_id || botConfig.voiceId,
+        humanHandoffEnabled: updatedBot.human_handoff_enabled || botConfig.humanHandoffEnabled,
+        requireVisitorAuth0Identity: !!updatedBot.require_visitor_auth0_identity || botConfig.requireVisitorAuth0Identity,
+      };
 
       toast({
         title: "Bot Updated",
         description: `${botConfig.name} updated successfully`,
       });
-      navigate("/bots");
+
+      if (botId) completeBotCreation(botId, botData);
     } catch (err) {
+      if (botId) completeBotCreation(botId);
       toast({
         title: "Update Failed",
         description: err instanceof Error ? err.message : "Something went wrong",
@@ -224,6 +279,8 @@ const EditBot = () => {
       });
     } finally {
       setIsUpdating(false);
+      setProgress(0);
+      setNotifyOnComplete(false);
     }
   };
 

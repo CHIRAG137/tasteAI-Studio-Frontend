@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders, isAuthenticated } from "@/utils/auth";
 import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
+import { useBotCreation } from "@/contexts/BotCreationContext";
 
 interface BotConfig {
   name: string;
@@ -44,9 +45,11 @@ interface BotConfig {
 const CreateBot = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { startBotCreation, updateBotProgress, completeBotCreation } = useBotCreation();
   const [isCreatingBot, setIsCreatingBot] = useState(false);
   const [notifyOnComplete, setNotifyOnComplete] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [botIdRef] = useState(() => `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
   const [botConfig, setBotConfig] = useState<BotConfig>({
     name: "",
@@ -138,10 +141,29 @@ const CreateBot = () => {
     try {
       setIsCreatingBot(true);
       setProgress(5);
+      
+      // Start bot creation tracking and redirect immediately
+      startBotCreation(botIdRef, botConfig.name, 'creating');
+      navigate("/bots");
 
+      // Smoother progress increment that slows down as it approaches 90%
       const progressInterval = setInterval(() => {
-        setProgress((prev) => (prev < 90 ? prev + 5 : prev));
-      }, 1000);
+        setProgress((prev) => {
+          let newProgress = prev;
+          if (prev < 30) {
+            newProgress = prev + Math.random() * 8 + 2; // 2-10% increment
+          } else if (prev < 60) {
+            newProgress = prev + Math.random() * 6 + 1; // 1-7% increment
+          } else if (prev < 85) {
+            newProgress = prev + Math.random() * 3; // 0-3% increment
+          } else {
+            newProgress = prev + Math.random() * 1; // 0-1% increment
+          }
+          const capped = Math.min(newProgress, 90);
+          updateBotProgress(botIdRef, capped);
+          return capped;
+        });
+      }, 500); // Update more frequently for smoother effect
 
       const formData = new FormData();
       Object.entries({
@@ -189,9 +211,29 @@ const CreateBot = () => {
 
       clearInterval(progressInterval);
       setProgress(100);
+      updateBotProgress(botIdRef, 100);
 
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Failed to create bot");
+
+      // Extract bot data from response
+      const createdBot = result.result || result.data || {};
+      const botData = {
+        id: createdBot._id || createdBot.id,
+        name: createdBot.name || botConfig.name,
+        description: createdBot.description || botConfig.description,
+        websiteUrl: createdBot.website_url || botConfig.websiteUrl,
+        voiceEnabled: createdBot.is_voice_enabled || botConfig.voiceEnabled,
+        languages: createdBot.supported_languages || botConfig.languages || ["English"],
+        primaryPurpose: createdBot.primary_purpose || botConfig.primaryPurpose,
+        conversationalTone: createdBot.conversation_tone || botConfig.conversationalTone,
+        isVideoBot: createdBot.is_video_bot || botConfig.isVideoBot,
+        videoBotImageUrl: createdBot.video_bot_image_url || botConfig.videoBotImageUrl,
+        videoBotImagePublicId: createdBot.video_bot_image_public_id || botConfig.videoBotImagePublicId,
+        voiceId: createdBot.voice_id || botConfig.voiceId,
+        humanHandoffEnabled: createdBot.human_handoff_enabled || botConfig.humanHandoffEnabled,
+        requireVisitorAuth0Identity: !!createdBot.require_visitor_auth0_identity || botConfig.requireVisitorAuth0Identity,
+      };
 
       toast({
         title: "Bot Created Successfully!",
@@ -199,9 +241,12 @@ const CreateBot = () => {
       });
 
       playNotificationSound();
-      navigate("/bots");
+      
+      // Complete bot creation tracking with bot data
+      completeBotCreation(botIdRef, botData);
     } catch (error) {
       console.error("Error creating bot:", error);
+      completeBotCreation(botIdRef);
       toast({
         title: "Error Creating Bot",
         description: error instanceof Error ? error.message : "Failed to create bot. Please try again.",
