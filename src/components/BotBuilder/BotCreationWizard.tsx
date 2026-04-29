@@ -23,6 +23,7 @@ import {
   Zap
 } from "lucide-react";
 import { BasicInfoSection } from "./BasicInfoSection";
+import { TrainingFilesSection } from "./TrainingFilesSection";
 import { WebsiteSection } from "./WebsiteSection";
 import { VideoBotSection } from "./VideoBotSection";
 import { VoiceSection } from "./VoiceSection";
@@ -61,9 +62,17 @@ const ALL_STEPS: Step[] = [
     title: "Basic Information",
     subtitle: "Let's start with the essentials",
     description:
-      "Give your bot a name and description. Upload any reference files that will help shape its knowledge base.",
+      "Give your bot a name and description to get started.",
     icon: <User className="w-5 h-5" />,
     required: true,
+  },
+  {
+    id: "training",
+    title: "Training Files",
+    subtitle: "Upload your training data",
+    description:
+      "Upload reference files (PDF, TXT, DOC, DOCX, XLS, XLSX) to train your bot with your knowledge base.",
+    icon: <Bot className="w-5 h-5" />,
   },
   {
     id: "website",
@@ -212,6 +221,8 @@ export const BotCreationWizard = ({
     switch (step.id) {
       case "basic":
         return <BasicInfoSection botConfig={botConfig} updateConfig={updateConfig} />;
+      case "training":
+        return <TrainingFilesSection botConfig={botConfig} updateConfig={updateConfig} />;
       case "website":
         return <WebsiteSection botConfig={botConfig} updateConfig={updateConfig} />;
       case "video":

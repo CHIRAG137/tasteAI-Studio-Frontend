@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { Bot, Sparkles, User, Mic, Languages, Brain, Globe, MessageSquare, GitBranch } from "lucide-react";
 import { BasicInfoSection } from "./BotBuilder/BasicInfoSection";
+import { TrainingFilesSection } from "./BotBuilder/TrainingFilesSection";
 import { VoiceSection } from "./BotBuilder/VoiceSection";
 import { LanguageSection } from "./BotBuilder/LanguageSection";
 import { PersonaSection } from "./BotBuilder/PersonaSection";
@@ -176,6 +177,10 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
         <form onSubmit={handleSubmit} className="space-y-6">
           <CollapsibleSection title="Basic Information" icon={<User className="w-5 h-5 text-primary" />} defaultOpen={true}>
             <BasicInfoSection botConfig={botConfig} updateConfig={updateConfig} />
+          </CollapsibleSection>
+          
+          <CollapsibleSection title="Training Files" icon={<Bot className="w-5 h-5 text-primary" />}>
+            <TrainingFilesSection botConfig={botConfig} updateConfig={updateConfig} />
           </CollapsibleSection>
           
           <CollapsibleSection title="Website & Content" icon={<Globe className="w-5 h-5 text-primary" />}>
