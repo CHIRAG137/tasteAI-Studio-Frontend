@@ -18,21 +18,26 @@ export const loginUser = async (data: any) => {
   return res.json();
 };
 
-export const googleLoginUser = async (token: string) => {
+export const googleLoginUser = async (token: string, deviceId?: string) => {
   const res = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token }),
+    body: JSON.stringify({ token, deviceId }),
   });
   return res.json();
 };
 
-export const auth0LoginUser = async (accessToken: string) => {
+export const auth0LoginUser = async (accessToken: string, deviceId?: string) => {
   const res = await fetch(`${API_BASE_URL}/api/auth/auth0-login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ accessToken }),
+    body: JSON.stringify({ accessToken, deviceId }),
   });
+  return res.json();
+};
+
+export const getLastLoginByDeviceId = async (deviceId: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/auth/last-login?deviceId=${encodeURIComponent(deviceId)}`);
   return res.json();
 };
 

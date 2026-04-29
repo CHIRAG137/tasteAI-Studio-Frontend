@@ -4,15 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate, useLocation } from "react-router-dom";
 import { loginUser, registerUser, humanAgentLogin } from "@/api/auth";
-import { setAuthToken, setLoginProvider } from "@/utils/auth";
+import { setAuthToken, setLoginProvider, ensureLoginDeviceId } from "@/utils/auth";
 import { toast } from "sonner";
 
 type Props = {
   mode: "login" | "register";
   isAgent?: boolean;
+  showLastUsedBadge?: boolean;
 };
 
-export function EmailPasswordForm({ mode, isAgent = false }: Props) {
+export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = false }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -27,17 +28,18 @@ export function EmailPasswordForm({ mode, isAgent = false }: Props) {
 
     try {
       let response;
+      const deviceId = ensureLoginDeviceId();
       if (mode === "register") {
-        response = await registerUser({ email, password, name });
+        response = await registerUser({ email, password, name, deviceId });
       } else {
         const apiCall = isAgent ? humanAgentLogin : loginUser;
-        response = await apiCall({ email, password });
+        response = await apiCall({ email, password, deviceId });
       }
 
       if (response.status === "success") {
         if (mode === "register") {
           toast.success("Registration successful! Please login now.");
-          navigate("/login", { 
+          navigate("/login", {
             replace: true,
             state: { message: "Registration successful! Please login with your credentials." }
           });
@@ -96,9 +98,28 @@ export function EmailPasswordForm({ mode, isAgent = false }: Props) {
           minLength={8}
         />
       </div>
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Loading..." : mode === "register" ? "Sign Up" : "Sign In"}
-      </Button>
+      <div className="relative inline-block w-full">
+        {showLastUsedBadge ? (
+          <span
+            className="
+        absolute -top-2 -right-2
+        bg-white
+        text-black
+        text-[10px] font-semibold
+        px-2.5 py-1
+        rounded-full
+        border border-gradient-to-r from-purple-600 to-cyan-500
+        shadow-sm
+      "
+          >
+            Last used
+          </span>
+        ) : null}
+        <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-cyan-500
+" disabled={loading}>
+          {loading ? "Loading..." : mode === "register" ? "Sign Up" : "Sign In"}
+        </Button>
+      </div>
     </form>
   );
 }

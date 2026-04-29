@@ -35,7 +35,9 @@ export const Navbar = () => {
       }
 
       removeAuthToken();
-      clearLoginProvider();
+      // Preserve the last login provider so the login page can still show the
+      // user's last used method after signing out.
+      // clearLoginProvider();
 
       toast({
         title: "Success",
@@ -51,7 +53,8 @@ export const Navbar = () => {
     } catch (error) {
       console.error("Logout error:", error);
       removeAuthToken();
-      clearLoginProvider();
+      // Preserve the last login provider even if logout fails here.
+      // clearLoginProvider();
       if (auth0Enabled && provider === "auth0") {
         window.dispatchEvent(new CustomEvent("auth0:logout"));
         return;

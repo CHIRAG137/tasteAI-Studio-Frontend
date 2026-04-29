@@ -1,10 +1,12 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Auth0LoginButton } from "@/components/auth/Auth0LoginButton";
 import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 import { EmailPasswordForm } from "@/components/auth/EmailPasswordForm";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2 } from "lucide-react";
+import { getLoginProvider, getLoginDeviceId, setLoginProvider, type LoginProvider } from "@/utils/auth";
+import { getLastLoginByDeviceId } from "@/api/auth";
 
 export const LoginForm = () => {
   const navigate = useNavigate();
@@ -18,6 +20,41 @@ export const LoginForm = () => {
   );
 
   const googleConfigured = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const [lastLoginProvider, setLastLoginProvider] = useState<LoginProvider | null>(getLoginProvider());
+
+  useEffect(() => {
+    if (lastLoginProvider) return;
+
+    const deviceId = getLoginDeviceId();
+    if (!deviceId) return;
+
+    getLastLoginByDeviceId(deviceId)
+      .then((data) => {
+        const method = data?.result?.lastLogin?.method;
+        if (!method) return;
+
+        const provider =
+          method === "google"
+            ? "google"
+            : method === "auth0"
+            ? "auth0"
+            : method === "email_password"
+            ? "local"
+            : null;
+
+        if (provider) {
+          setLastLoginProvider(provider);
+          setLoginProvider(provider);
+        }
+      })
+      .catch(() => {
+        // ignore fallback errors
+      });
+  }, [lastLoginProvider]);
+
+  const googleBadgeText = lastLoginProvider === "google" ? "Last used" : undefined;
+  const auth0BadgeText = lastLoginProvider === "auth0" ? "Last used" : undefined;
+  const showEmailBadge = lastLoginProvider === "local";
 
   return (
     <div className="space-y-6">
@@ -30,8 +67,8 @@ export const LoginForm = () => {
         </Alert>
       )}
       <div className="space-y-4">
-        {googleConfigured && <GoogleLoginButton mode="login" />}
-        {auth0Configured && <Auth0LoginButton mode="login" />}
+        {googleConfigured && <GoogleLoginButton mode="login" badgeText={googleBadgeText} />}
+        {auth0Configured && <Auth0LoginButton mode="login" badgeText={auth0BadgeText} />}
       </div>
 
       <div className="relative">
@@ -45,7 +82,7 @@ export const LoginForm = () => {
         </div>
       </div>
 
-      <EmailPasswordForm mode="login" />
+      <EmailPasswordForm mode="login" showLastUsedBadge={showEmailBadge} />
 
       <div className="text-center text-sm">
         <span className="text-muted-foreground">Don't have an account? </span>

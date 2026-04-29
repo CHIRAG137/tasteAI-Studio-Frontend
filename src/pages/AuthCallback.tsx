@@ -1,8 +1,8 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { API_BASE_URL } from "@/api/auth";
-import { setAuthToken, setLoginProvider } from "@/utils/auth";
+import { auth0LoginUser } from "@/api/auth";
+import { setAuthToken, setLoginProvider, ensureLoginDeviceId } from "@/utils/auth";
 
 const AuthCallback = () => {
   const { isLoading, isAuthenticated, getAccessTokenSilently, error } =
@@ -37,14 +37,9 @@ const AuthCallback = () => {
             : undefined
         );
 
-        const res = await fetch(`${API_BASE_URL}/api/auth/auth0-login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accessToken }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
+        const deviceId = ensureLoginDeviceId();
+        const data = await auth0LoginUser(accessToken, deviceId);
+        if (data.status !== "success") {
           throw new Error(
             data.message || data.error || "Could not complete sign-in"
           );
