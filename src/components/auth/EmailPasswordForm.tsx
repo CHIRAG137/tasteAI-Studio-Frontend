@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate, useLocation } from "react-router-dom";
 import { loginUser, registerUser, humanAgentLogin } from "@/api/auth";
 import { setAuthToken, setLoginProvider, ensureLoginDeviceId } from "@/utils/auth";
+import { AlertTriangle, Info } from "lucide-react";
 import { toast } from "sonner";
 
 type Props = {
@@ -18,6 +20,8 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [crossMethodError, setCrossMethodError] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || "/";
@@ -25,6 +29,8 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+    setCrossMethodError(false);
 
     try {
       let response;
@@ -50,11 +56,26 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
           navigate(from, { replace: true });
         }
       } else {
-        toast.error(response.message || `${mode === "register" ? "Registration" : "Login"} failed`);
+        const errorMsg = response.message || `${mode === "register" ? "Registration" : "Login"} failed`;
+        setError(errorMsg);
+        
+        // Check if this is a cross-method error
+        if (
+          mode === "login" &&
+          errorMsg.includes("Auth0") ||
+          errorMsg.includes("Google") ||
+          errorMsg.includes("original method")
+        ) {
+          setCrossMethodError(true);
+        }
+        
+        toast.error(errorMsg);
       }
     } catch (error) {
       console.error("Auth error:", error);
-      toast.error(`${mode === "register" ? "Registration" : "Login"} failed`);
+      const errorMsg = error instanceof Error ? error.message : `${mode === "register" ? "Registration" : "Login"} failed`;
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -62,6 +83,24 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <Alert className={crossMethodError ? "border-blue-200 bg-blue-50" : "border-red-200 bg-red-50"}>
+          {crossMethodError ? (
+            <>
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800 text-sm">
+                <strong>Account linked to Auth0 or Google:</strong> This email is registered with Auth0 or Google. 
+                Please use your original login method to access your account.
+              </AlertDescription>
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800 text-sm">{error}</AlertDescription>
+            </>
+          )}
+        </Alert>
+      )}
       {mode === "register" && (
         <div>
           <Label htmlFor="name">Name</Label>
