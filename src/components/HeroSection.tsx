@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Bot, Video, Mic, Globe, Zap, Clock, ArrowRight, Sparkles, MessageSquare, Code2, Heart, Stethoscope, Users, FileText, Activity, Shield } from "lucide-react";
+import { Bot, Globe, Zap, ArrowRight, Sparkles, Code2, Heart, FileText } from "lucide-react";
 import { HeroIllustration } from "./HeroIllustration";
 import { Button } from "@/components/ui/button";
 
@@ -23,21 +23,21 @@ const scaleIn = {
 
 const features = [
   {
-    icon: Heart,
-    title: "Healthcare AI Agents",
-    description: "Intelligent bots trained on medical data to provide accurate, 24/7 patient support and information",
-    gradient: "from-red-500 to-pink-500",
+    icon: Sparkles,
+    title: "Smart AI Agents",
+    description: "Intelligent agents that not only answer queries but take actions—automate tasks, make decisions, and drive business outcomes",
+    gradient: "from-purple-500 to-pink-500",
   },
   {
-    icon: Stethoscope,
-    title: "Clinical Workflows",
-    description: "Automate appointment scheduling, triage, and patient communication across your healthcare ecosystem",
+    icon: Bot,
+    title: "Interactive Bots",
+    description: "Create bots that understand context, answer questions, and perform actions seamlessly across voice, video, and text channels",
     gradient: "from-blue-500 to-cyan-500",
   },
   {
-    icon: Users,
-    title: "Hospital Integration",
-    description: "Seamlessly embed AI assistants on hospital websites, patient portals, and internal systems",
+    icon: Code2,
+    title: "Powerful Workflows",
+    description: "Build automated workflows for Slack, email, webhooks, and custom integrations—no coding required",
     gradient: "from-emerald-500 to-teal-500",
   },
 ];
@@ -51,10 +51,12 @@ const stats = [
 
 interface HeroSectionProps {
   onCreateBot: () => void;
+  onCreateSlackWorkflow: () => void;
   onViewBots: () => void;
+  onViewWorkflows: () => void;
 }
 
-export const HeroSection = ({ onCreateBot, onViewBots }: HeroSectionProps) => {
+export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, onViewWorkflows }: HeroSectionProps) => {
   return (
     <section className="relative overflow-hidden">
       {/* Animated background elements */}
@@ -72,9 +74,9 @@ export const HeroSection = ({ onCreateBot, onViewBots }: HeroSectionProps) => {
           transition={{ duration: 0.5 }}
           className="flex justify-center mb-8"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-red-500/20 bg-red-500/5 text-red-600 text-sm font-medium">
-            <Heart className="w-4 h-4" />
-            AI-Powered Healthcare Solutions
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-purple-500/20 bg-purple-500/5 text-purple-600 text-sm font-medium">
+            <Zap className="w-4 h-4" />
+            AI-Powered Bot, Agent & Workflow Platform
             <ArrowRight className="w-3 h-3" />
           </div>
         </motion.div>
@@ -88,17 +90,17 @@ export const HeroSection = ({ onCreateBot, onViewBots }: HeroSectionProps) => {
             animate="visible"
             className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6"
           >
-            <span className="text-foreground">Transform </span>
-            <span className="bg-gradient-to-r from-red-500 to-blue-600 bg-clip-text text-transparent">Healthcare</span>
+            <span className="text-foreground">Build Smart </span>
+            <span className="bg-gradient-to-r from-purple-500 to-blue-600 bg-clip-text text-transparent">Bots & Agents</span>
             <br />
-            <span className="text-foreground">with </span>
+            <span className="text-foreground">That </span>
             <motion.span
               className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent"
               animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
               transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
               style={{ backgroundSize: "200% 200%" }}
             >
-              AI Agents
+              Act & Answer
             </motion.span>
           </motion.h1>
 
@@ -109,37 +111,64 @@ export const HeroSection = ({ onCreateBot, onViewBots }: HeroSectionProps) => {
             animate="visible"
             className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
           >
-            Create intelligent healthcare bots and workflows trained on your medical data.
-            Deploy voice, video, and text assistants that provide 24/7 patient support,
-            clinical automation, and seamless hospital integration.
+            Create intelligent bots and AI agents that not only answer questions but take actions.
+            Deploy voice, video, text, and workflow automation. Build Slack workflows, custom integrations,
+            and embed conversational AI across all your platforms in minutes.
           </motion.p>
 
+          {/* CTA Buttons */}
           <motion.div
             custom={2}
             variants={fadeUp}
             initial="hidden"
             animate="visible"
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="flex flex-col items-center gap-3"
           >
-            <Button
-              onClick={onCreateBot}
-              size="lg"
-              className="bg-gradient-to-r from-red-500 to-blue-600 hover:opacity-90 text-white px-8 py-6 text-lg rounded-xl shadow-strong hover:shadow-strong transition-all group hover:animate-none"
-              style={{ animation: "btn-breathe 3s ease-in-out infinite" }}
-            >
-              <Heart className="w-5 h-5 mr-2 group-hover:animate-bounce" />
-              Create Healthcare Bot
-              <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
-            </Button>
-            <Button
-              onClick={onViewBots}
-              variant="outline"
-              size="lg"
-              className="px-8 py-6 text-lg rounded-xl border-red-200 hover:bg-red-50"
-            >
-              <Stethoscope className="w-5 h-5 mr-2" />
-              View Your Bots
-            </Button>
+            {/* Primary actions: Create */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Button
+                onClick={onCreateBot}
+                size="lg"
+                className="min-w-[260px] bg-gradient-to-r from-red-500 to-blue-600 hover:opacity-90 text-white px-8 py-6 text-lg rounded-xl shadow-strong transition-all group"
+              >
+                <Heart className="w-5 h-5 mr-2 group-hover:animate-bounce" />
+                Create Healthcare Bot
+                <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
+              </Button>
+
+              <Button
+                onClick={onCreateSlackWorkflow}
+                size="lg"
+                className="min-w-[260px] bg-gradient-to-r from-violet-600 to-cyan-500 hover:opacity-90 text-white px-8 py-6 text-lg rounded-xl shadow-strong transition-all group"
+              >
+                <Zap className="w-5 h-5 mr-2 group-hover:animate-bounce" />
+                Create Slack Workflows
+                <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </div>
+
+            {/* Secondary actions: View */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Button
+                onClick={onViewBots}
+                variant="outline"
+                size="lg"
+                className="min-w-[260px] px-8 py-5 text-base rounded-xl border-purple-200 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 text-foreground"
+              >
+                <Bot className="w-5 h-5 mr-2" />
+                View Your Bots
+              </Button>
+
+              <Button
+                onClick={onViewWorkflows}
+                variant="outline"
+                size="lg"
+                className="min-w-[260px] px-8 py-5 text-base rounded-xl border-cyan-200 hover:bg-cyan-50 hover:border-cyan-300 hover:text-cyan-700 text-foreground"
+              >
+                <Code2 className="w-5 h-5 mr-2" />
+                View Your Workflows
+              </Button>
+            </div>
           </motion.div>
         </div>
 
@@ -187,7 +216,7 @@ export const HeroSection = ({ onCreateBot, onViewBots }: HeroSectionProps) => {
           <HeroIllustration />
         </motion.div>
 
-        {/* Healthcare AI Solutions */}
+        {/* Platform Capabilities */}
         <div className="max-w-5xl mx-auto mb-20">
           <motion.h2
             custom={4}
@@ -196,7 +225,7 @@ export const HeroSection = ({ onCreateBot, onViewBots }: HeroSectionProps) => {
             animate="visible"
             className="text-2xl md:text-3xl font-bold text-center mb-3"
           >
-            Healthcare AI Solutions
+            All-in-One Platform
           </motion.h2>
           <motion.p
             custom={5}
@@ -205,7 +234,7 @@ export const HeroSection = ({ onCreateBot, onViewBots }: HeroSectionProps) => {
             animate="visible"
             className="text-muted-foreground text-center mb-10 max-w-lg mx-auto"
           >
-            Specialized AI agents designed for healthcare — from patient chatbots to clinical workflow automation
+            Build bots that answer questions, AI agents that take actions, and workflows that automate your business processes
           </motion.p>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -270,7 +299,7 @@ export const HeroSection = ({ onCreateBot, onViewBots }: HeroSectionProps) => {
             viewport={{ once: true }}
             className="text-2xl md:text-3xl font-bold text-center mb-3"
           >
-            Deploy Healthcare AI in 3 Steps
+            Go Live in 3 Steps
           </motion.h2>
           <motion.p
             variants={fadeUp}
@@ -280,7 +309,7 @@ export const HeroSection = ({ onCreateBot, onViewBots }: HeroSectionProps) => {
             viewport={{ once: true }}
             className="text-muted-foreground text-center mb-12 max-w-lg mx-auto"
           >
-            From medical data to live AI assistants — transform patient care faster than ever
+            From your knowledge base to live AI bots and agents — launch in minutes, not months
           </motion.p>
 
           <div className="grid md:grid-cols-3 gap-8">
