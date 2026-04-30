@@ -2,11 +2,18 @@ interface BotCardSkeletonProps {
   progress?: number;
   botName?: string;
   type?: 'creating' | 'editing';
+  showProgress?: boolean;
 }
 
-export const BotCardSkeleton = ({ progress, botName, type = 'creating' }: BotCardSkeletonProps) => {
-  const isComplete = progress === 100;
-  
+export const BotCardSkeleton = ({
+  progress,
+  botName,
+  type = 'creating',
+  showProgress = false,
+}: BotCardSkeletonProps) => {
+  const isComplete = showProgress && progress === 100;
+  const showProgressSection = showProgress && typeof progress === 'number';
+
   return (
     <div className="relative rounded-xl border bg-card p-6 space-y-4 overflow-hidden">
       {/* Shimmer overlay - only show if not complete */}
@@ -29,32 +36,30 @@ export const BotCardSkeleton = ({ progress, botName, type = 'creating' }: BotCar
         <div className="h-3 w-5/6 bg-muted rounded" />
       </div>
 
-      {/* Progress Section */}
-      <div className="space-y-3 pt-2 relative z-10">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-foreground">
-            {type === 'creating' ? 'Creating Bot' : 'Updating Bot'}
-          </span>
-          <span className="text-sm font-semibold text-primary">{progress ?? 0}%</span>
-        </div>
-        
-        {/* Progress Bar */}
-        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-300 ease-out"
-            style={{ width: `${progress ?? 0}%` }}
-          />
-        </div>
-        
-        {/* Status Message */}
-        <div className="text-xs text-muted-foreground">
-          {isComplete
-            ? `${botName} has been ${type === 'creating' ? 'created' : 'updated'} successfully!`
-            : `${type === 'creating' ? 'Creating' : 'Updating'} ${botName}...`}
-        </div>
-      </div>
+      {showProgressSection && (
+        <div className="space-y-3 pt-2 relative z-10">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-foreground">
+              {type === 'creating' ? 'Creating Bot' : 'Updating Bot'}
+            </span>
+            <span className="text-sm font-semibold text-primary">{progress ?? 0}%</span>
+          </div>
 
-      {/* Button placeholder */}
+          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${progress ?? 0}%` }}
+            />
+          </div>
+
+          <div className="text-xs text-muted-foreground">
+            {isComplete
+              ? `${botName} has been ${type === 'creating' ? 'created' : 'updated'} successfully!`
+              : `${type === 'creating' ? 'Creating' : 'Updating'} ${botName}...`}
+          </div>
+        </div>
+      )}
+
       <div className="pt-3 relative z-10">
         <div className="h-9 w-full bg-muted rounded-md" />
       </div>

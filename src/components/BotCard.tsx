@@ -18,6 +18,8 @@ interface BotCardProps {
     isVideoBot: boolean;
     voiceId: string;
     humanHandoffEnabled: boolean;
+    createdAt?: string;
+    updatedAt?: string;
   };
   onTest: (id: string) => void;
   onShare: (id: string) => void;
@@ -32,6 +34,10 @@ export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, o
   const isLoading = (bot as any).isLoading;
   const progress = (bot as any).progress || 0;
   const isVoiceEnabledForUI = bot.isVideoBot || bot.voiceEnabled;
+  const createdAt = bot.createdAt || (bot as any).created_at;
+  const updatedAt = bot.updatedAt || (bot as any).updated_at;
+  const createdLabel = createdAt ? new Date(createdAt).toLocaleString() : "N/A";
+  const updatedLabel = updatedAt ? new Date(updatedAt).toLocaleString() : "N/A";
 
   return (
     <Card className={`relative group transition-all duration-300 ${isLoading ? "opacity-80" : "hover:shadow-strong"}`}>
@@ -157,6 +163,17 @@ export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, o
             <div className="flex justify-between">
               <span className="text-sm font-medium">Tone</span>
               <span className="text-sm text-muted-foreground">{bot.conversationalTone}</span>
+            </div>
+          </div>
+
+          <div className="grid gap-2 text-xs text-muted-foreground pt-3 border-t border-border mt-3">
+            <div className="flex justify-between">
+              <span>Created</span>
+              <span className="text-right">{createdLabel}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Updated</span>
+              <span className="text-right">{updatedLabel}</span>
             </div>
           </div>
         </div>

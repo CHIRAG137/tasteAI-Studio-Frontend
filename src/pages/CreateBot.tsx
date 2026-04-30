@@ -218,6 +218,7 @@ const CreateBot = () => {
 
       // Extract bot data from response
       const createdBot = result.result || result.data || {};
+      const createdAt = createdBot.createdAt || createdBot.created_at || new Date().toISOString();
       const botData = {
         id: createdBot._id || createdBot.id,
         name: createdBot.name || botConfig.name,
@@ -233,6 +234,8 @@ const CreateBot = () => {
         voiceId: createdBot.voice_id || botConfig.voiceId,
         humanHandoffEnabled: createdBot.human_handoff_enabled || botConfig.humanHandoffEnabled,
         requireVisitorAuth0Identity: !!createdBot.require_visitor_auth0_identity || botConfig.requireVisitorAuth0Identity,
+        createdAt,
+        updatedAt: createdBot.updatedAt || createdBot.updated_at || createdAt,
       };
 
       toast({

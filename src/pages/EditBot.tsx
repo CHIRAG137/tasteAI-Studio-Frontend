@@ -262,6 +262,8 @@ const EditBot = () => {
         voiceId: updatedBot.voice_id || botConfig.voiceId,
         humanHandoffEnabled: updatedBot.human_handoff_enabled || botConfig.humanHandoffEnabled,
         requireVisitorAuth0Identity: !!updatedBot.require_visitor_auth0_identity || botConfig.requireVisitorAuth0Identity,
+        createdAt: updatedBot.createdAt || updatedBot.created_at || new Date().toISOString(),
+        updatedAt: updatedBot.updatedAt || updatedBot.updated_at || new Date().toISOString(),
       };
 
       toast({

@@ -32,6 +32,19 @@ const MyBots = () => {
     humanHandoffEnabled: "all",
   });
 
+  // Set of bot IDs currently being created or edited
+  const botsInProgressIds = useMemo(
+    () => new Set(botsInProgress.map((b) => b.id)),
+    [botsInProgress]
+  );
+
+  const sortBotsByUpdatedAt = (bots: any[]) =>
+    [...bots].sort((a, b) => {
+      const aDate = new Date(a.updatedAt || a.createdAt || a.created_at || 0).getTime();
+      const bDate = new Date(b.updatedAt || b.createdAt || b.created_at || 0).getTime();
+      return bDate - aDate;
+    });
+
   const filteredBots = useMemo(() => {
     return savedBots.filter((bot) => {
       if (filters.searchQuery && !bot.name.toLowerCase().includes(filters.searchQuery.toLowerCase())) return false;
@@ -53,6 +66,13 @@ const MyBots = () => {
       return true;
     });
   }, [savedBots, filters]);
+
+  // Exclude bots that are currently in-progress (being created or edited)
+  // so their BotCard doesn't show alongside the skeleton
+  const visibleBots = useMemo(
+    () => filteredBots.filter((bot) => !botsInProgressIds.has(bot.id)),
+    [filteredBots, botsInProgressIds]
+  );
 
   const fetchBots = async (pageNumber = 1, append = false) => {
     try {
@@ -79,8 +99,13 @@ const MyBots = () => {
         voiceId: bot.voice_id,
         humanHandoffEnabled: bot.human_handoff_enabled,
         requireVisitorAuth0Identity: !!bot.require_visitor_auth0_identity,
+        createdAt: bot.createdAt || bot.created_at,
+        updatedAt: bot.updatedAt || bot.updated_at,
       }));
-      setSavedBots((prev) => (append ? [...prev, ...mappedBots] : mappedBots));
+      setSavedBots((prev) => {
+        const next = append ? [...prev, ...mappedBots] : mappedBots;
+        return sortBotsByUpdatedAt(next);
+      });
       setHasNextPage(pagination.hasNextPage);
       setPage(pagination.page);
     } catch (err) {
@@ -93,18 +118,16 @@ const MyBots = () => {
 
   useEffect(() => { fetchBots(1); }, []);
 
-  // Add newly created bots to the list immediately
+  // Add newly created/updated bots to the list immediately
   useEffect(() => {
     if (newlyCreatedBots.length > 0) {
       setSavedBots((prev) => {
-        // Filter out any bots that are already in the list
-        const newBots = newlyCreatedBots.filter(
-          (newBot) => !prev.some((existingBot) => existingBot.id === newBot.id)
-        );
-        // Add new bots to the beginning of the list
-        return [...newBots, ...prev];
+        const incoming = [...newlyCreatedBots];
+        const incomingIds = new Set(incoming.map((b) => b.id));
+
+        const existingWithoutIncoming = prev.filter((bot) => !incomingIds.has(bot.id));
+        return sortBotsByUpdatedAt([...incoming, ...existingWithoutIncoming]);
       });
-      // Clear the newly created bots from context after adding them
       clearNewlyCreatedBots();
     }
   }, [newlyCreatedBots, clearNewlyCreatedBots]);
@@ -132,6 +155,8 @@ const MyBots = () => {
       });
     }
   };
+
+  const isEmpty = !isFetchingBots && visibleBots.length === 0 && botsInProgress.length === 0;
 
   return (
     <>
@@ -184,64 +209,81 @@ const MyBots = () => {
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Show bots in progress first */}
-            {botsInProgress.map((botProgress) => (
-              <BotCardSkeleton
-                key={botProgress.id}
-                progress={botProgress.progress}
-                botName={botProgress.name}
-                type={botProgress.type}
-              />
-            ))}
-
-            {/* Then show regular bots */}
-            {isFetchingBots
-              ? Array.from({ length: 6 }).map((_, i) => <BotCardSkeleton key={i} />)
-              : filteredBots.length === 0 && botsInProgress.length === 0 ? (
-                <div className="col-span-full text-center py-16">
-                  <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
-                    <Bot className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-medium text-foreground mb-2">No bots found</h3>
-                  <p className="text-muted-foreground mb-6">
-                    {savedBots.length === 0
-                      ? "Create your first bot to get started"
-                      : "Try adjusting your search or filters"}
-                  </p>
-                  {savedBots.length === 0 && (
-                    <Button onClick={() => navigate("/create")} className="bg-gradient-primary hover:opacity-90 gap-2">
-                      <Plus className="w-4 h-4" />
-                      Create Your First Bot
-                    </Button>
-                  )}
+            {isFetchingBots ? (
+              // Initial loading skeletons
+              Array.from({ length: 6 }).map((_, i) => <BotCardSkeleton key={i} />)
+            ) : isEmpty ? (
+              <div className="col-span-full text-center py-16">
+                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                  <Bot className="h-8 w-8 text-muted-foreground" />
                 </div>
-              )
-              : filteredBots.map((bot) => (
-                <BotCard
-                  key={bot.id}
-                  bot={bot}
-                  onTest={(id) => {
-                    const b = savedBots.find((b) => b.id === id);
-                    if (b) setSelectedBotForTest(b);
-                  }}
-                  onShare={(botId) => {
-                    const shareUrl = `${window.location.origin}/bot/${botId}`;
-                    navigator.clipboard.writeText(shareUrl);
-                    toast({ title: "Link Copied", description: "Shareable link copied to clipboard." });
-                  }}
-                  onIntegrate={(id) => navigate(`/docs/${id}`)}
-                  onEdit={(id) => navigate(`/edit/${id}`)}
-                  onDelete={handleDelete}
-                  onSessions={(id) => navigate(`/sessions/${id}`)}
-                  onAnalytics={(id) => navigate(`/analytics/${id}`)}
-                />
-              ))}
+                <h3 className="text-lg font-medium text-foreground mb-2">No bots found</h3>
+                <p className="text-muted-foreground mb-6">
+                  {savedBots.length === 0
+                    ? "Create your first bot to get started"
+                    : "Try adjusting your search or filters"}
+                </p>
+                {savedBots.length === 0 && (
+                  <Button
+                    onClick={() => navigate("/create")}
+                    className="bg-gradient-primary hover:opacity-90 gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create Your First Bot
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Progress skeletons rendered in-grid (not prepended above).
+                    For editing bots this replaces the existing BotCard since
+                    visibleBots already excludes any bot whose ID is in botsInProgressIds. */}
+                {botsInProgress.map((botProgress) => (
+                  <BotCardSkeleton
+                    key={botProgress.id}
+                    progress={botProgress.progress}
+                    botName={botProgress.name}
+                    type={botProgress.type}
+                    showProgress
+                  />
+                ))}
+
+                {/* Regular bot cards — bots currently in progress are excluded */}
+                {visibleBots.map((bot) => (
+                  <BotCard
+                    key={bot.id}
+                    bot={bot}
+                    onTest={(id) => {
+                      const b = savedBots.find((b) => b.id === id);
+                      if (b) setSelectedBotForTest(b);
+                    }}
+                    onShare={(botId) => {
+                      const shareUrl = `${window.location.origin}/bot/${botId}`;
+                      navigator.clipboard.writeText(shareUrl);
+                      toast({ title: "Link Copied", description: "Shareable link copied to clipboard." });
+                    }}
+                    onIntegrate={(id) => navigate(`/docs/${id}`)}
+                    onEdit={(id) => navigate(`/edit/${id}`)}
+                    onDelete={handleDelete}
+                    onSessions={(id) => navigate(`/sessions/${id}`)}
+                    onAnalytics={(id) => navigate(`/analytics/${id}`)}
+                  />
+                ))}
+              </>
+            )}
           </div>
 
           {!isFetchingBots && (page > 1 || hasNextPage) && (
             <div className="flex justify-center gap-4 pt-4">
               {page > 1 && (
-                <Button onClick={() => { setPage(1); setSavedBots((prev) => prev.slice(0, limit)); setHasNextPage(true); }} variant="outline">
+                <Button
+                  onClick={() => {
+                    setPage(1);
+                    setSavedBots((prev) => prev.slice(0, limit));
+                    setHasNextPage(true);
+                  }}
+                  variant="outline"
+                >
                   Show Less
                 </Button>
               )}
