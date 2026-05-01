@@ -75,8 +75,8 @@ export const BotCardSkeleton = ({
               onClick={() => setNotifyOnComplete((v) => !v)}
               className={
                 notifyOnComplete
-                  ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white animate-pulse h-8"
-                  : "h-8"
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white animate-[btn-breathe_8s_ease-in-out_infinite] hover:[animation-play-state:paused] h-8"
+                  : "h-8 animate-[btn-breathe_8s_ease-in-out_infinite] hover:[animation-play-state:paused]"
               }
             >
               {notifyOnComplete ? (
