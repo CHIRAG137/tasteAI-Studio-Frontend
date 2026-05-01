@@ -379,7 +379,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
             <Button
               type="button"
               onClick={handleUseForTraining}
-              className="bg-gradient-primary hover:opacity-90 animate-[btn-breathe_5s_ease-in-out_infinite] hover:[animation-play-state:paused]"
+              className="bg-gradient-primary hover:opacity-90 animate-[btn-breathe_8s_ease-in-out_infinite] hover:[animation-play-state:paused]"
             >
               Use for Bot Training
             </Button>
