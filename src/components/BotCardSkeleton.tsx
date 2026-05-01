@@ -1,4 +1,7 @@
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Bell, BellRing } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 interface BotCardSkeletonProps {
   progress?: number;
@@ -15,6 +18,34 @@ export const BotCardSkeleton = ({
 }: BotCardSkeletonProps) => {
   const isComplete = showProgress && progress === 100;
   const showProgressSection = showProgress && typeof progress === "number";
+  const [notifyOnComplete, setNotifyOnComplete] = useState(false);
+  const hasPlayedRef = useRef(false);
+
+  const playNotificationSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.frequency.setValueAtTime(587.33, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime + 0.1);
+      oscillator.frequency.setValueAtTime(1174.66, audioContext.currentTime + 0.2);
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (e) {
+      console.error("Could not play notification sound:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (isComplete && notifyOnComplete && !hasPlayedRef.current) {
+      hasPlayedRef.current = true;
+      playNotificationSound();
+    }
+  }, [isComplete, notifyOnComplete]);
 
   return (
     <div className="relative rounded-xl border bg-card overflow-hidden">
@@ -36,6 +67,26 @@ export const BotCardSkeleton = ({
               ? `${botName} has been ${type === "creating" ? "created" : "updated"} successfully!`
               : `${type === "creating" ? "Creating" : "Updating"} ${botName}...`}
           </p>
+          {!isComplete && (
+            <Button
+              type="button"
+              size="sm"
+              variant={notifyOnComplete ? "default" : "outline"}
+              onClick={() => setNotifyOnComplete((v) => !v)}
+              className={
+                notifyOnComplete
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white animate-pulse h-8"
+                  : "h-8"
+              }
+            >
+              {notifyOnComplete ? (
+                <BellRing className="w-3.5 h-3.5 mr-1" />
+              ) : (
+                <Bell className="w-3.5 h-3.5 mr-1" />
+              )}
+              {notifyOnComplete ? "Will Notify" : "Notify Me"}
+            </Button>
+          )}
         </div>
       )}
 
