@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Bot, Bell, BellRing } from "lucide-react";
+import { ArrowLeft, Bot } from "lucide-react";
 import { BotCreationWizard } from "@/components/BotBuilder/BotCreationWizard";
 import { Node, Edge } from "@xyflow/react";
 import { useToast } from "@/hooks/use-toast";
@@ -47,7 +47,6 @@ const CreateBot = () => {
   const { toast } = useToast();
   const { startBotCreation, updateBotProgress, completeBotCreation } = useBotCreation();
   const [isCreatingBot, setIsCreatingBot] = useState(false);
-  const [notifyOnComplete, setNotifyOnComplete] = useState(false);
   const [progress, setProgress] = useState(0);
   const [botIdRef] = useState(() => `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
@@ -109,23 +108,6 @@ const CreateBot = () => {
         return "Voice ID is required for Video Bot. Please select a voice.";
     }
     return null;
-  };
-
-  const playNotificationSound = () => {
-    if (notifyOnComplete) {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      oscillator.frequency.setValueAtTime(587.33, audioContext.currentTime);
-      oscillator.frequency.setValueAtTime(880, audioContext.currentTime + 0.1);
-      oscillator.frequency.setValueAtTime(1174.66, audioContext.currentTime + 0.2);
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.5);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -243,8 +225,6 @@ const CreateBot = () => {
         description: result.message || `${botConfig.name} has been created successfully.`,
       });
 
-      playNotificationSound();
-      
       // Complete bot creation tracking with bot data
       completeBotCreation(botIdRef, botData);
     } catch (error) {
@@ -258,7 +238,6 @@ const CreateBot = () => {
     } finally {
       setIsCreatingBot(false);
       setProgress(0);
-      setNotifyOnComplete(false);
     }
   };
 
@@ -302,8 +281,6 @@ const CreateBot = () => {
             updateConfig={updateConfig}
             onSubmit={handleSubmit}
             isCreatingBot={isCreatingBot}
-            notifyOnComplete={notifyOnComplete}
-            setNotifyOnComplete={setNotifyOnComplete}
           />
         </motion.div>
       </div>

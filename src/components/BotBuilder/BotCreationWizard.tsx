@@ -17,8 +17,6 @@ import {
   SkipForward,
   Check,
   Bot,
-  Bell,
-  BellRing,
   Shield,
   Zap
 } from "lucide-react";
@@ -50,8 +48,8 @@ interface BotCreationWizardProps {
   updateConfig: (field: string, value: any) => void;
   onSubmit: (e: React.FormEvent) => void;
   isCreatingBot: boolean;
-  notifyOnComplete: boolean;
-  setNotifyOnComplete: (val: boolean) => void;
+  notifyOnComplete?: boolean;
+  setNotifyOnComplete?: (val: boolean) => void;
   isEditMode?: boolean;
   botId?: string;
 }
@@ -161,8 +159,6 @@ export const BotCreationWizard = ({
   updateConfig,
   onSubmit,
   isCreatingBot,
-  notifyOnComplete,
-  setNotifyOnComplete,
   isEditMode = false,
   botId,
 }: BotCreationWizardProps) => {
@@ -466,25 +462,6 @@ export const BotCreationWizard = ({
 
               {isLastStep ? (
                 <div className="flex items-center gap-3">
-                  {isCreatingBot && (
-                    <Button
-                      type="button"
-                      variant={notifyOnComplete ? "default" : "outline"}
-                      onClick={() => setNotifyOnComplete(!notifyOnComplete)}
-                      className={
-                        notifyOnComplete
-                          ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white animate-pulse"
-                          : ""
-                      }
-                    >
-                      {notifyOnComplete ? (
-                        <BellRing className="w-4 h-4 mr-1" />
-                      ) : (
-                        <Bell className="w-4 h-4 mr-1" />
-                      )}
-                      {notifyOnComplete ? "Will Notify" : "Notify Me"}
-                    </Button>
-                  )}
                   <Button
                     type="submit"
                     className="bg-gradient-primary hover:opacity-90 shadow-medium px-6 gap-2"
