@@ -12,6 +12,8 @@ export const BotBuilder = () => {
         <HeroSection
           onCreateBot={() => navigate("/create")}
           onViewBots={() => navigate("/bots")}
+          onCreateSlackWorkflow={() => navigate("/workflows/create")}
+          onViewWorkflows={() => navigate("/workflows")}
         />
       </div>
     </>
