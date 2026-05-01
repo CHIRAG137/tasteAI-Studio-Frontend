@@ -10,19 +10,21 @@ interface VoiceSectionProps {
 export const VoiceSection = ({ botConfig, updateConfig }: VoiceSectionProps) => {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <Label className="text-base font-medium flex items-center gap-2">
-            {botConfig.voiceEnabled ? (
-              <Mic className="w-4 h-4 text-success" />
-            ) : (
-              <MicOff className="w-4 h-4 text-muted-foreground" />
-            )}
-            Voice Interaction
-          </Label>
-          <p className="text-sm text-muted-foreground">
-            Enable voice capabilities for your bot to speak and listen
-          </p>
+      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+        <div className="flex items-center gap-3">
+          {botConfig.voiceEnabled ? (
+            <Mic className="w-5 h-5 text-primary" />
+          ) : (
+            <MicOff className="w-5 h-5 text-primary" />
+          )}
+          <div>
+            <Label className="text-base font-medium cursor-pointer">
+              Enable Voice Interaction
+            </Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Enable voice capabilities for your bot to speak and listen.
+            </p>
+          </div>
         </div>
         <Switch
           checked={botConfig.voiceEnabled}
