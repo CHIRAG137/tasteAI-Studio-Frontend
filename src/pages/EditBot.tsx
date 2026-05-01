@@ -49,7 +49,6 @@ const EditBot = () => {
   const { startBotCreation, updateBotProgress, completeBotCreation } = useBotCreation();
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [notifyOnComplete, setNotifyOnComplete] = useState(false);
   const [progress, setProgress] = useState(0);
 
   const [botConfig, setBotConfig] = useState<BotConfig>({
@@ -282,7 +281,6 @@ const EditBot = () => {
     } finally {
       setIsUpdating(false);
       setProgress(0);
-      setNotifyOnComplete(false);
     }
   };
 
@@ -333,8 +331,6 @@ const EditBot = () => {
           updateConfig={updateConfig}
           onSubmit={handleSubmit}
           isCreatingBot={isUpdating}
-          notifyOnComplete={notifyOnComplete}
-          setNotifyOnComplete={setNotifyOnComplete}
           isEditMode={true}
           botId={botId}
         />
