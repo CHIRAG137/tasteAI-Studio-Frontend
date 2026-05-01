@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -57,17 +55,10 @@ export function CustomLLMSection({
     : [];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Info className="w-5 h-5 text-purple-600" />
-          Custom LLM Integration
-        </CardTitle>
-        <CardDescription>
-          Optional: Add your own API key to use your preferred LLM provider (OpenAI or Gemini)
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <div className="space-y-6">
+        <p className="text-sm text-muted-foreground">
+          Optional: Add your own API key to use your preferred LLM provider (OpenAI or Gemini).
+        </p>
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -151,7 +142,6 @@ export function CustomLLMSection({
             </Alert>
           </>
         )}
-      </CardContent>
-    </Card>
+    </div>
   );
 }
