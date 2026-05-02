@@ -33,11 +33,19 @@ export default function CustomizeEmbed() {
       <div className="flex-shrink-0 border-b bg-background/80 backdrop-blur-lg z-20">
         <div className="px-6 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="text-base font-bold text-foreground hover:text-primary transition-colors"
+            >
+              healthAI
+            </button>
+            <div className="h-5 w-px bg-border" />
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate(`/docs/${botId}`)}
-              className="gap-2 text-muted-foreground hover:text-foreground"
+              className="gap-2 text-muted-foreground hover:!text-foreground hover:bg-muted"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
