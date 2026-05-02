@@ -70,14 +70,22 @@ const Profile = () => {
       <div className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="text-lg font-bold text-foreground hover:text-primary transition-colors"
+            >
+              healthAI
+            </button>
+            <Separator orientation="vertical" className="h-6" />
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate("/")}
-              className="gap-2"
+              className="gap-2 text-muted-foreground hover:!text-foreground hover:bg-muted"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
+              Back to Home
             </Button>
             <Separator orientation="vertical" className="h-6" />
             <div className="flex items-center gap-3">
