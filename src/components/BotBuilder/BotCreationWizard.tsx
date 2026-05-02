@@ -18,8 +18,10 @@ import {
   Check,
   Bot,
   Shield,
-  Zap
+  Zap,
+  Info
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { BasicInfoSection } from "./BasicInfoSection";
 import { TrainingFilesSection } from "./TrainingFilesSection";
 import { WebsiteSection } from "./WebsiteSection";
@@ -386,7 +388,25 @@ export const BotCreationWizard = ({
           <div className="px-8 py-5 border-b border-border bg-card">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-foreground">{step.title}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-foreground">{step.title}</h2>
+                  <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={`About ${step.title}`}
+                          className="text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <Info className="w-4 h-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" align="start" className="max-w-xs text-xs leading-relaxed">
+                        {step.description}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <p className="text-sm text-muted-foreground mt-0.5">{step.subtitle}</p>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
