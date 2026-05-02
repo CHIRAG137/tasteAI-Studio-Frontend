@@ -67,7 +67,13 @@ export const Navbar = () => {
     <nav className="w-full bg-background border-b border-border px-4 py-3 sticky top-0 z-50 backdrop-blur-sm bg-background/95">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <h1 className="text-xl font-bold text-foreground">healthAI Studio</h1>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="text-xl font-bold text-foreground hover:text-primary transition-colors"
+          >
+            healthAI Studio
+          </button>
         </div>
 
         <div className="flex items-center gap-3">

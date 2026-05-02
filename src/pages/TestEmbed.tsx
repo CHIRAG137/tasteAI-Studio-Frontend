@@ -126,11 +126,19 @@ export default function TestEmbed() {
       <div className="flex-shrink-0 border-b border-white/10 bg-[#16162a]/90 backdrop-blur-xl z-20">
         <div className="px-4 py-2 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="text-base font-bold text-white hover:text-primary transition-colors"
+            >
+              healthAI
+            </button>
+            <div className="h-4 w-px bg-white/10" />
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate(`/docs/${botId}`)}
-              className="gap-1.5 text-white/60 hover:text-white hover:bg-white/10 h-8"
+              className="gap-1.5 text-white/60 hover:!text-white hover:bg-white/10 h-8"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Back

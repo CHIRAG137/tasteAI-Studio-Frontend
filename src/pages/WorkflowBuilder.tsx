@@ -327,7 +327,15 @@ export default function WorkflowBuilder() {
       <div className="flex-shrink-0 border-b border-border bg-background/95 backdrop-blur-sm px-4 py-3 z-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/workflows")} className="gap-2">
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="text-lg font-bold text-foreground hover:text-primary transition-colors"
+            >
+              healthAI
+            </button>
+            <Separator orientation="vertical" className="h-6" />
+            <Button variant="ghost" size="sm" onClick={() => navigate("/workflows")} className="gap-2 text-muted-foreground hover:!text-foreground hover:bg-muted">
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>

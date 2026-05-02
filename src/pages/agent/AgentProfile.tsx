@@ -247,6 +247,7 @@ const AgentProfile = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate("/agent")}
+                className="text-muted-foreground hover:!text-foreground hover:bg-muted"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
