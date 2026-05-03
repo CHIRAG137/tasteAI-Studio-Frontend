@@ -108,9 +108,9 @@ export default function TestEmbed() {
   }, [isResizing]);
 
   const categoryColors: Record<string, string> = {
-    mobile: "bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20",
-    tablet: "bg-purple-500/10 text-purple-600 border-purple-500/20 hover:bg-purple-500/20",
-    desktop: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20",
+    mobile: "bg-muted text-muted-foreground border-border hover:bg-muted/70 hover:text-foreground",
+    tablet: "bg-muted text-muted-foreground border-border hover:bg-muted/70 hover:text-foreground",
+    desktop: "bg-muted text-muted-foreground border-border hover:bg-muted/70 hover:text-foreground",
   };
 
   // Calculate scale to fit the preview area
@@ -121,32 +121,32 @@ export default function TestEmbed() {
   const scale = Math.min(scaleX, scaleY, 1);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#1a1a2e]">
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
       {/* Top Bar */}
-      <div className="flex-shrink-0 border-b border-white/10 bg-[#16162a]/90 backdrop-blur-xl z-20">
+      <div className="flex-shrink-0 border-b border-border bg-card/80 backdrop-blur-xl z-20">
         <div className="px-4 py-2 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="text-base font-bold text-white hover:text-primary transition-colors"
+              className="text-base font-bold text-foreground hover:text-primary transition-colors"
             >
               healthAI
             </button>
-            <div className="h-4 w-px bg-white/10" />
+            <div className="h-4 w-px bg-border" />
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate(`/docs/${botId}`)}
-              className="gap-1.5 text-white/60 hover:!text-white hover:bg-white/10 h-8"
+              className="gap-1.5 text-muted-foreground hover:!text-foreground hover:bg-muted h-8"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Back
             </Button>
-            <div className="h-4 w-px bg-white/10" />
+            <div className="h-4 w-px bg-border" />
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-sm font-medium text-white/90">{botName || "Bot Preview"}</span>
+              <span className="text-sm font-medium text-foreground">{botName || "Bot Preview"}</span>
             </div>
           </div>
 
@@ -159,7 +159,7 @@ export default function TestEmbed() {
                 className={cn(
                   "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border",
                   activePreset === preset.label
-                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/25"
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
                     : categoryColors[preset.category]
                 )}
                 title={`${preset.width} × ${preset.height}`}
@@ -172,28 +172,28 @@ export default function TestEmbed() {
 
           {/* Size Controls */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-white/5 rounded-lg px-2 py-1 border border-white/10">
+            <div className="flex items-center gap-1 bg-muted rounded-lg px-2 py-1 border border-border">
               <Input
                 type="number"
                 value={width}
                 onChange={(e) => { setWidth(Number(e.target.value)); setActivePreset(""); }}
-                className="w-16 h-6 text-xs text-center bg-transparent border-none text-white/90 p-0"
+                className="w-16 h-6 text-xs text-center bg-transparent border-none text-foreground p-0"
               />
-              <span className="text-white/30 text-xs">×</span>
+              <span className="text-muted-foreground text-xs">×</span>
               <Input
                 type="number"
                 value={height}
                 onChange={(e) => { setHeight(Number(e.target.value)); setActivePreset(""); }}
-                className="w-16 h-6 text-xs text-center bg-transparent border-none text-white/90 p-0"
+                className="w-16 h-6 text-xs text-center bg-transparent border-none text-foreground p-0"
               />
             </div>
-            <Badge variant="outline" className="text-[10px] border-white/10 text-white/50 font-mono">
+            <Badge variant="outline" className="text-[10px] border-border text-muted-foreground font-mono">
               {Math.round(scale * 100)}%
             </Badge>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-white/50 hover:text-white hover:bg-white/10"
+              className="h-7 w-7 text-muted-foreground hover:!text-foreground hover:bg-muted"
               onClick={toggleRotate}
               title="Rotate"
             >
@@ -202,7 +202,7 @@ export default function TestEmbed() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-white/50 hover:text-white hover:bg-white/10"
+              className="h-7 w-7 text-muted-foreground hover:!text-foreground hover:bg-muted"
               onClick={() => iframeRef.current?.contentWindow?.location.reload()}
               title="Refresh"
             >
@@ -219,8 +219,8 @@ export default function TestEmbed() {
         style={{ cursor: isResizing ? (isResizing === "right" ? "ew-resize" : isResizing === "bottom" ? "ns-resize" : "nwse-resize") : "default" }}
       >
         {/* Dotted grid background */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
+        <div className="absolute inset-0 opacity-[0.08] dark:opacity-[0.05]" style={{
+          backgroundImage: "radial-gradient(circle, hsl(var(--foreground)) 1px, transparent 1px)",
           backgroundSize: "24px 24px",
         }} />
 
@@ -230,7 +230,7 @@ export default function TestEmbed() {
         }}>
           {/* Device frame */}
           <div
-            className="absolute rounded-xl border border-white/10 bg-white shadow-2xl shadow-black/50 overflow-hidden"
+            className="absolute rounded-xl border border-border bg-background shadow-xl overflow-hidden"
             style={{
               width: width,
               height: height,
@@ -239,14 +239,14 @@ export default function TestEmbed() {
             }}
           >
             {/* URL bar mockup */}
-            <div className="h-8 bg-gray-100 border-b flex items-center px-3 gap-2 flex-shrink-0">
+            <div className="h-8 bg-muted border-b border-border flex items-center px-3 gap-2 flex-shrink-0">
               <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
-                <div className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
-                <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
+                <div className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/80" />
+                <div className="w-2.5 h-2.5 rounded-full bg-green-400/80" />
               </div>
               <div className="flex-1 mx-2">
-                <div className="bg-white rounded px-2 py-0.5 text-[10px] text-gray-500 truncate border">
+                <div className="bg-background rounded px-2 py-0.5 text-[10px] text-muted-foreground truncate border border-border">
                   {embedUrl}
                 </div>
               </div>
@@ -267,7 +267,7 @@ export default function TestEmbed() {
             style={{ right: -20, width: 16, height: 48 }}
             onMouseDown={(e) => handleMouseDown(e, "right")}
           >
-            <div className="w-1.5 h-10 rounded-full bg-white/20 group-hover:bg-primary/60 transition-colors" />
+            <div className="w-1.5 h-10 rounded-full bg-border group-hover:bg-primary transition-colors" />
           </div>
 
           {/* Bottom resize handle */}
@@ -276,7 +276,7 @@ export default function TestEmbed() {
             style={{ bottom: -20, width: 48, height: 16 }}
             onMouseDown={(e) => handleMouseDown(e, "bottom")}
           >
-            <div className="h-1.5 w-10 rounded-full bg-white/20 group-hover:bg-primary/60 transition-colors" />
+            <div className="h-1.5 w-10 rounded-full bg-border group-hover:bg-primary transition-colors" />
           </div>
 
           {/* Corner resize handle */}
@@ -285,15 +285,15 @@ export default function TestEmbed() {
             style={{ right: -16, bottom: -16, width: 20, height: 20 }}
             onMouseDown={(e) => handleMouseDown(e, "corner")}
           >
-            <div className="w-3 h-3 rounded-sm bg-white/20 group-hover:bg-primary/60 transition-colors border border-white/10" />
+            <div className="w-3 h-3 rounded-sm bg-border group-hover:bg-primary transition-colors border border-border" />
           </div>
 
           {/* Dimension label */}
           <div
-            className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm border border-white/10"
+            className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-card border border-border shadow-sm"
             style={{ bottom: -40 }}
           >
-            <span className="text-[11px] font-mono text-white/70">{width} × {height}</span>
+            <span className="text-[11px] font-mono text-muted-foreground">{width} × {height}</span>
           </div>
         </div>
       </div>
