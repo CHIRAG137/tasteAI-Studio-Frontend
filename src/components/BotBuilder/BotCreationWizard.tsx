@@ -71,7 +71,7 @@ const ALL_STEPS: Step[] = [
     title: "Training Files",
     subtitle: "Upload your training data",
     description:
-      "Upload reference files (PDF, TXT, DOC, DOCX, XLS, XLSX) to train your bot with your knowledge base.",
+      "Upload reference files (PDF, TXT, DOC, DOCX, XLS, XLSX, CSV) to train your bot with your knowledge base.",
     icon: <Bot className="w-5 h-5" />,
   },
   {

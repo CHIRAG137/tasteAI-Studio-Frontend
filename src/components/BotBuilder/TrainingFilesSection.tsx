@@ -20,10 +20,14 @@ export const TrainingFilesSection = ({ botConfig, updateConfig }: TrainingFilesS
     const files = e.target.files ? Array.from(e.target.files) : [];
     updateConfig("files", files);
 
-    // Check for Excel files
-    const excelFile = files.find(file => file.name.endsWith('.xlsx') || file.name.endsWith('.xls'));
-    if (excelFile) {
-      processExcelFile(excelFile);
+    // Check for Excel/CSV files
+    const spreadsheetFile = files.find(file => 
+      file.name.endsWith('.xlsx') || 
+      file.name.endsWith('.xls') || 
+      file.name.endsWith('.csv')
+    );
+    if (spreadsheetFile) {
+      processSpreadsheetFile(spreadsheetFile);
     } else {
       setColumns([]);
       setInputColumns([]);
@@ -31,7 +35,7 @@ export const TrainingFilesSection = ({ botConfig, updateConfig }: TrainingFilesS
     }
   };
 
-  const processExcelFile = (file: File) => {
+  const processSpreadsheetFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const data = new Uint8Array(e.target?.result as ArrayBuffer);
@@ -85,14 +89,14 @@ export const TrainingFilesSection = ({ botConfig, updateConfig }: TrainingFilesS
           multiple
           onChange={handleFileChange}
           className="h-11 cursor-pointer file:cursor-pointer"
-          accept=".pdf,.doc,.docx,.txt,.xls,.xlsx"
+          accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.csv"
         />
         {botConfig.files?.length ? (
           <p className="text-sm text-muted-foreground">
             {botConfig.files.length} file(s) selected: {botConfig.files.map((file) => file.name).join(', ')}
           </p>
         ) : (
-          <p className="text-sm text-muted-foreground">Upload PDF, TXT, DOC/DOCX, or XLS/XLSX files for training.</p>
+          <p className="text-sm text-muted-foreground">Upload PDF, TXT, DOC/DOCX, or XLS/XLSX/CSV files for training.</p>
         )}
       </div>
 
