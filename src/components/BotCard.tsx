@@ -100,7 +100,7 @@ export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, o
           </div>
 
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg font-semibold pr-8">
+            <CardTitle className="text-lg font-semibold pr-8 truncate" title={bot.name}>
               {bot.name}
             </CardTitle>
 
