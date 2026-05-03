@@ -84,7 +84,7 @@ export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, o
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDelete(bot.id)}
-              className="cursor-pointer text-destructive focus:text-destructive"
+              className="cursor-pointer text-destructive focus:bg-destructive focus:!text-white hover:bg-destructive hover:!text-white"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
