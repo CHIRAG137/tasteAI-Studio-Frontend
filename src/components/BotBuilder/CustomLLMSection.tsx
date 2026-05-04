@@ -8,8 +8,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { AlertCircle, Eye, EyeOff, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { getAuthHeaders } from "@/utils/auth";
+import { API_BASE_URL } from "@/api/auth";
 
 interface CustomLLMSectionProps {
   customLLMProvider?: string | null;
@@ -28,9 +31,31 @@ export function CustomLLMSection({
 }: CustomLLMSectionProps) {
   const [showApiKey, setShowApiKey] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState("");
+  const [isTesting, setIsTesting] = useState(false);
+  const [testStatus, setTestStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [testMessage, setTestMessage] = useState('');
   const [selectedProvider, setSelectedProvider] = useState(customLLMProvider || "none");
 
+  const extractErrorMessage = (data: any) => {
+    if (!data) return 'Unable to validate API key.';
+    const maybeMessage = typeof data.message === 'string'
+      ? data.message
+      : typeof data.result?.error === 'string'
+      ? data.result.error
+      : typeof data.result?.message === 'string'
+      ? data.result.message
+      : null;
+
+    if (!maybeMessage) {
+      return 'Unable to validate API key.';
+    }
+
+    return maybeMessage.replace(/\s*(\[\{.*|\{.*)$/s, '').trim();
+  };
+
   const handleProviderChange = (value: string) => {
+    setTestStatus('idle');
+    setTestMessage('');
     setSelectedProvider(value);
     if (value === "none") {
       onProviderChange(null);
@@ -42,6 +67,8 @@ export function CustomLLMSection({
 
   const handleApiKeyChange = (value: string) => {
     setApiKeyInput(value);
+    setTestStatus('idle');
+    setTestMessage('');
     onApiKeyChange(value);
   };
 
@@ -132,6 +159,77 @@ export function CustomLLMSection({
               <p className="text-xs text-muted-foreground">
                 Select which model to use for LLM operations.
               </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={async () => {
+                  if (!selectedProvider || selectedProvider === 'none') return;
+                  if (!apiKeyInput.trim()) {
+                    setTestStatus('error');
+                    setTestMessage('Enter your API key before testing.');
+                    return;
+                  }
+                  const modelToTest = customModel || availableModels[0] || '';
+                  if (!modelToTest) {
+                    setTestStatus('error');
+                    setTestMessage('Select a model before testing.');
+                    return;
+                  }
+
+                  setIsTesting(true);
+                  setTestStatus('idle');
+                  setTestMessage('');
+
+                  try {
+                    const response = await fetch(`${API_BASE_URL}/api/bots/test-custom-llm`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...getAuthHeaders(),
+                      },
+                      body: JSON.stringify({
+                        custom_llm_provider: selectedProvider,
+                        custom_api_key: apiKeyInput,
+                        custom_model: modelToTest,
+                      }),
+                    });
+
+                    const data = await response.json();
+                    if (response.ok) {
+                      setTestStatus('success');
+                      setTestMessage(data.message || 'API key validated successfully.');
+                    } else {
+                      setTestStatus('error');
+                      setTestMessage(extractErrorMessage(data));
+                    }
+                  } catch (error) {
+                    setTestStatus('error');
+                    setTestMessage(
+                      error instanceof Error
+                        ? error.message
+                        : 'Unable to validate API key. Please try again.'
+                    );
+                  } finally {
+                    setIsTesting(false);
+                  }
+                }}
+                disabled={isTesting || !apiKeyInput.trim() || !customModel && !availableModels[0]}
+              >
+                {isTesting ? 'Testing...' : 'Test API Key'}
+              </Button>
+
+              {testStatus !== 'idle' && (
+                <p
+                  className={`text-sm ${
+                    testStatus === 'success' ? 'text-emerald-600' : 'text-destructive'
+                  }`}
+                >
+                  {testMessage}
+                </p>
+              )}
             </div>
 
             <Alert className="bg-blue-50 border-blue-200">
