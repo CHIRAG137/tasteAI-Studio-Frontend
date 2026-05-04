@@ -41,7 +41,6 @@ interface ChatBotProps {
     languages: string[];
     primaryPurpose: string;
     conversationalTone: string;
-    voiceId: string;
     humanHandoffEnabled?: boolean;
     /** When true, visitors must sign in with Auth0 before chat (preview/test). */
     requireVisitorAuth0Identity?: boolean;

@@ -16,7 +16,6 @@ interface BotCardProps {
     primaryPurpose: string;
     conversationalTone: string;
     isVideoBot: boolean;
-    voiceId: string;
     humanHandoffEnabled: boolean;
     createdAt?: string;
     updatedAt?: string;

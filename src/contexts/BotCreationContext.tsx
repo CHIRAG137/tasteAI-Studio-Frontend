@@ -20,7 +20,6 @@ export interface NewlyCreatedBot {
   isVideoBot: boolean;
   videoBotImageUrl?: string;
   videoBotImagePublicId?: string;
-  voiceId?: string;
   humanHandoffEnabled: boolean;
   requireVisitorAuth0Identity: boolean;
   [key: string]: any;

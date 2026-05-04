@@ -15,7 +15,6 @@ interface BotConfig {
   description: string;
   files: File[];
   voiceEnabled: boolean;
-  voiceId?: string;
   languages: string[];
   primaryPurpose: string;
   specializationArea: string;
@@ -57,7 +56,6 @@ const EditBot = () => {
     description: "",
     files: [],
     voiceEnabled: false,
-    voiceId: "",
     languages: ["English"],
     primaryPurpose: "",
     specializationArea: "",
@@ -100,7 +98,6 @@ const EditBot = () => {
           description: bot.description || "",
           files: [],
           voiceEnabled: bot.is_voice_enabled || false,
-          voiceId: bot.voice_id || "",
           languages: bot.supported_languages || ["English"],
           primaryPurpose: bot.primary_purpose || "",
           specializationArea: bot.specialisation_area || "",
@@ -149,7 +146,6 @@ const EditBot = () => {
     if (botConfig.isVideoBot) {
       if (!botConfig.videoBotImageUrl || !botConfig.videoBotImagePublicId)
         return "Video bot image is required.";
-      if (!botConfig.voiceId) return "Voice ID is required for Video Bot.";
     }
     return null;
   };
@@ -212,7 +208,6 @@ const EditBot = () => {
       formData.append("is_video_bot", botConfig.isVideoBot.toString());
       formData.append("video_bot_image_url", botConfig.videoBotImageUrl || "");
       formData.append("video_bot_image_public_id", botConfig.videoBotImagePublicId || "");
-      formData.append("voice_id", botConfig.voiceId || "");
       formData.append("human_handoff_enabled", (botConfig.humanHandoffEnabled || false).toString());
       formData.append("human_handoff_emails", botConfig.humanHandoffEmails || "");
       formData.append(
@@ -258,7 +253,6 @@ const EditBot = () => {
         isVideoBot: updatedBot.is_video_bot || botConfig.isVideoBot,
         videoBotImageUrl: updatedBot.video_bot_image_url || botConfig.videoBotImageUrl,
         videoBotImagePublicId: updatedBot.video_bot_image_public_id || botConfig.videoBotImagePublicId,
-        voiceId: updatedBot.voice_id || botConfig.voiceId,
         humanHandoffEnabled: updatedBot.human_handoff_enabled || botConfig.humanHandoffEnabled,
         requireVisitorAuth0Identity: !!updatedBot.require_visitor_auth0_identity || botConfig.requireVisitorAuth0Identity,
         createdAt: updatedBot.createdAt || updatedBot.created_at || new Date().toISOString(),

@@ -33,7 +33,6 @@ interface BotConfig {
   isVideoBot: boolean;
   videoBotImageUrl?: string;
   videoBotImagePublicId?: string;
-  voiceId?: string;
   humanHandoffEnabled?: boolean;
   humanHandoffEmails?: string;
   requireVisitorAuth0Identity?: boolean;
@@ -85,7 +84,6 @@ const CreateBot = () => {
     isVideoBot: false,
     videoBotImageUrl: "",
     videoBotImagePublicId: "",
-    voiceId: "",
     humanHandoffEnabled: false,
     humanHandoffEmails: "",
     requireVisitorAuth0Identity: false,
@@ -104,8 +102,6 @@ const CreateBot = () => {
     if (botConfig.isVideoBot) {
       if (!botConfig.videoBotImageUrl || !botConfig.videoBotImagePublicId)
         return "Video bot image is required. Please upload and save a cropped image.";
-      if (!botConfig.voiceId)
-        return "Voice ID is required for Video Bot. Please select a voice.";
     }
     return null;
   };
@@ -168,7 +164,6 @@ const CreateBot = () => {
         is_video_bot: botConfig.isVideoBot.toString(),
         video_bot_image_url: botConfig.videoBotImageUrl || "",
         video_bot_image_public_id: botConfig.videoBotImagePublicId || "",
-        voice_id: botConfig.voiceId || "",
         human_handoff_enabled: (botConfig.humanHandoffEnabled || false).toString(),
         human_handoff_emails: botConfig.humanHandoffEmails || "",
         require_visitor_auth0_identity: (botConfig.requireVisitorAuth0Identity || false).toString(),
@@ -213,7 +208,6 @@ const CreateBot = () => {
         isVideoBot: createdBot.is_video_bot || botConfig.isVideoBot,
         videoBotImageUrl: createdBot.video_bot_image_url || botConfig.videoBotImageUrl,
         videoBotImagePublicId: createdBot.video_bot_image_public_id || botConfig.videoBotImagePublicId,
-        voiceId: createdBot.voice_id || botConfig.voiceId,
         humanHandoffEnabled: createdBot.human_handoff_enabled || botConfig.humanHandoffEnabled,
         requireVisitorAuth0Identity: !!createdBot.require_visitor_auth0_identity || botConfig.requireVisitorAuth0Identity,
         createdAt,

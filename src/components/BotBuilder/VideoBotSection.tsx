@@ -21,7 +21,6 @@ interface VideoBotSectionProps {
     isVideoBot: boolean;
     videoBotImageUrl?: string;
     videoBotImagePublicId?: string;
-    voiceId?: string;
   };
   updateConfig: (field: string, value: any) => void;
 }
@@ -35,17 +34,11 @@ export const VideoBotSection = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const hiddenImageRef = useRef<HTMLImageElement>(null);
-  const VOICES_PAGE_SIZE = 6;
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imagePrompt, setImagePrompt] = useState("");
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [voices, setVoices] = useState<any[]>([]);
-  const [voicesLoading, setVoicesLoading] = useState(false);
-  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [visibleVoiceCount, setVisibleVoiceCount] = useState(VOICES_PAGE_SIZE);
 
   // Image cropping state
   const [showCropTool, setShowCropTool] = useState(false);
@@ -56,47 +49,6 @@ export const VideoBotSection = ({
   const [generatedImageForCrop, setGeneratedImageForCrop] = useState<string | null>(null);
   const [isSavingCrop, setIsSavingCrop] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!botConfig.isVideoBot) return;
-    if (voices.length > 0) return;
-
-    const fetchVoices = async () => {
-      setVoicesLoading(true);
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/elevenlabs/voices`
-        );
-
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-
-        const premadeVoices = (data.result || []).filter(
-          (voice: any) => voice.category === "premade"
-        );
-
-        setVoices(premadeVoices);
-
-        if (premadeVoices.length > 0 && !botConfig.voiceId) {
-          updateConfig("voiceId", premadeVoices[0].voice_id);
-        }
-      } catch (err) {
-        console.error("Voice fetch failed:", err);
-        toast({
-          title: "Failed to load voices",
-          description: "Could not fetch ElevenLabs voices",
-          variant: "destructive",
-        });
-      } finally {
-        setVoicesLoading(false);
-      }
-    };
-
-    fetchVoices();
-  }, [botConfig.isVideoBot]);
 
   useEffect(() => {
     if (botConfig.isVideoBot && !imagePrompt && !generatedImageUrl) {
@@ -470,34 +422,6 @@ export const VideoBotSection = ({
     }
   };
 
-  const handlePreview = (voice: any) => {
-    if (!voice.preview_url) return;
-
-    if (playingVoiceId === voice.voice_id) {
-      audioRef.current?.pause();
-      setPlayingVoiceId(null);
-      return;
-    }
-
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-
-    const audio = new Audio(voice.preview_url);
-    audioRef.current = audio;
-    audio.play();
-
-    setPlayingVoiceId(voice.voice_id);
-
-    audio.onended = () => {
-      setPlayingVoiceId(null);
-    };
-  };
-
-  const visibleVoices = voices.slice(0, visibleVoiceCount);
-  const canShowMore = visibleVoiceCount < voices.length;
-  const canShowLess = visibleVoiceCount > VOICES_PAGE_SIZE;
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
@@ -700,111 +624,14 @@ export const VideoBotSection = ({
 
           <div className="space-y-3 pt-4 border-t">
             <Label className="text-base font-medium">
-              Bot Voice <span className="text-red-500">*</span>
+              Bot Voice
             </Label>
 
-            {!botConfig.voiceId && voices.length > 0 && (
-              <p className="text-sm text-red-600">⚠ Please select a voice for the video bot</p>
-            )}
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {voicesLoading && (
-                  <div className="col-span-full flex items-center justify-center py-6">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      Loading voices…
-                    </span>
-                  </div>
-                )}
-
-                {!voicesLoading &&
-                  visibleVoices.map((voice) => {
-                    const isSelected = botConfig.voiceId === voice.voice_id;
-                    const isPlaying = playingVoiceId === voice.voice_id;
-
-                    return (
-                      <div
-                        key={voice.voice_id}
-                        role="button"
-                        aria-pressed={isSelected}
-                        onClick={() => updateConfig("voiceId", voice.voice_id)}
-                        className={`group p-4 rounded-xl border transition-all cursor-pointer ${isSelected
-                          ? "border-primary bg-primary/5 shadow-sm"
-                          : "hover:border-muted-foreground/50 hover:bg-muted/30"
-                          }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="space-y-1">
-                            <p className="font-medium leading-tight">
-                              {voice.name}
-                            </p>
-
-                            {voice.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                {voice.description}
-                              </p>
-                            )}
-
-                            <p className="text-xs text-muted-foreground">
-                              {voice.labels?.accent || "Neutral"} •{" "}
-                              {voice.labels?.gender || "Unknown"}
-                            </p>
-                          </div>
-
-                          {voice.preview_url && (
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant={isPlaying ? "secondary" : "ghost"}
-                              className="shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePreview(voice);
-                              }}
-                            >
-                              {isPlaying ? "⏸" : "▶"}
-                            </Button>
-                          )}
-                        </div>
-
-                        {isSelected && (
-                          <div className="mt-2 text-xs text-green-600 font-medium">
-                            ✓ Selected
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+            <div className="flex items-center justify-center p-8 border-2 border-dashed rounded-lg border-muted-foreground/30 bg-muted/10">
+              <div className="text-center">
+                <p className="text-sm font-medium text-muted-foreground mb-1">Voices Coming Soon</p>
+                <p className="text-xs text-muted-foreground">Voice selection will be available in a future update</p>
               </div>
-
-              {!voicesLoading && voices.length > VOICES_PAGE_SIZE && (
-                <div className="flex items-center justify-center gap-3 pt-2">
-                  {canShowMore && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setVisibleVoiceCount((prev) => prev + VOICES_PAGE_SIZE)
-                      }
-                    >
-                      Show more
-                    </Button>
-                  )}
-
-                  {canShowLess && !canShowMore && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setVisibleVoiceCount(VOICES_PAGE_SIZE)}
-                    >
-                      Show less
-                    </Button>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </div>
