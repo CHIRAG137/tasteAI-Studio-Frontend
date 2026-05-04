@@ -510,11 +510,16 @@ export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, 
       </div>
 
       {/* Node Editor Side Panel */}
-      <Sheet open={showNodeEditor && !!selectedNode} onOpenChange={(open) => !open && setShowNodeEditor(false)}>
+      <Sheet
+        open={showNodeEditor && !!selectedNode}
+        onOpenChange={(open) => !open && setShowNodeEditor(false)}
+        modal={false}
+      >
         <SheetContent
           side="right"
-          className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l bg-card"
+          className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l bg-card z-[10000] shadow-2xl"
           onInteractOutside={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
         >
           {selectedNode && (() => {
             const meta = nodeTypeMeta[selectedNode.data.type] ?? nodeTypeMeta.message;
