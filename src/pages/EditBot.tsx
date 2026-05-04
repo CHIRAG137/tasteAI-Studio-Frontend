@@ -9,11 +9,20 @@ import { getAuthHeaders } from "@/utils/auth";
 import { motion } from "framer-motion";
 import { useBotCreation } from "@/contexts/BotCreationContext";
 
+interface TrainingFileMeta {
+  originalname: string;
+  mimeType: string;
+  size: number;
+  hash: string;
+  path?: string;
+}
+
 interface BotConfig {
   name: string;
   websiteUrl: string;
   description: string;
   files: File[];
+  existingTrainingFiles: TrainingFileMeta[];
   voiceEnabled: boolean;
   languages: string[];
   primaryPurpose: string;
@@ -55,6 +64,7 @@ const EditBot = () => {
     websiteUrl: "",
     description: "",
     files: [],
+    existingTrainingFiles: [],
     voiceEnabled: false,
     languages: ["English"],
     primaryPurpose: "",
@@ -113,6 +123,7 @@ const EditBot = () => {
           scrapedMarkdown: [],
           scrapedUrls: [],
           existingScrapedUrls: bot.scraped_urls || [],
+          existingTrainingFiles: bot.training_files || [],
           isVideoBot: bot.is_video_bot || false,
           videoBotImageUrl: bot.video_bot_image_url || "",
           videoBotImagePublicId: bot.video_bot_image_public_id || "",
@@ -222,6 +233,12 @@ const EditBot = () => {
         formData.append("scraped_content", JSON.stringify(botConfig.scrapedMarkdown));
       if (botConfig.scrapedUrls?.length)
         formData.append("scraped_urls", JSON.stringify(botConfig.scrapedUrls));
+      if (botConfig.existingTrainingFiles?.length) {
+        formData.append(
+          "existing_training_files",
+          JSON.stringify(botConfig.existingTrainingFiles)
+        );
+      }
       if (botConfig.files?.length) {
         botConfig.files.forEach((file) => formData.append("files", file));
       }

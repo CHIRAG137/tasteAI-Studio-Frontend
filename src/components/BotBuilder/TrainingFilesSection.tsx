@@ -6,6 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useEffect } from "react";
 import * as XLSX from 'xlsx';
 
+interface TrainingFileMeta {
+  originalname: string;
+  mimeType: string;
+  size: number;
+  hash: string;
+  path?: string;
+}
+
 interface TrainingFilesSectionProps {
   botConfig: any;
   updateConfig: (field: string, value: any) => void;
@@ -83,6 +91,33 @@ export const TrainingFilesSection = ({ botConfig, updateConfig }: TrainingFilesS
           <Upload className="w-4 h-4" />
           Upload Files
         </Label>
+        {botConfig.existingTrainingFiles?.length > 0 && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+            <p className="text-sm font-medium">Existing training files</p>
+            <div className="space-y-1">
+              {botConfig.existingTrainingFiles.map((file: TrainingFileMeta, index: number) => (
+                <div key={`${file.hash}-${index}`} className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 shadow-sm border">
+                  <div>
+                    <p className="text-sm font-medium">{file.originalname}</p>
+                    <p className="text-xs text-muted-foreground">{file.mimeType} · {file.size} bytes</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-sm text-destructive underline"
+                    onClick={() => {
+                      updateConfig(
+                        'existingTrainingFiles',
+                        botConfig.existingTrainingFiles.filter((f: TrainingFileMeta) => f.hash !== file.hash)
+                      );
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <Input
           id="files"
           type="file"
