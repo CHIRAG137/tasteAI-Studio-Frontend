@@ -179,6 +179,58 @@ const nodeTypes: NodeTypes = {
   code: CodeNode,
 };
 
+const nodeTypeMeta: Record<string, { label: string; description: string; icon: typeof MessageSquare; bg: string; fg: string }> = {
+  message: {
+    label: 'Message',
+    description: 'Send a message to the user',
+    icon: MessageSquare,
+    bg: 'bg-primary/10',
+    fg: 'text-primary',
+  },
+  question: {
+    label: 'Question',
+    description: 'Ask the user a question and store the answer',
+    icon: HelpCircle,
+    bg: 'bg-blue-500/10',
+    fg: 'text-blue-500',
+  },
+  confirmation: {
+    label: 'Confirmation',
+    description: 'Ask the user to confirm with Yes / No',
+    icon: CheckCircle,
+    bg: 'bg-green-500/10',
+    fg: 'text-green-500',
+  },
+  branch: {
+    label: 'Branch',
+    description: 'Split the conversation into multiple paths',
+    icon: GitBranch,
+    bg: 'bg-purple-500/10',
+    fg: 'text-purple-500',
+  },
+  branchOption: {
+    label: 'Branch Option',
+    description: 'A single branch path option',
+    icon: GitBranch,
+    bg: 'bg-purple-500/10',
+    fg: 'text-purple-500',
+  },
+  redirect: {
+    label: 'Redirect',
+    description: 'Redirect the user to an external URL',
+    icon: Link2,
+    bg: 'bg-orange-500/10',
+    fg: 'text-orange-500',
+  },
+  code: {
+    label: 'Code',
+    description: 'Run custom JavaScript at this step',
+    icon: Code,
+    bg: 'bg-yellow-500/10',
+    fg: 'text-yellow-600',
+  },
+};
+
 interface FlowBuilderProps {
   botId?: string;
   onSave?: (nodes: Node[], edges: Edge[]) => void;
