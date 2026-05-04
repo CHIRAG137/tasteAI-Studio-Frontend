@@ -19,7 +19,17 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { X, Plus, MessageSquare, HelpCircle, GitBranch, CheckCircle, Link2, Code, AlertCircle } from 'lucide-react';
+import { X, Plus, MessageSquare, HelpCircle, GitBranch, CheckCircle, Link2, Code, AlertCircle, Trash2, Settings2, Sparkles } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 
 // Node type definitions
@@ -167,6 +177,58 @@ const nodeTypes: NodeTypes = {
   branchOption: BranchOptionNode,
   redirect: RedirectNode,
   code: CodeNode,
+};
+
+const nodeTypeMeta: Record<string, { label: string; description: string; icon: typeof MessageSquare; bg: string; fg: string }> = {
+  message: {
+    label: 'Message',
+    description: 'Send a message to the user',
+    icon: MessageSquare,
+    bg: 'bg-primary/10',
+    fg: 'text-primary',
+  },
+  question: {
+    label: 'Question',
+    description: 'Ask the user a question and store the answer',
+    icon: HelpCircle,
+    bg: 'bg-blue-500/10',
+    fg: 'text-blue-500',
+  },
+  confirmation: {
+    label: 'Confirmation',
+    description: 'Ask the user to confirm with Yes / No',
+    icon: CheckCircle,
+    bg: 'bg-green-500/10',
+    fg: 'text-green-500',
+  },
+  branch: {
+    label: 'Branch',
+    description: 'Split the conversation into multiple paths',
+    icon: GitBranch,
+    bg: 'bg-purple-500/10',
+    fg: 'text-purple-500',
+  },
+  branchOption: {
+    label: 'Branch Option',
+    description: 'A single branch path option',
+    icon: GitBranch,
+    bg: 'bg-purple-500/10',
+    fg: 'text-purple-500',
+  },
+  redirect: {
+    label: 'Redirect',
+    description: 'Redirect the user to an external URL',
+    icon: Link2,
+    bg: 'bg-orange-500/10',
+    fg: 'text-orange-500',
+  },
+  code: {
+    label: 'Code',
+    description: 'Run custom JavaScript at this step',
+    icon: Code,
+    bg: 'bg-yellow-500/10',
+    fg: 'text-yellow-600',
+  },
 };
 
 interface FlowBuilderProps {
@@ -447,188 +509,256 @@ export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, 
         </ReactFlow>
       </div>
 
-      {/* Node Editor Panel */}
-      {showNodeEditor && selectedNode && (
-        <Card className="absolute top-4 right-4 z-50 w-96 p-4 shadow-lg bg-card max-h-[calc(100%-2rem)] overflow-y-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold">Edit Node</h3>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => setShowNodeEditor(false)}
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <div className="space-y-4">
-            {(selectedNode.data.type === 'message' ||
-              selectedNode.data.type === 'question' ||
-              selectedNode.data.type === 'confirmation') && (
-                <div>
-                  {/* ✅ UPDATED: Show required indicator */}
-                  <div className="flex items-center gap-1 mb-1">
-                    <Label htmlFor="node-message">Message</Label>
-                    <span className="text-red-500 text-sm font-bold">*</span>
-                  </div>
-                  {(!selectedNode.data.message || selectedNode.data.message.trim() === '') && (
-                    <div className="flex items-center gap-1 text-xs text-amber-600 mb-2">
-                      <AlertCircle className="w-3 h-3" />
-                      <span>This field is required</span>
-                    </div>
-                  )}
-                  <Textarea
-                    id="node-message"
-                    value={selectedNode.data.message || ''}
-                    onChange={(e) => updateNode(selectedNode.id, { message: e.target.value })}
-                    placeholder="Enter your message..."
-                    className="mt-1 nodrag"
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  />
-                </div>
-              )}
-
-            {selectedNode.data.type === 'question' && (
-              <div>
-                {/* ✅ UPDATED: Show required indicator */}
-                <div className="flex items-center gap-1 mb-1">
-                  <Label htmlFor="node-variable">Variable Name</Label>
-                  <span className="text-red-500 text-sm font-bold">*</span>
-                </div>
-                {(!selectedNode.data.variable || selectedNode.data.variable.trim() === '') && (
-                  <div className="flex items-center gap-1 text-xs text-amber-600 mb-2">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>This field is required</span>
-                  </div>
-                )}
-                <Input
-                  id="node-variable"
-                  type="text"
-                  value={selectedNode.data.variable || ''}
-                  onChange={(e) => updateNode(selectedNode.id, { variable: e.target.value })}
-                  placeholder="e.g., userName, userEmail"
-                  className="mt-1 nodrag"
-                  onClick={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.stopPropagation()}
-                />
-              </div>
-            )}
-
-            {selectedNode.data.type === 'branch' && (
-              <div>
-                <Label>Options</Label>
-                <div className="space-y-2">
-                  {selectedNode.data.options?.map((opt, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Input
-                        value={opt}
-                        onChange={(e) => {
-                          const newOpts = [...(selectedNode.data.options || [])];
-                          newOpts[i] = e.target.value;
-                          updateNode(selectedNode.id, { options: newOpts });
-                        }}
-                      />
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          updateNode(selectedNode.id, {
-                            options: (selectedNode.data.options || []).filter((_, idx) => idx !== i),
-                          });
-                        }}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <div className="flex justify-center">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        updateNode(selectedNode.id, {
-                          options: [...(selectedNode.data.options || []), ""],
-                        });
-                      }}
-                    >
-                      <Plus className="w-4 h-4 mr-2" /> Add Option
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {selectedNode.data.type === 'redirect' && (
-              <div>
-                <Label htmlFor="node-redirect">Redirect URL</Label>
-                <Input
-                  id="node-redirect"
-                  type="text"
-                  value={selectedNode.data.redirectUrl || ''}
-                  onChange={(e) => updateNode(selectedNode.id, { redirectUrl: e.target.value })}
-                  placeholder="https://example.com"
-                  className="mt-1 nodrag"
-                  onClick={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.stopPropagation()}
-                />
-              </div>
-            )}
-
-            {selectedNode.data.type === 'code' && (
+      {/* Node Editor Side Panel */}
+      <Sheet open={showNodeEditor && !!selectedNode} onOpenChange={(open) => !open && setShowNodeEditor(false)}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l bg-card"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          {selectedNode && (() => {
+            const meta = nodeTypeMeta[selectedNode.data.type] ?? nodeTypeMeta.message;
+            const Icon = meta.icon;
+            return (
               <>
-                <div>
-                  <Label htmlFor="node-code">JavaScript Code</Label>
-                  <Textarea
-                    id="node-code"
-                    value={selectedNode.data.code || ''}
-                    onChange={(e) => updateNode(selectedNode.id, { code: e.target.value })}
-                    placeholder="// Your JavaScript code here"
-                    className="mt-1 nodrag font-mono text-xs h-64"
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Available: axios, variables, getVariable(), setVariable()
-                  </p>
-                </div>
-                <div>
-                  <Label htmlFor="node-timeout">Timeout (ms)</Label>
-                  <Input
-                    id="node-timeout"
-                    type="number"
-                    value={selectedNode.data.timeout || 5000}
-                    onChange={(e) => updateNode(selectedNode.id, { timeout: parseInt(e.target.value) || 5000 })}
-                    placeholder="5000"
-                    className="mt-1 nodrag"
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  />
-                </div>
-                <div className="bg-yellow-50 dark:bg-yellow-950/20 p-3 rounded text-xs space-y-1">
-                  <p className="font-semibold">Example Usage:</p>
-                  <code className="block">const email = getVariable('userEmail');</code>
-                  <code className="block">const res = await axios.get('...');</code>
-                  <code className="block">setVariable('data', res.data);</code>
-                  <code className="block">result = res.data; // output</code>
+                <SheetHeader className="px-6 pt-6 pb-4 space-y-3 text-left">
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${meta.bg}`}>
+                      <Icon className={`h-5 w-5 ${meta.fg}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <SheetTitle className="text-lg flex items-center gap-2">
+                        {meta.label}
+                        <Badge variant="secondary" className="rounded-full text-[10px] font-medium">
+                          #{selectedNode.id}
+                        </Badge>
+                      </SheetTitle>
+                      <SheetDescription className="text-xs">
+                        {meta.description}
+                      </SheetDescription>
+                    </div>
+                  </div>
+                </SheetHeader>
+                <Separator />
+
+                <ScrollArea className="flex-1">
+                  <div className="px-6 py-5 space-y-5">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <Settings2 className="h-3.5 w-3.5" />
+                      Configuration
+                    </div>
+
+                    {(selectedNode.data.type === 'message' ||
+                      selectedNode.data.type === 'question' ||
+                      selectedNode.data.type === 'confirmation') && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="node-message" className="flex items-center gap-1">
+                            Message
+                            <span className="text-destructive">*</span>
+                          </Label>
+                          {(!selectedNode.data.message || selectedNode.data.message.trim() === '') && (
+                            <span className="flex items-center gap-1 text-[11px] text-amber-600">
+                              <AlertCircle className="w-3 h-3" />
+                              Required
+                            </span>
+                          )}
+                        </div>
+                        <Textarea
+                          id="node-message"
+                          value={selectedNode.data.message || ''}
+                          onChange={(e) => updateNode(selectedNode.id, { message: e.target.value })}
+                          placeholder="Enter your message..."
+                          className="nodrag min-h-[110px] resize-none rounded-lg"
+                          onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          This is what your bot will say to the user.
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedNode.data.type === 'question' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="node-variable" className="flex items-center gap-1">
+                            Variable Name
+                            <span className="text-destructive">*</span>
+                          </Label>
+                          {(!selectedNode.data.variable || selectedNode.data.variable.trim() === '') && (
+                            <span className="flex items-center gap-1 text-[11px] text-amber-600">
+                              <AlertCircle className="w-3 h-3" />
+                              Required
+                            </span>
+                          )}
+                        </div>
+                        <Input
+                          id="node-variable"
+                          type="text"
+                          value={selectedNode.data.variable || ''}
+                          onChange={(e) => updateNode(selectedNode.id, { variable: e.target.value })}
+                          placeholder="e.g., userName, userEmail"
+                          className="nodrag rounded-lg font-mono text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          Stores the user's answer for use later in the flow.
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedNode.data.type === 'branch' && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label>Branch Options</Label>
+                          <Badge variant="outline" className="rounded-full text-[10px]">
+                            {(selectedNode.data.options || []).length} option{(selectedNode.data.options || []).length === 1 ? '' : 's'}
+                          </Badge>
+                        </div>
+                        <div className="space-y-2">
+                          {selectedNode.data.options?.map((opt, i) => (
+                            <div
+                              key={i}
+                              className="flex items-center gap-2 rounded-lg border bg-background p-1.5 pl-3 transition-colors hover:border-primary/40"
+                            >
+                              <span className="text-[11px] font-semibold text-muted-foreground w-5">
+                                {i + 1}.
+                              </span>
+                              <Input
+                                value={opt}
+                                placeholder={`Option ${i + 1}`}
+                                onChange={(e) => {
+                                  const newOpts = [...(selectedNode.data.options || [])];
+                                  newOpts[i] = e.target.value;
+                                  updateNode(selectedNode.id, { options: newOpts });
+                                }}
+                                className="border-0 shadow-none focus-visible:ring-0 px-1 h-8"
+                              />
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => {
+                                  updateNode(selectedNode.id, {
+                                    options: (selectedNode.data.options || []).filter((_, idx) => idx !== i),
+                                  });
+                                }}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="w-full rounded-lg border-dashed"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              updateNode(selectedNode.id, {
+                                options: [...(selectedNode.data.options || []), ""],
+                              });
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-2" /> Add option
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedNode.data.type === 'redirect' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="node-redirect">Redirect URL</Label>
+                        <Input
+                          id="node-redirect"
+                          type="text"
+                          value={selectedNode.data.redirectUrl || ''}
+                          onChange={(e) => updateNode(selectedNode.id, { redirectUrl: e.target.value })}
+                          placeholder="https://example.com"
+                          className="nodrag rounded-lg"
+                          onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          The user will be redirected to this URL when this node is reached.
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedNode.data.type === 'code' && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="node-code">JavaScript Code</Label>
+                          <Textarea
+                            id="node-code"
+                            value={selectedNode.data.code || ''}
+                            onChange={(e) => updateNode(selectedNode.id, { code: e.target.value })}
+                            placeholder="// Your JavaScript code here"
+                            className="nodrag font-mono text-xs min-h-[220px] rounded-lg bg-muted/40"
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            Available: <code className="font-mono">axios</code>, <code className="font-mono">variables</code>, <code className="font-mono">getVariable()</code>, <code className="font-mono">setVariable()</code>
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="node-timeout">Timeout (ms)</Label>
+                          <Input
+                            id="node-timeout"
+                            type="number"
+                            value={selectedNode.data.timeout || 5000}
+                            onChange={(e) => updateNode(selectedNode.id, { timeout: parseInt(e.target.value) || 5000 })}
+                            placeholder="5000"
+                            className="nodrag rounded-lg"
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                        <div className="rounded-lg border border-yellow-500/30 bg-yellow-50 dark:bg-yellow-950/20 p-3 text-xs space-y-1.5">
+                          <p className="flex items-center gap-1.5 font-semibold">
+                            <Sparkles className="h-3.5 w-3.5 text-yellow-600" />
+                            Example
+                          </p>
+                          <code className="block font-mono text-[11px]">const email = getVariable('userEmail');</code>
+                          <code className="block font-mono text-[11px]">const res = await axios.get('...');</code>
+                          <code className="block font-mono text-[11px]">setVariable('data', res.data);</code>
+                          <code className="block font-mono text-[11px]">result = res.data; // output</code>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </ScrollArea>
+
+                <Separator />
+                <div className="px-6 py-4 flex items-center justify-between gap-3 bg-muted/30">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteNode(selectedNode.id)}
+                    className="text-destructive hover:bg-destructive hover:text-white"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setShowNodeEditor(false)}
+                  >
+                    Done
+                  </Button>
                 </div>
               </>
-            )}
-
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => deleteNode(selectedNode.id)}
-              className="w-full"
-            >
-              Delete Node
-            </Button>
-          </div>
-        </Card>
-      )}
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
