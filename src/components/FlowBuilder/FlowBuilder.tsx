@@ -20,13 +20,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { X, Plus, MessageSquare, HelpCircle, GitBranch, CheckCircle, Link2, Code, AlertCircle, Trash2, Settings2, Sparkles } from 'lucide-react';
+import * as SheetPrimitive from '@radix-ui/react-dialog';
 import {
   Sheet,
-  SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -510,12 +511,23 @@ export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, 
       </div>
 
       {/* Node Editor Side Panel */}
-      <Sheet open={showNodeEditor && !!selectedNode} onOpenChange={(open) => !open && setShowNodeEditor(false)}>
-        <SheetContent
-          side="right"
-          className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l bg-card"
-          onInteractOutside={(e) => e.preventDefault()}
-        >
+      <Sheet
+        open={showNodeEditor && !!selectedNode}
+        onOpenChange={(open) => !open && setShowNodeEditor(false)}
+        modal={false}
+      >
+        <SheetPrimitive.Portal>
+          <SheetPrimitive.Content
+            className={cn(
+              "fixed inset-y-0 right-0 z-[10000] h-full w-full sm:max-w-md border-l bg-card shadow-2xl",
+              "p-0 flex flex-col gap-0",
+              "data-[state=open]:animate-in data-[state=closed]:animate-out",
+              "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+              "data-[state=closed]:duration-300 data-[state=open]:duration-500"
+            )}
+            onInteractOutside={(e) => e.preventDefault()}
+            onPointerDownOutside={(e) => e.preventDefault()}
+          >
           {selectedNode && (() => {
             const meta = nodeTypeMeta[selectedNode.data.type] ?? nodeTypeMeta.message;
             const Icon = meta.icon;
@@ -757,7 +769,8 @@ export function FlowBuilder({ botId, onSave, onFlowChange, isMaximized = false, 
               </>
             );
           })()}
-        </SheetContent>
+          </SheetPrimitive.Content>
+        </SheetPrimitive.Portal>
       </Sheet>
     </div>
   );
