@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Target, MessageCircle, Palette, Users, Hash, Settings } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface PersonaSectionProps {
   botConfig: any;
@@ -11,6 +11,10 @@ interface PersonaSectionProps {
 }
 
 export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps) => {
+  const [customPurpose, setCustomPurpose] = useState("");
+  const [customTone, setCustomTone] = useState("");
+  const [customStyle, setCustomStyle] = useState("");
+  const [customAudience, setCustomAudience] = useState("");
 
   useEffect(() => {
     if (!botConfig.primaryPurpose) updateConfig("primaryPurpose", "customer-support");
@@ -18,6 +22,78 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
     if (!botConfig.responseStyle) updateConfig("responseStyle", "concise");
     if (!botConfig.targetAudience) updateConfig("targetAudience", "customers");
   }, []);
+
+  // Initialize custom values if they exist
+  useEffect(() => {
+    if (botConfig.primaryPurpose && !["customer-support", "sales-assistant", "educational-tutor", "personal-assistant", "technical-advisor", "creative-helper", "data-analyst", "content-creator"].includes(botConfig.primaryPurpose)) {
+      setCustomPurpose(botConfig.primaryPurpose);
+    }
+    if (botConfig.conversationalTone && !["professional", "friendly", "casual", "formal", "enthusiastic", "empathetic", "authoritative", "humorous"].includes(botConfig.conversationalTone)) {
+      setCustomTone(botConfig.conversationalTone);
+    }
+    if (botConfig.responseStyle && !["concise", "detailed", "conversational", "bullet-points", "storytelling", "technical"].includes(botConfig.responseStyle)) {
+      setCustomStyle(botConfig.responseStyle);
+    }
+    if (botConfig.targetAudience && !["general-public", "business-professionals", "students", "developers", "researchers", "customers", "children", "seniors"].includes(botConfig.targetAudience)) {
+      setCustomAudience(botConfig.targetAudience);
+    }
+  }, [botConfig]);
+
+  const handlePurposeChange = (value: string) => {
+    if (value === "others") {
+      updateConfig("primaryPurpose", customPurpose || "");
+    } else {
+      updateConfig("primaryPurpose", value);
+      setCustomPurpose("");
+    }
+  };
+
+  const handleToneChange = (value: string) => {
+    if (value === "others") {
+      updateConfig("conversationalTone", customTone || "");
+    } else {
+      updateConfig("conversationalTone", value);
+      setCustomTone("");
+    }
+  };
+
+  const handleStyleChange = (value: string) => {
+    if (value === "others") {
+      updateConfig("responseStyle", customStyle || "");
+    } else {
+      updateConfig("responseStyle", value);
+      setCustomStyle("");
+    }
+  };
+
+  const handleAudienceChange = (value: string) => {
+    if (value === "others") {
+      updateConfig("targetAudience", customAudience || "");
+    } else {
+      updateConfig("targetAudience", value);
+      setCustomAudience("");
+    }
+  };
+
+  const handleCustomPurposeChange = (value: string) => {
+    setCustomPurpose(value);
+    updateConfig("primaryPurpose", value);
+  };
+
+  const handleCustomToneChange = (value: string) => {
+    setCustomTone(value);
+    updateConfig("conversationalTone", value);
+  };
+
+  const handleCustomStyleChange = (value: string) => {
+    setCustomStyle(value);
+    updateConfig("responseStyle", value);
+  };
+
+  const handleCustomAudienceChange = (value: string) => {
+    setCustomAudience(value);
+    updateConfig("targetAudience", value);
+  };
 
   return (
     <div className="space-y-6">
@@ -29,8 +105,12 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
             Primary Purpose
           </Label>
           <Select
-            value={botConfig.primaryPurpose || "customer-support"}
-            onValueChange={(value) => updateConfig("primaryPurpose", value)}
+            value={
+              ["customer-support", "sales-assistant", "educational-tutor", "personal-assistant", "technical-advisor", "creative-helper", "data-analyst", "content-creator"].includes(botConfig.primaryPurpose || "customer-support")
+                ? (botConfig.primaryPurpose || "customer-support")
+                : "others"
+            }
+            onValueChange={handlePurposeChange}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select primary purpose" />
@@ -44,8 +124,17 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
               <SelectItem value="creative-helper">Creative Helper</SelectItem>
               <SelectItem value="data-analyst">Data Analyst</SelectItem>
               <SelectItem value="content-creator">Content Creator</SelectItem>
+              <SelectItem value="others">Others</SelectItem>
             </SelectContent>
           </Select>
+          {(!["customer-support", "sales-assistant", "educational-tutor", "personal-assistant", "technical-advisor", "creative-helper", "data-analyst", "content-creator"].includes(botConfig.primaryPurpose || "customer-support")) && (
+            <Input
+              placeholder="Enter custom purpose..."
+              value={customPurpose}
+              onChange={(e) => handleCustomPurposeChange(e.target.value)}
+              className="h-9 mt-2"
+            />
+          )}
         </div>
 
         {/* Conversational Tone */}
@@ -55,8 +144,12 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
             Conversational Tone
           </Label>
           <Select
-            value={botConfig.conversationalTone || "professional"}
-            onValueChange={(value) => updateConfig("conversationalTone", value)}
+            value={
+              ["professional", "friendly", "casual", "formal", "enthusiastic", "empathetic", "authoritative", "humorous"].includes(botConfig.conversationalTone || "professional")
+                ? (botConfig.conversationalTone || "professional")
+                : "others"
+            }
+            onValueChange={handleToneChange}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select tone" />
@@ -70,8 +163,17 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
               <SelectItem value="empathetic">Empathetic</SelectItem>
               <SelectItem value="authoritative">Authoritative</SelectItem>
               <SelectItem value="humorous">Humorous</SelectItem>
+              <SelectItem value="others">Others</SelectItem>
             </SelectContent>
           </Select>
+          {(!["professional", "friendly", "casual", "formal", "enthusiastic", "empathetic", "authoritative", "humorous"].includes(botConfig.conversationalTone || "professional")) && (
+            <Input
+              placeholder="Enter custom tone..."
+              value={customTone}
+              onChange={(e) => handleCustomToneChange(e.target.value)}
+              className="h-9 mt-2"
+            />
+          )}
         </div>
 
         {/* Response Style */}
@@ -81,8 +183,12 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
             Response Style
           </Label>
           <Select
-            value={botConfig.responseStyle || "concise"}
-            onValueChange={(value) => updateConfig("responseStyle", value)}
+            value={
+              ["concise", "detailed", "conversational", "bullet-points", "storytelling", "technical"].includes(botConfig.responseStyle || "concise")
+                ? (botConfig.responseStyle || "concise")
+                : "others"
+            }
+            onValueChange={handleStyleChange}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select response style" />
@@ -94,8 +200,17 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
               <SelectItem value="bullet-points">Structured & Bullet Points</SelectItem>
               <SelectItem value="storytelling">Storytelling & Examples</SelectItem>
               <SelectItem value="technical">Technical & Precise</SelectItem>
+              <SelectItem value="others">Others</SelectItem>
             </SelectContent>
           </Select>
+          {(!["concise", "detailed", "conversational", "bullet-points", "storytelling", "technical"].includes(botConfig.responseStyle || "concise")) && (
+            <Input
+              placeholder="Enter custom style..."
+              value={customStyle}
+              onChange={(e) => handleCustomStyleChange(e.target.value)}
+              className="h-9 mt-2"
+            />
+          )}
         </div>
 
         {/* Target Audience */}
@@ -105,8 +220,12 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
             Target Audience
           </Label>
           <Select
-            value={botConfig.targetAudience || "customers"}
-            onValueChange={(value) => updateConfig("targetAudience", value)}
+            value={
+              ["general-public", "business-professionals", "students", "developers", "researchers", "customers", "children", "seniors"].includes(botConfig.targetAudience || "customers")
+                ? (botConfig.targetAudience || "customers")
+                : "others"
+            }
+            onValueChange={handleAudienceChange}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select target audience" />
@@ -120,8 +239,17 @@ export const PersonaSection = ({ botConfig, updateConfig }: PersonaSectionProps)
               <SelectItem value="customers">Customers</SelectItem>
               <SelectItem value="children">Children</SelectItem>
               <SelectItem value="seniors">Seniors</SelectItem>
+              <SelectItem value="others">Others</SelectItem>
             </SelectContent>
           </Select>
+          {(!["general-public", "business-professionals", "students", "developers", "researchers", "customers", "children", "seniors"].includes(botConfig.targetAudience || "customers")) && (
+            <Input
+              placeholder="Enter custom audience..."
+              value={customAudience}
+              onChange={(e) => handleCustomAudienceChange(e.target.value)}
+              className="h-9 mt-2"
+            />
+          )}
         </div>
       </div>
 
