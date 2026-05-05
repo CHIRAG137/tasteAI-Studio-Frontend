@@ -7,6 +7,7 @@ import { Node, Edge } from "@xyflow/react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders, isAuthenticated } from "@/utils/auth";
 import { Navbar } from "@/components/Navbar";
+import { PageHeader } from "@/components/PageHeader";
 import { motion } from "framer-motion";
 import { useBotCreation } from "@/contexts/BotCreationContext";
 
