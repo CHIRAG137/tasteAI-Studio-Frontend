@@ -236,38 +236,14 @@ const CreateBot = () => {
   return (
     <>
       <div className="h-screen flex flex-col bg-background overflow-hidden">
-        {/* Top bar with back button */}
-        <div className="border-b border-border bg-card/50 backdrop-blur-sm flex-shrink-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="text-lg font-bold text-foreground hover:text-primary transition-colors"
-            >
-              healthAI
-            </button>
-            <div className="h-5 w-px bg-border" />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/")}
-              className="gap-2 text-muted-foreground hover:!text-foreground hover:bg-muted"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Home
-            </Button>
-            <div className="h-5 w-px bg-border" />
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Bot className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">Create New Bot</h1>
-                <p className="text-xs text-muted-foreground">Configure your AI chatbot step by step</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          backTo="/"
+          backLabel="Back to Home"
+          icon={Bot}
+          title="Create New Bot"
+          subtitle="Configure your AI chatbot step by step"
+          sticky={false}
+        />
 
         {/* Wizard */}
         <motion.div
