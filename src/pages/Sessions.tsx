@@ -465,6 +465,10 @@ export default function Sessions() {
           messages: mapHistoryToMessages(s.history),
         };
         setSelectedSession(mappedSession);
+        // Load cached summary from database if available
+        if (s.summary) {
+          setSummary(s.summary);
+        }
       }
     } catch (error) {
       console.error("Error fetching session:", error);
@@ -476,6 +480,12 @@ export default function Sessions() {
   const summarizeSession = async () => {
     if (!selectedSession || selectedSession.messages.length === 0) return;
 
+    // If summary already exists from database, just show it
+    if (summary) {
+      setShowSummary(true);
+      return;
+    }
+
     setSummarizing(true);
     setSummarizerError("");
     setSummary("");
@@ -485,6 +495,7 @@ export default function Sessions() {
         .map(msg => `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`)
         .join("\n\n");
 
+      let result = "";
       if (summarizerAvailable) {
         // Use Chrome built-in API
         const summarizer = await (self as any).Summarizer.create({
@@ -493,11 +504,10 @@ export default function Sessions() {
           length: "medium",
         });
 
-        const result = await summarizer.summarize(conversationText, {
+        result = await summarizer.summarize(conversationText, {
           context: "Provide a concise summary of this chat in just 4 points max.",
         });
 
-        setSummary(result);
         summarizer.destroy();
       } else {
         // Fallback to Gemini API
@@ -510,17 +520,20 @@ export default function Sessions() {
           body: JSON.stringify({
             messages: selectedSession.messages,
             botName,
+            sessionId: selectedSession.id,
+            botId,
           }),
         });
 
         const data = await res.json();
         if (data.status === "success") {
-          setSummary(data.result.summary);
+          result = data.result.summary;
         } else {
           throw new Error(data.message || "Gemini summarization failed");
         }
       }
 
+      setSummary(result);
       setShowSummary(true);
     } catch (error: any) {
       console.error("Error summarizing session:", error);
