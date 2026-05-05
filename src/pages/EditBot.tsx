@@ -291,9 +291,7 @@ const EditBot = () => {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <Bot className="w-10 h-10 text-primary animate-pulse" />
-      </div>
+      <BrandLoader label="Loading bot configuration" />
     );
   }
 

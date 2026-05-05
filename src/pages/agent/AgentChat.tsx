@@ -752,9 +752,7 @@ const AgentChat = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
+      <BrandLoader label="Loading conversation" />
     );
   }
 

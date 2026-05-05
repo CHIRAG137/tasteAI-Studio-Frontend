@@ -206,9 +206,7 @@ export default function Workflows() {
         {/* Workflow List */}
         <div className="space-y-3">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
+            <BrandLoader fullScreen={false} label="Loading workflows" />
           ) : hasError ? (
             <Card className="border-border/50">
               <CardContent className="p-6 text-center text-sm text-destructive">
