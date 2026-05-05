@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getAgentAnalytics, type AgentStats, type AnalyticsSummary } from "@/api/analytics";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
+import { PageHeader } from "@/components/PageHeader";
 import { getAuthHeaders } from "@/utils/auth";
 
 const BotAnalytics = () => {
