@@ -323,38 +323,16 @@ export default function WorkflowBuilder() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-border bg-background/95 backdrop-blur-sm px-4 py-3 z-50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="text-lg font-bold text-foreground hover:text-primary transition-colors"
-            >
-              healthAI
-            </button>
-            <Separator orientation="vertical" className="h-6" />
-            <Button variant="ghost" size="sm" onClick={() => navigate("/workflows")} className="gap-2 text-muted-foreground hover:!text-foreground hover:bg-muted">
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <Separator orientation="vertical" className="h-6" />
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <GitBranch className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">
-                  Visual Flow Builder
-                </h1>
-                <p className="text-xs text-muted-foreground">
-                  Drag nodes from the sidebar to build your workflow
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
+      <PageHeader
+        backTo="/workflows"
+        backLabel="Back"
+        icon={GitBranch}
+        title="Visual Flow Builder"
+        subtitle="Drag nodes from the sidebar to build your workflow"
+        container="full"
+        sticky={false}
+        actions={
+          <>
             <Button variant="outline" size="sm" className="gap-2">
               <Play className="w-4 h-4" />
               Test
@@ -363,9 +341,9 @@ export default function WorkflowBuilder() {
               <Save className="w-4 h-4" />
               Save
             </Button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Main area */}
       <div className="flex-1 flex min-h-0">
