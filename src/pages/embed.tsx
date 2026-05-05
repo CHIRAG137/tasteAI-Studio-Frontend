@@ -43,8 +43,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { EmbedCustomization } from "@/components/EmbedCustomizer";
 import { useToast } from "@/components/ui/use-toast";
-import { VisitorAuth0Gate } from "@/components/visitor/VisitorAuth0Gate";
-import { visitorHeaders, getVisitorIdentity } from "@/utils/visitorIdentity";
+
 
 interface Message {
   id: string;
@@ -76,8 +75,8 @@ export default function EmbedChat() {
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const getVisitorHdrs = (): Record<string, string> =>
-    botData?.require_visitor_auth0_identity && botId ? visitorHeaders(botId) : {};
+  // const getVisitorHdrs = (): Record<string, string> => ({});
+  // disabled: botData?.require_visitor_auth0_identity && botId ? visitorHeaders(botId) :
 
   const flowStartedRef = useRef(false);
 
@@ -183,7 +182,6 @@ export default function EmbedChat() {
       try {
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-messages?flowSessionId=${sessionId}`,
-          { headers: { ...getVisitorHdrs() } }
         );
         const data = await response.json();
 
@@ -250,7 +248,7 @@ export default function EmbedChat() {
     try {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/request`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+        headers: { 'Content-Type': 'application/json'},
         body: JSON.stringify({ botId: botData._id, flowSessionId: sessionId, userQuestion, userIpAddress: '', userAgent: navigator.userAgent }),
       });
       const data = await response.json();
@@ -428,7 +426,7 @@ export default function EmbedChat() {
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+            headers: { "Content-Type": "application/json"},
             body: JSON.stringify({
               message: content,
               messageType: messageType || "system",
@@ -457,7 +455,7 @@ export default function EmbedChat() {
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+        headers: { 'Content-Type': 'application/json'},
         body: JSON.stringify({ flowSessionId: sessionId, rating: ratingValue, feedback: ratingFeedback }),
       });
       const data = await res.json();
@@ -509,7 +507,7 @@ export default function EmbedChat() {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+          headers: { "Content-Type": "application/json"},
           body: JSON.stringify({
             question,
             botId: botData._id,
@@ -553,7 +551,7 @@ export default function EmbedChat() {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-message`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+          headers: { 'Content-Type': 'application/json'},
           body: JSON.stringify({ message, flowSessionId: sessionId }),
         }
       );
@@ -569,7 +567,6 @@ export default function EmbedChat() {
     try {
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rating?flowSessionId=${sessionId}`,
-        { headers: { ...getVisitorHdrs() } }
       );
       const data = await res.json();
       if (res.ok && data.userRating) {
@@ -596,7 +593,7 @@ export default function EmbedChat() {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-resolve`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+          headers: { 'Content-Type': 'application/json'},
           body: JSON.stringify({ flowSessionId: sessionId }),
         }
       );
@@ -624,7 +621,7 @@ export default function EmbedChat() {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-reopen`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+          headers: { 'Content-Type': 'application/json'},
           body: JSON.stringify({ flowSessionId: sessionId }),
         }
       );
@@ -828,17 +825,10 @@ export default function EmbedChat() {
     flowStartedRef.current = false;
     const initFlow = async () => {
       if (flowStartedRef.current) return;
-      if (
-        botData.require_visitor_auth0_identity &&
-        botId &&
-        !getVisitorIdentity(botId)?.sub
-      ) {
-        return;
-      }
       try {
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/start/${botData._id}`,
-          { method: "POST", headers: { ...getVisitorHdrs() } }
+          { method: "POST"}
         );
         const data = await res.json();
 
@@ -958,7 +948,7 @@ export default function EmbedChat() {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+          headers: { "Content-Type": "application/json"},
           body: JSON.stringify({
             question,
             botId: botData._id,
@@ -1059,7 +1049,7 @@ export default function EmbedChat() {
         `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/respond`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+          headers: { "Content-Type": "application/json"},
           body: JSON.stringify(requestBody),
         }
       );
@@ -1272,10 +1262,6 @@ export default function EmbedChat() {
   };
 
   return (
-    <VisitorAuth0Gate
-      botId={botId || ""}
-      enabled={!!botData?.require_visitor_auth0_identity && !isPreview && !!botId}
-    >
     <div
       className={`flex flex-col h-screen max-h-screen border border-border/20 transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-chat-container' : ''
         }`}
@@ -1874,6 +1860,5 @@ export default function EmbedChat() {
         </div>
       )}
     </div>
-    </VisitorAuth0Gate>
   );
 }

@@ -35,7 +35,6 @@ interface BotConfig {
   videoBotImagePublicId?: string;
   humanHandoffEnabled?: boolean;
   humanHandoffEmails?: string;
-  requireVisitorAuth0Identity?: boolean;
   customLLMProvider?: string | null;
   customApiKey?: string;
   customModel?: string;
@@ -86,7 +85,6 @@ const CreateBot = () => {
     videoBotImagePublicId: "",
     humanHandoffEnabled: false,
     humanHandoffEmails: "",
-    requireVisitorAuth0Identity: false,
     customLLMProvider: null,
     customApiKey: "",
     customModel: "",
@@ -166,7 +164,7 @@ const CreateBot = () => {
         video_bot_image_public_id: botConfig.videoBotImagePublicId || "",
         human_handoff_enabled: (botConfig.humanHandoffEnabled || false).toString(),
         human_handoff_emails: botConfig.humanHandoffEmails || "",
-        require_visitor_auth0_identity: (botConfig.requireVisitorAuth0Identity || false).toString(),
+
         custom_llm_provider: botConfig.customLLMProvider || "",
         custom_api_key: botConfig.customApiKey || "",
         custom_model: botConfig.customModel || "",
@@ -209,7 +207,7 @@ const CreateBot = () => {
         videoBotImageUrl: createdBot.video_bot_image_url || botConfig.videoBotImageUrl,
         videoBotImagePublicId: createdBot.video_bot_image_public_id || botConfig.videoBotImagePublicId,
         humanHandoffEnabled: createdBot.human_handoff_enabled || botConfig.humanHandoffEnabled,
-        requireVisitorAuth0Identity: !!createdBot.require_visitor_auth0_identity || botConfig.requireVisitorAuth0Identity,
+
         createdAt,
         updatedAt: createdBot.updatedAt || createdBot.updated_at || createdAt,
       };

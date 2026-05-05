@@ -97,7 +97,7 @@ const MyBots = () => {
         videoBotImageUrl: bot.video_bot_image_url,
         videoBotImagePublicId: bot.video_bot_image_public_id,
         humanHandoffEnabled: bot.human_handoff_enabled,
-        requireVisitorAuth0Identity: !!bot.require_visitor_auth0_identity,
+
         createdAt: bot.createdAt || bot.created_at,
         updatedAt: bot.updatedAt || bot.updated_at,
       }));

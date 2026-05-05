@@ -13,8 +13,7 @@ import {
 import { Send, Bot, User, X, Mic, MicOff, Loader2, Video, Phone, PhoneOff, Volume2, VolumeX, Headphones, Clock, ArrowDown } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { VisitorAuth0Gate } from "@/components/visitor/VisitorAuth0Gate";
-import { visitorHeaders, getVisitorIdentity } from "@/utils/visitorIdentity";
+
 
 interface Message {
   id: string;
@@ -42,15 +41,13 @@ interface ChatBotProps {
     primaryPurpose: string;
     conversationalTone: string;
     humanHandoffEnabled?: boolean;
-    /** When true, visitors must sign in with Auth0 before chat (preview/test). */
-    requireVisitorAuth0Identity?: boolean;
   };
   onClose: () => void;
 }
 
 export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
-  const getVisitorHdrs = (): Record<string, string> =>
-    bot.requireVisitorAuth0Identity ? visitorHeaders(bot.id) : {};
+  // const getVisitorHdrs = (): Record<string, string> => ({});
+  // disabled: bot.requireVisitorAuth0Identity ? visitorHeaders(bot.id) :
 
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -148,7 +145,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+            headers: { "Content-Type": "application/json"},
             body: JSON.stringify({
               message,
               messageType: "handoff_unavailable",
@@ -170,7 +167,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+            headers: { "Content-Type": "application/json"},
             body: JSON.stringify({
               message,
               messageType: "handoff_duplicate_request",
@@ -194,7 +191,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+          headers: { "Content-Type": "application/json"},
           body: JSON.stringify({
             message: connectingMessage,
             messageType: "handoff_connecting",
@@ -210,7 +207,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/request`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+          headers: { "Content-Type": "application/json"},
           body: JSON.stringify({
             botId: bot.id,
             flowSessionId: sessionId,
@@ -238,7 +235,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
             {
               method: "POST",
-              headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+              headers: { "Content-Type": "application/json"},
               body: JSON.stringify({
                 message: agentStatusMessage,
                 messageType: "handoff_agent_assigned",
@@ -260,7 +257,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
               {
                 method: "POST",
-                headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+                headers: { "Content-Type": "application/json"},
                 body: JSON.stringify({
                   message: offlineMessage,
                   messageType: "handoff_agent_offline",
@@ -287,7 +284,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+            headers: { "Content-Type": "application/json"},
             body: JSON.stringify({
               message: errorMessage,
               messageType: "handoff_error",
@@ -316,7 +313,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-message`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+          headers: { "Content-Type": "application/json"},
           body: JSON.stringify({ 
             message, 
             flowSessionId: sessionId 
@@ -341,7 +338,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-resolve`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+          headers: { 'Content-Type': 'application/json'},
           body: JSON.stringify({ flowSessionId: sessionId }),
         }
       );
@@ -371,7 +368,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-reopen`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+          headers: { 'Content-Type': 'application/json'},
           body: JSON.stringify({ flowSessionId: sessionId }),
         }
       );
@@ -399,7 +396,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     try {
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rating?flowSessionId=${sessionId}`,
-        { headers: { ...getVisitorHdrs() } }
       );
       const data = await res.json();
       if (res.ok && data.result) {
@@ -443,7 +439,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+        headers: { 'Content-Type': 'application/json'},
         body: JSON.stringify({ flowSessionId: sessionId, rating: ratingValue, feedback: ratingFeedback }),
       });
       const data = await res.json();
@@ -468,7 +464,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       try {
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-messages?flowSessionId=${sessionId}`,
-          { headers: { ...getVisitorHdrs() } }
         );
         const data = await response.json();
 
@@ -507,7 +502,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
                 {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+                  headers: { 'Content-Type': 'application/json'},
                   body: JSON.stringify({
                     message: agentMsg,
                     messageType: 'handoff_accepted',
@@ -534,7 +529,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
                 {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+                  headers: { 'Content-Type': 'application/json'},
                   body: JSON.stringify({
                     message: resolvedMsg,
                     messageType: 'handoff_resolved',
@@ -770,7 +765,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+          headers: { "Content-Type": "application/json"},
           body: JSON.stringify({
             question,
             botId: bot.id,
@@ -892,16 +887,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     flowStartedRef.current = false;
     const initFlow = async () => {
       if (flowStartedRef.current) return;
-      if (
-        bot.requireVisitorAuth0Identity &&
-        !getVisitorIdentity(bot.id)?.sub
-      ) {
-        return;
-      }
       try {
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/start/${bot.id}`,
-          { method: "POST", headers: { ...getVisitorHdrs() } }
+          { method: "POST" }
         );
         const data = await res.json();
 
@@ -982,7 +971,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     };
     window.addEventListener("visitor-auth-ready", onVisitorReady);
     return () => window.removeEventListener("visitor-auth-ready", onVisitorReady);
-  }, [bot.id, bot.requireVisitorAuth0Identity]);
+  }, [bot.id]);
 
   const handleAskQuestion = async () => {
     const question = inputMessage.trim();
@@ -1024,7 +1013,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+          headers: { "Content-Type": "application/json"},
           body: JSON.stringify({
             question,
             botId: bot.id,
@@ -1096,7 +1085,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/respond`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+          headers: { "Content-Type": "application/json"},
           body: JSON.stringify(requestBody),
         }
       );
@@ -1257,7 +1246,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={`${bot.isVideoBot ? (showVideoAvatar ? 'max-w-6xl' : 'max-w-2xl') : 'max-w-2xl'} h-[600px] p-0 gap-0 flex flex-col bg-background/95 backdrop-blur-sm border shadow-2xl rounded-xl overflow-hidden transition-all duration-300`}>
-        <VisitorAuth0Gate botId={bot.id} enabled={!!bot.requireVisitorAuth0Identity}>
+        {/* Auth0 visitor enforcement disabled */}
         <DialogHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0 space-y-0">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -2142,7 +2131,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             </div>
           </div>
         )}
-        </VisitorAuth0Gate>
+        {/* End Auth0 visitor enforcement disabled */}
       </DialogContent>
     </Dialog>
   );

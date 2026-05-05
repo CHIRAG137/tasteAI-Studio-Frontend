@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Bot, User, Send, Mic, MicOff, Video, Loader2, PhoneOff, Volume2, VolumeX, Headphones, Clock, ArrowDown } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { VisitorAuth0Gate } from "@/components/visitor/VisitorAuth0Gate";
-import { visitorHeaders, getVisitorIdentity } from "@/utils/visitorIdentity";
+
 import { useAuth0 } from "@auth0/auth0-react";
 
 interface Message {
@@ -32,10 +31,10 @@ export const PublicBotChatPage = () => {
   const [bot, setBot] = useState<any>(null);
   const [forceVisitorAuth, setForceVisitorAuth] = useState(false);
   const flowStartedRef = useRef(false);
-  const getVisitorHdrs = (): Record<string, string> =>
-    (bot?.require_visitor_auth0_identity || forceVisitorAuth) && botId
-      ? visitorHeaders(botId)
-      : {};
+  // const getVisitorHdrs = (): Record<string, string> => ({});
+  // disabled: (bot?.require_visitor_auth0_identity || forceVisitorAuth) && botId
+  //   ? visitorHeaders(botId) :
+      // : {};
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -294,7 +293,7 @@ export const PublicBotChatPage = () => {
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+            headers: { "Content-Type": "application/json"},
             body: JSON.stringify({
               message: content,
               messageType: messageType || "system",
@@ -314,7 +313,6 @@ export const PublicBotChatPage = () => {
     try {
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rating?flowSessionId=${sessionId}`,
-        { headers: { ...getVisitorHdrs() } }
       );
       const data = await res.json();
       if (res.ok && data.userRating) {
@@ -349,7 +347,7 @@ export const PublicBotChatPage = () => {
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+        headers: { 'Content-Type': 'application/json'},
         body: JSON.stringify({ flowSessionId: sessionId, rating: ratingValue, feedback: ratingFeedback }),
       });
       const data = await res.json();
@@ -401,7 +399,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+          headers: { "Content-Type": "application/json"},
           body: JSON.stringify({
             question,
             botId: bot._id,
@@ -445,7 +443,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-message`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+          headers: { 'Content-Type': 'application/json'},
           body: JSON.stringify({ message, flowSessionId: sessionId }),
         }
       );
@@ -462,7 +460,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-resolve`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+          headers: { 'Content-Type': 'application/json'},
           body: JSON.stringify({ flowSessionId: sessionId }),
         }
       );
@@ -490,7 +488,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-reopen`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+          headers: { 'Content-Type': 'application/json'},
           body: JSON.stringify({ flowSessionId: sessionId }),
         }
       );
@@ -529,7 +527,7 @@ export const PublicBotChatPage = () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/request`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getVisitorHdrs() },
+        headers: { 'Content-Type': 'application/json'},
         body: JSON.stringify({ botId: bot._id, flowSessionId: sessionId, userQuestion, userIpAddress: '', userAgent: navigator.userAgent }),
       });
       const data = await response.json();
@@ -649,31 +647,30 @@ export const PublicBotChatPage = () => {
       try {
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`,
-          { headers: { ...getVisitorHdrs() } }
         );
         const data = await res.json();
 
-        if (!res.ok) {
-          // If backend requires Auth0 visitor token, trigger visitor auth flow.
-          if (
-            res.status === 401 &&
-            (data?.message?.toLowerCase?.().includes("auth0") ||
-              data?.result?.code === "auth0_access_token_required" ||
-              data?.error === "auth0_access_token_required")
-          ) {
-            setForceVisitorAuth(true);
-            // If we already have identity, retry will happen on visitor-auth-ready.
-            if (!getVisitorIdentity(botId!)?.sub) {
-              await loginWithRedirect({
-                appState: {
-                  returnTo: `${window.location.pathname}${window.location.search}`,
-                },
-              });
-            }
-            return;
-          }
-          throw new Error(data?.message || "Failed to load bot");
-        }
+        // if (!res.ok) {
+        //   // If backend requires Auth0 visitor token, trigger visitor auth flow.
+        //   if (
+        //     res.status === 401 &&
+        //     (data?.message?.toLowerCase?.().includes("auth0") ||
+        //       data?.result?.code === "auth0_access_token_required" ||
+        //       data?.error === "auth0_access_token_required")
+        //   ) {
+        //     setForceVisitorAuth(true);
+        //     // If we already have identity, retry will happen on visitor-auth-ready.
+        //     if (!getVisitorIdentity(botId!)?.sub) {
+        //       await loginWithRedirect({
+        //         appState: {
+        //           returnTo: `${window.location.pathname}${window.location.search}`,
+        //         },
+        //       });
+        //     }
+        //     return;
+        //   }
+        //   throw new Error(data?.message || "Failed to load bot");
+        // }
 
         setBot(data.result);
       } catch (err) {
@@ -704,13 +701,10 @@ export const PublicBotChatPage = () => {
     flowStartedRef.current = false;
     const initFlow = async () => {
       if (flowStartedRef.current) return;
-      if (bot.require_visitor_auth0_identity && botId && !getVisitorIdentity(botId)?.sub) {
-        return;
-      }
       try {
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/start/${bot._id}`,
-          { method: "POST", headers: { ...getVisitorHdrs() } }
+          { method: "POST" }
         );
         const data = await res.json();
 
@@ -799,7 +793,6 @@ export const PublicBotChatPage = () => {
       try {
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-messages?flowSessionId=${sessionId}`,
-          { headers: { ...getVisitorHdrs() } }
         );
         const data = await response.json();
 
@@ -885,7 +878,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+          headers: { "Content-Type": "application/json"},
           body: JSON.stringify({
             question,
             botId: bot._id,
@@ -971,7 +964,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/respond`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getVisitorHdrs() },
+          headers: { "Content-Type": "application/json"},
           body: JSON.stringify(requestBody),
         }
       );
@@ -1141,10 +1134,6 @@ export const PublicBotChatPage = () => {
   }
 
   return (
-    <VisitorAuth0Gate
-      botId={botId!}
-      enabled={!!bot.require_visitor_auth0_identity || forceVisitorAuth}
-    >
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <Card className={`w-full ${bot.is_video_bot ? (showVideoAvatar ? 'max-w-6xl' : 'max-w-2xl') : 'max-w-2xl'} h-[600px] flex flex-col shadow-2xl rounded-xl overflow-hidden transition-all duration-300`}>
         {/* Fixed Header */}
@@ -2057,6 +2046,5 @@ export const PublicBotChatPage = () => {
         </div>
       )}
     </div>
-    </VisitorAuth0Gate>
   );
 };

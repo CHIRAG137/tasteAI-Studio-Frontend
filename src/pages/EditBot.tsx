@@ -44,7 +44,6 @@ interface BotConfig {
   videoBotImagePublicId?: string;
   humanHandoffEnabled?: boolean;
   humanHandoffEmails?: string;
-  requireVisitorAuth0Identity?: boolean;
   customLLMProvider?: string | null;
   customApiKey?: string;
   customModel?: string;
@@ -129,7 +128,6 @@ const EditBot = () => {
           videoBotImagePublicId: bot.video_bot_image_public_id || "",
           humanHandoffEnabled: bot.human_handoff_enabled || false,
           humanHandoffEmails: bot.human_handoff_emails || "",
-          requireVisitorAuth0Identity: !!bot.require_visitor_auth0_identity,
           customLLMProvider: bot.custom_llm_provider || null,
           customApiKey: "",
           customModel: bot.custom_model || "",
@@ -221,10 +219,6 @@ const EditBot = () => {
       formData.append("video_bot_image_public_id", botConfig.videoBotImagePublicId || "");
       formData.append("human_handoff_enabled", (botConfig.humanHandoffEnabled || false).toString());
       formData.append("human_handoff_emails", botConfig.humanHandoffEmails || "");
-      formData.append(
-        "require_visitor_auth0_identity",
-        (botConfig.requireVisitorAuth0Identity || false).toString()
-      );
       formData.append("custom_llm_provider", botConfig.customLLMProvider || "");
       formData.append("custom_api_key", botConfig.customApiKey || "");
       formData.append("custom_model", botConfig.customModel || "");
@@ -271,7 +265,7 @@ const EditBot = () => {
         videoBotImageUrl: updatedBot.video_bot_image_url || botConfig.videoBotImageUrl,
         videoBotImagePublicId: updatedBot.video_bot_image_public_id || botConfig.videoBotImagePublicId,
         humanHandoffEnabled: updatedBot.human_handoff_enabled || botConfig.humanHandoffEnabled,
-        requireVisitorAuth0Identity: !!updatedBot.require_visitor_auth0_identity || botConfig.requireVisitorAuth0Identity,
+
         createdAt: updatedBot.createdAt || updatedBot.created_at || new Date().toISOString(),
         updatedAt: updatedBot.updatedAt || updatedBot.updated_at || new Date().toISOString(),
       };

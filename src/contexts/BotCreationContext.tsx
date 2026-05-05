@@ -21,7 +21,6 @@ export interface NewlyCreatedBot {
   videoBotImageUrl?: string;
   videoBotImagePublicId?: string;
   humanHandoffEnabled: boolean;
-  requireVisitorAuth0Identity: boolean;
   [key: string]: any;
 }
 
