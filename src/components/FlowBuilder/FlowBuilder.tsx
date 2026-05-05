@@ -119,9 +119,12 @@ const BranchNode = ({ data }: { data: NodeData }) => (
 );
 
 const BranchOptionNode = ({ data }: { data: NodeData }) => (
-  <div className="bg-card border border-purple-400/40 rounded-lg px-3 py-2 min-w-[120px] text-center">
+  <div className="bg-card border-2 border-purple-400/40 rounded-lg px-4 py-3 min-w-[200px] max-w-[260px] text-center shadow-sm">
     <Handle type="target" position={Position.Top} className="w-3 h-3" />
-    <p className="text-xs text-purple-500 font-medium">{data.label}</p>
+    <div className="flex items-center gap-2 justify-center">
+      <GitBranch className="w-4 h-4 text-purple-500 shrink-0" />
+      <p className="text-sm text-purple-600 font-semibold break-words">{data.label}</p>
+    </div>
     <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
   </div>
 );
