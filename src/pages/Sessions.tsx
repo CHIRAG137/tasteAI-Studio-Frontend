@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getAuthHeaders } from "@/utils/auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PageHeader } from "@/components/PageHeader";
 
 interface Message {
   role: "user" | "assistant";
