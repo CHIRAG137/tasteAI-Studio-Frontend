@@ -8,6 +8,7 @@ import { Navbar } from "@/components/Navbar";
 import { BotCard } from "@/components/BotCard";
 import { BotCardSkeleton } from "@/components/BotCardSkeleton";
 import { BotFilters, BotFilterState } from "@/components/BotFilters";
+import { PageHeader } from "@/components/PageHeader";
 import { ChatBot } from "@/components/ChatBot";
 import { motion } from "framer-motion";
 import { useBotCreation } from "@/contexts/BotCreationContext";
