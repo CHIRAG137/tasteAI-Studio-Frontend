@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getAgentAnalytics, type AgentStats, type AnalyticsSummary } from "@/api/analytics";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
+import { PageHeader } from "@/components/PageHeader";
 import { getAuthHeaders } from "@/utils/auth";
 
 const BotAnalytics = () => {
@@ -253,40 +254,13 @@ const BotAnalytics = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-background">
-        {/* Header */}
-        <div className="border-b bg-card">
-          <div className="container mx-auto px-6 py-6">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => navigate("/")}
-                className="text-lg font-bold text-foreground hover:text-primary transition-colors"
-              >
-                healthAI
-              </button>
-              <div className="h-6 w-px bg-border" />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/bots")}
-                className="gap-2 text-muted-foreground hover:!text-foreground hover:bg-muted"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to My Bots
-              </Button>
-              <div className="h-6 w-px bg-border" />
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <BarChart3 className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-semibold">Analytics</h1>
-                  <p className="text-sm text-muted-foreground">{botName || "Loading..."}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          backTo="/bots"
+          backLabel="Back to My Bots"
+          icon={BarChart3}
+          title="Analytics"
+          subtitle={botName || "Loading..."}
+        />
 
         <div className="container mx-auto px-6 py-6">
           <Card className="border-destructive/50">
@@ -307,52 +281,25 @@ const BotAnalytics = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => navigate("/")}
-                className="text-lg font-bold text-foreground hover:text-primary transition-colors"
-              >
-                healthAI
-              </button>
-              <div className="h-6 w-px bg-border" />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/bots")}
-                className="gap-2 text-muted-foreground hover:!text-foreground hover:bg-muted"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to My Bots
-              </Button>
-              <div className="h-6 w-px bg-border" />
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <BarChart3 className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-semibold">Analytics</h1>
-                  <p className="text-sm text-muted-foreground">{botName || "Loading..."}</p>
-                </div>
-              </div>
-            </div>
-            <Button 
-              onClick={fetchAnalytics} 
-              disabled={loading}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/bots"
+        backLabel="Back to My Bots"
+        icon={BarChart3}
+        title="Analytics"
+        subtitle={botName || "Loading..."}
+        actions={
+          <Button
+            onClick={fetchAnalytics}
+            disabled={loading}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        }
+      />
 
       {/* Main Content */}
       <div className="container mx-auto px-6 py-6 space-y-6">

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { PageHeader } from "@/components/PageHeader";
 import { getAuthHeaders, getAuthToken, isAuthenticated } from "@/utils/auth";
 import { API_BASE_URL } from "@/api/auth";
 import {
@@ -105,35 +106,14 @@ export default function SlackInstall() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Header */}
-      <div className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="text-lg font-bold text-foreground hover:text-primary transition-colors"
-            >
-              healthAI
-            </button>
-            <Separator orientation="vertical" className="h-6" />
-            <Button variant="ghost" size="sm" onClick={() => navigate("/workflows")} className="gap-2 text-muted-foreground hover:!text-foreground hover:bg-muted">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Workflows
-            </Button>
-            <Separator orientation="vertical" className="h-6" />
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-[#4A154B]/10">
-                <Slack className="h-5 w-5 text-[#4A154B]" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-foreground">Slack Workspace</h1>
-                <p className="text-sm text-muted-foreground">Connect and manage your workspace</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/workflows"
+        backLabel="Back to Workflows"
+        icon={Slack}
+        title="Slack Workspace"
+        subtitle="Connect and manage your workspace"
+        container="max-w-4xl"
+      />
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {/* Connection Status */}

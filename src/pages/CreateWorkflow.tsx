@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -176,68 +177,52 @@ export default function CreateWorkflow() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Header */}
-      <div className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => navigate("/")}
-                className="text-lg font-bold text-foreground hover:text-primary transition-colors"
-              >
-                healthAI
-              </button>
-              <Separator orientation="vertical" className="h-6" />
-              <Button variant="ghost" size="sm" onClick={() => navigate("/workflows")} className="gap-2 text-muted-foreground hover:!text-foreground hover:bg-muted">
-                <ArrowLeft className="h-4 w-4" />
-                Back
+      <PageHeader
+        backTo="/workflows"
+        backLabel="Back"
+        icon={Zap}
+        title="Create Workflow"
+        subtitle={`Step ${step} of 4`}
+        container="max-w-4xl"
+        actions={
+          <>
+            {step > 1 && (
+              <Button variant="outline" size="sm" onClick={() => setStep((s) => (s - 1) as Step)}>
+                Previous
               </Button>
-              <Separator orientation="vertical" className="h-6" />
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Zap className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-foreground">Create Workflow</h1>
-                  <p className="text-sm text-muted-foreground">Step {step} of 4</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              {step > 1 && (
-                <Button variant="outline" onClick={() => setStep((s) => (s - 1) as Step)}>
-                  Previous
-                </Button>
-              )}
-              {step < 4 ? (
-                <Button
-                  onClick={() => setStep((s) => (s + 1) as Step)}
-                  disabled={!canProceed()}
-                  className="bg-gradient-primary gap-2"
-                >
-                  Next
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleCreate}
-                  disabled={isSubmitting}
-                  className="bg-gradient-primary gap-2"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  {isSubmitting
-                    ? "Saving..."
-                    : selectedType === "custom"
-                    ? "Open Flow Builder"
-                    : "Create Workflow"}
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Progress */}
-          <div className="flex gap-2 mt-4">
+            )}
+            {step < 4 ? (
+              <Button
+                size="sm"
+                onClick={() => setStep((s) => (s + 1) as Step)}
+                disabled={!canProceed()}
+                className="bg-gradient-primary gap-2"
+              >
+                Next
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleCreate}
+                disabled={isSubmitting}
+                className="bg-gradient-primary gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {isSubmitting
+                  ? "Saving..."
+                  : selectedType === "custom"
+                  ? "Open Flow Builder"
+                  : "Create Workflow"}
+              </Button>
+            )}
+          </>
+        }
+      />
+      {/* Progress */}
+      <div className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-16 z-30">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex gap-2">
             {[1, 2, 3, 4].map((s) => (
               <div
                 key={s}
