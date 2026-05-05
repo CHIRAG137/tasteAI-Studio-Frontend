@@ -588,42 +588,13 @@ export default function Sessions() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => navigate("/")}
-                className="text-lg font-bold text-foreground hover:text-primary transition-colors"
-              >
-                healthAI
-              </button>
-              <div className="h-6 w-px bg-border" />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/bots")}
-                className="gap-2 text-muted-foreground hover:!text-foreground hover:bg-muted"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to My Bots
-              </Button>
-              <div className="h-6 w-px bg-border" />
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <MessageSquare className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-semibold">Sessions</h1>
-                  <p className="text-sm text-muted-foreground">{botName}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/bots"
+        backLabel="Back to My Bots"
+        icon={MessageSquare}
+        title="Sessions"
+        subtitle={botName}
+      />
 
       {/* Main Content */}
       <div className="container mx-auto px-6 py-6">
