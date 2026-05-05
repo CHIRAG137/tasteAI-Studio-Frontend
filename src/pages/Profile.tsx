@@ -67,45 +67,17 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="text-lg font-bold text-foreground hover:text-primary transition-colors"
-            >
-              healthAI
-            </button>
-            <Separator orientation="vertical" className="h-6" />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/")}
-              className="gap-2 text-muted-foreground hover:!text-foreground hover:bg-muted"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Home
-            </Button>
-            <Separator orientation="vertical" className="h-6" />
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Settings className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-foreground">Profile Settings</h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage your account and integrations
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/"
+        backLabel="Back to Home"
+        icon={Settings}
+        title="Profile Settings"
+        subtitle="Manage your account and integrations"
+        container="max-w-4xl"
+      />
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {isLoading ? (
           <BrandLoader fullScreen={false} label="Loading your profile" />
         ) : (
