@@ -232,7 +232,7 @@ export const BotCreationWizard = ({
       case "persona":
         return <PersonaSection botConfig={botConfig} updateConfig={updateConfig} />;
       case "visitor-identity":
-        return <VisitorIdentitySection botConfig={botConfig} updateConfig={updateConfig} />;
+        return <VisitorIdentitySection />;
       case "custom-llm":
         return (
           <CustomLLMSection
