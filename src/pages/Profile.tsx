@@ -10,6 +10,7 @@ import { isAuthenticated, getAuthHeaders } from "@/utils/auth";
 import { API_BASE_URL } from "@/api/auth";
 import { TokenVaultProfileSection } from "@/components/profile/TokenVaultProfileSection";
 import { BrandLoader } from "@/components/BrandLoader";
+import { PageHeader } from "@/components/PageHeader";
 
 const auth0Configured = !!(
   import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID
