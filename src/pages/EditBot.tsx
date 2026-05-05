@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
 import { motion } from "framer-motion";
 import { useBotCreation } from "@/contexts/BotCreationContext";
+import { BrandLoader } from "@/components/BrandLoader";
 
 interface TrainingFileMeta {
   originalname: string;
@@ -291,9 +292,7 @@ const EditBot = () => {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <Bot className="w-10 h-10 text-primary animate-pulse" />
-      </div>
+      <BrandLoader label="Loading bot configuration" />
     );
   }
 

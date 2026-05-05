@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth0LoginUser } from "@/api/auth";
 import { setAuthToken, setLoginProvider, ensureLoginDeviceId } from "@/utils/auth";
+import { BrandLoader } from "@/components/BrandLoader";
 
 const AuthCallback = () => {
   const { isLoading, isAuthenticated, getAccessTokenSilently, error } =
@@ -68,9 +69,7 @@ const AuthCallback = () => {
   }, [isLoading, isAuthenticated, error, getAccessTokenSilently, navigate]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-2 bg-background px-4">
-      <p className="text-muted-foreground text-center">{message}</p>
-    </div>
+    <BrandLoader label={message} />
   );
 };
 

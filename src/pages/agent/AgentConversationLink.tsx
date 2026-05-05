@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Headphones, MessageSquare, Loader2, AlertCircle } from "lucide-react";
 import { setAgentAuthToken, setAgentEmail } from "@/utils/agentAuth";
+import { BrandLoader } from "@/components/BrandLoader";
 
 const AgentConversationLink = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -60,16 +61,7 @@ const AgentConversationLink = () => {
 
   if (isVerifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center justify-center py-8">
-              <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mb-4" />
-              <p className="text-muted-foreground">Verifying your access...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <BrandLoader label="Verifying your access" />
     );
   }
 

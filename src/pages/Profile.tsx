@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isAuthenticated, getAuthHeaders } from "@/utils/auth";
 import { API_BASE_URL } from "@/api/auth";
 import { TokenVaultProfileSection } from "@/components/profile/TokenVaultProfileSection";
+import { BrandLoader } from "@/components/BrandLoader";
 
 const auth0Configured = !!(
   import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID
@@ -106,9 +107,7 @@ const Profile = () => {
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
+          <BrandLoader fullScreen={false} label="Loading your profile" />
         ) : (
           <>
             {/* Profile Card */}

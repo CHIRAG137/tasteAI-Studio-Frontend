@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { BrandLoader } from "@/components/BrandLoader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   ArrowLeft, 
@@ -752,9 +753,7 @@ const AgentChat = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
+      <BrandLoader label="Loading conversation" />
     );
   }
 

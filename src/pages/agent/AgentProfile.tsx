@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { getAgentAuthHeaders, getAgentEmail } from "@/utils/agentAuth";
+import { BrandLoader } from "@/components/BrandLoader";
 import {
   ArrowLeft,
   Headphones,
@@ -227,12 +228,7 @@ const AgentProfile = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading profile...</p>
-        </div>
-      </div>
+      <BrandLoader label="Loading agent profile" />
     );
   }
 
