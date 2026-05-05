@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Bot, User, Send, Mic, MicOff, Video, Loader2, PhoneOff, Volume2, VolumeX, Headphones, Clock, ArrowDown } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { BrandLoader } from "@/components/BrandLoader";
 
 import { useAuth0 } from "@auth0/auth0-react";
 

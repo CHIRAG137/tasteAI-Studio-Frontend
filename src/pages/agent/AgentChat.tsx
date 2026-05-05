@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { BrandLoader } from "@/components/BrandLoader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   ArrowLeft, 

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Headphones, MessageSquare, Loader2, AlertCircle } from "lucide-react";
 import { setAgentAuthToken, setAgentEmail } from "@/utils/agentAuth";
+import { BrandLoader } from "@/components/BrandLoader";
 
 const AgentConversationLink = () => {
   const { conversationId } = useParams<{ conversationId: string }>();

@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
 import { motion } from "framer-motion";
 import { useBotCreation } from "@/contexts/BotCreationContext";
+import { BrandLoader } from "@/components/BrandLoader";
 
 interface TrainingFileMeta {
   originalname: string;
