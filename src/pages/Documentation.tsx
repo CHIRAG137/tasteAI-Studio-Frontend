@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { EmbedCustomization } from "@/components/EmbedCustomizer";
+import { PageHeader } from "@/components/PageHeader";
 import axios from "axios";
 import { getAuthHeaders } from "@/utils/auth";
 
