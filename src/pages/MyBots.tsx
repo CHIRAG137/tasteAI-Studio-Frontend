@@ -160,38 +160,13 @@ const MyBots = () => {
   return (
     <>
       <div className="min-h-screen bg-background">
-        {/* Top bar */}
-        <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => navigate("/")}
-                className="text-lg font-bold text-foreground hover:text-primary transition-colors"
-              >
-                healthAI
-              </button>
-              <div className="h-5 w-px bg-border" />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/")}
-                className="gap-2 text-muted-foreground hover:!text-foreground hover:bg-muted"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Home
-              </Button>
-              <div className="h-5 w-px bg-border" />
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Bot className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-semibold text-foreground">Your Bots</h1>
-                  <p className="text-xs text-muted-foreground">Manage your AI chatbots</p>
-                </div>
-              </div>
-            </div>
+        <PageHeader
+          backTo="/"
+          backLabel="Back to Home"
+          icon={Bot}
+          title="Your Bots"
+          subtitle="Manage your AI chatbots"
+          actions={
             <Button
               onClick={() => navigate("/create")}
               className="bg-gradient-primary hover:opacity-90 gap-2"
@@ -199,8 +174,8 @@ const MyBots = () => {
               <Plus className="w-4 h-4" />
               Create Bot
             </Button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Content */}
         <motion.div
