@@ -94,11 +94,17 @@ const MyBots = () => {
         languages: Array.isArray(bot.supported_languages) ? bot.supported_languages : ["English"],
         primaryPurpose: bot.primary_purpose,
         conversationalTone: bot.conversation_tone,
+        conversationalStyle: bot.response_style,
+        targetAudience: bot.target_audience,
+        specializationArea: bot.specialisation_area,
         isVideoBot: bot.is_video_bot,
         videoBotImageUrl: bot.video_bot_image_url,
         videoBotImagePublicId: bot.video_bot_image_public_id,
         humanHandoffEnabled: bot.human_handoff_enabled,
-
+        isSlackEnabled: bot.is_slack_enabled,
+        customLLMProvider: bot.custom_llm_provider,
+        training_files: bot.training_files,
+        scrapedUrls: bot.scraped_urls,
         createdAt: bot.createdAt || bot.created_at,
         updatedAt: bot.updatedAt || bot.updated_at,
       }));

@@ -118,15 +118,6 @@ export const BotCardSkeleton = ({
       {/* CardContent */}
       <div className="px-6 pb-6 space-y-4 relative z-10">
         <div className="space-y-3">
-          {/* Voice */}
-          <div className="flex items-center justify-between">
-            <div className="h-3 w-9 bg-muted animate-pulse rounded" />
-            <div className="flex items-center gap-1.5">
-              <div className="h-4 w-4 bg-muted animate-pulse rounded-full" />
-              <div className="h-3 w-14 bg-muted animate-pulse rounded" />
-            </div>
-          </div>
-
           {/* Languages */}
           <div className="space-y-2">
             <div className="h-3 w-16 bg-muted animate-pulse rounded" />
@@ -137,15 +128,16 @@ export const BotCardSkeleton = ({
             </div>
           </div>
 
-          {/* Purpose & Tone */}
+          {/* Features Tags */}
           <div className="space-y-2">
-            <div className="flex justify-between">
-              <div className="h-3 w-14 bg-muted animate-pulse rounded" />
-              <div className="h-3 w-24 bg-muted animate-pulse rounded" />
-            </div>
-            <div className="flex justify-between">
-              <div className="h-3 w-10 bg-muted animate-pulse rounded" />
-              <div className="h-3 w-20 bg-muted animate-pulse rounded" />
+            <div className="h-3 w-16 bg-muted animate-pulse rounded" />
+            <div className="flex flex-wrap gap-2">
+              <div className="h-5 w-24 bg-muted animate-pulse rounded-full" />
+              <div className="h-5 w-20 bg-muted animate-pulse rounded-full" />
+              <div className="h-5 w-28 bg-muted animate-pulse rounded-full" />
+              <div className="h-5 w-24 bg-muted animate-pulse rounded-full" />
+              <div className="h-5 w-28 bg-muted animate-pulse rounded-full" />
+              <div className="h-5 w-20 bg-muted animate-pulse rounded-full" />
             </div>
           </div>
 

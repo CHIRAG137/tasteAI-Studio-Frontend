@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Globe, Mic, MicOff, MoreHorizontal, Play, Share, Code, Trash2, Edit, MessageSquare, Video, BarChart3 } from "lucide-react";
+import { Bot, Globe, MoreHorizontal, Play, Share, Code, Trash2, Edit, MessageSquare, Video, BarChart3 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface BotCardProps {
@@ -15,8 +16,16 @@ interface BotCardProps {
     languages: string[];
     primaryPurpose: string;
     conversationalTone: string;
+    responseStyle?: string;
+    targetAudience?: string;
+    conversationalStyle?: string;
+    specializationArea?: string;
     isVideoBot: boolean;
     humanHandoffEnabled: boolean;
+    isSlackEnabled?: boolean;
+    customLLMProvider?: string;
+    training_files?: Array<{ originalname: string; size: number; mimeType: string }>;
+    scrapedUrls?: string[];
     createdAt?: string;
     updatedAt?: string;
   };
@@ -37,6 +46,53 @@ export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, o
   const updatedAt = bot.updatedAt || (bot as any).updated_at;
   const createdLabel = createdAt ? new Date(createdAt).toLocaleString() : "N/A";
   const updatedLabel = updatedAt ? new Date(updatedAt).toLocaleString() : "N/A";
+  const [showAllFeatures, setShowAllFeatures] = useState(false);
+
+  const featureBadges = [
+    isVoiceEnabledForUI && {
+      key: "voice",
+      label: "🎤 Voice Enabled",
+      variant: "secondary",
+    },
+    bot.isVideoBot && {
+      key: "video",
+      label: "🎬 Video Bot Enabled",
+      variant: "secondary",
+    },
+    bot.training_files && bot.training_files.length > 0 && {
+      key: "training",
+      label: `📁 Training data added (${bot.training_files.length})`,
+      title: bot.training_files.map((file) => file.originalname).join("\n"),
+      variant: "secondary",
+    },
+    bot.websiteUrl && {
+      key: "website",
+      label: "🌐 Website training data added",
+      variant: "secondary",
+    },
+    {
+      key: "llm",
+      label: bot.customLLMProvider ? `🤖 Custom LLM (${bot.customLLMProvider})` : "🤖 Platform LLM",
+      variant: bot.customLLMProvider ? "secondary" : "outline",
+    },
+    bot.isSlackEnabled && {
+      key: "slack",
+      label: "💬 Slack integrated",
+      variant: "secondary",
+    },
+    bot.humanHandoffEnabled && {
+      key: "handoff",
+      label: "👤 Human handoff enabled",
+      variant: "secondary",
+    },
+  ].filter(Boolean) as Array<{
+    key: string;
+    label: string;
+    variant: "secondary" | "outline";
+    title?: string;
+  }>;
+
+  const visibleFeatures = showAllFeatures ? featureBadges : featureBadges.slice(0, 2);
 
   return (
     <Card className={`relative group transition-all duration-300 ${isLoading ? "opacity-80" : "hover:shadow-strong"}`}>
@@ -124,25 +180,7 @@ export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, o
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Features */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Voice</span>
-            <div className="flex items-center gap-1">
-              {isVoiceEnabledForUI ? (
-                <>
-                  <Mic className="w-4 h-4 text-green-500" />
-                  <span className="text-sm text-green-500">Enabled</span>
-                </>
-              ) : (
-                <>
-                  <MicOff className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Disabled</span>
-                </>
-              )}
-            </div>
-          </div>
-
           <div className="space-y-2">
             <span className="text-sm font-medium">Languages</span>
             <div className="flex flex-wrap gap-1">
@@ -154,17 +192,57 @@ export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, o
             </div>
           </div>
 
+          {/* Persona Tags */}
           <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-sm font-medium">Purpose</span>
-              <span className="text-sm text-muted-foreground">{bot.primaryPurpose}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm font-medium">Tone</span>
-              <span className="text-sm text-muted-foreground">{bot.conversationalTone}</span>
+            <span className="text-sm font-medium">Persona</span>
+            <div className="flex flex-wrap gap-1">
+              {bot.primaryPurpose && (
+                <Badge variant="outline" className="text-xs">
+                  🎯 {bot.primaryPurpose}
+                </Badge>
+              )}
+              {bot.conversationalTone && (
+                <Badge variant="outline" className="text-xs">
+                  🎭 {bot.conversationalTone}
+                </Badge>
+              )}
+              {bot.targetAudience && (
+                <Badge variant="outline" className="text-xs">
+                  👥 {bot.targetAudience}
+                </Badge>
+              )}
+              {(bot.conversationalStyle || bot.responseStyle) && (
+                <Badge variant="outline" className="text-xs">
+                  🧭 {bot.conversationalStyle || bot.responseStyle}
+                </Badge>
+              )}
             </div>
           </div>
 
+          {/* Feature Tags */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium">Features</span>
+              {featureBadges.length > 2 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs px-2 h-6"
+                  onClick={() => setShowAllFeatures((value) => !value)}
+                >
+                  {showAllFeatures ? "Show less" : `+${featureBadges.length - 2} more`}
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1 items-center">
+              {visibleFeatures.map((feature) => (
+                <Badge key={feature.key} variant={feature.variant} className="text-xs" title={feature.title}>
+                  {feature.label}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        
           <div className="grid gap-2 text-xs text-muted-foreground pt-3 border-t border-border mt-3">
             <div className="flex justify-between">
               <span>Created</span>
