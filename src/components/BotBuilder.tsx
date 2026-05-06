@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/components/HeroSection";
+import { HomeFooter } from "@/components/HomeFooter";
 import { useNavigate } from "react-router-dom";
 
 export const BotBuilder = () => {
@@ -15,6 +16,7 @@ export const BotBuilder = () => {
           onCreateSlackWorkflow={() => navigate("/workflows/create")}
           onViewWorkflows={() => navigate("/workflows")}
         />
+        <HomeFooter />
       </div>
     </>
   );
