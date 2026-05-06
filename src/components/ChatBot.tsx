@@ -41,6 +41,13 @@ interface ChatBotProps {
     primaryPurpose: string;
     conversationalTone: string;
     humanHandoffEnabled?: boolean;
+    responseStyle?: string;
+    targetAudience?: string;
+    conversationalStyle?: string;
+    specializationArea?: string;
+    isSlackEnabled?: boolean;
+    customLLMProvider?: string;
+    training_files?: Array<{ originalname: string; size: number; mimeType: string }>;
   };
   onClose: () => void;
 }
