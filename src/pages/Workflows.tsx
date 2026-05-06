@@ -121,11 +121,11 @@ export default function Workflows() {
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
-              onClick={() => navigate("/workflows/install")}
+              onClick={() => navigate("/slack/manage?from=workflows")}
               className="gap-2"
             >
               <Slack className="w-4 h-4" />
-              Manage Workspace
+              Authenticate Slack
             </Button>
             <Button
               onClick={() => navigate("/workflows/create")}

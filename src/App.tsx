@@ -185,6 +185,14 @@ const App = () => (
             } 
           />
           <Route 
+            path="/slack/manage" 
+            element={
+              <ProtectedRoute>
+                <SlackInstall />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/workflows/:workflowId/builder" 
             element={
               <ProtectedRoute>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +59,13 @@ export default function SlackInstall() {
   const [workspace, setWorkspace] = useState<{ name: string; icon?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const fromPage = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("from");
+  }, []);
+
+  const backTo = fromPage === "profile" ? "/profile" : "/workflows";
+  const backLabel = fromPage === "profile" ? "Back to Profile" : "Back to Workflows";
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -107,11 +114,11 @@ export default function SlackInstall() {
   return (
     <div className="min-h-screen bg-muted/30">
       <PageHeader
-        backTo="/workflows"
-        backLabel="Back to Workflows"
+        backTo={backTo}
+        backLabel={backLabel}
         icon={Slack}
-        title="Slack Workspace"
-        subtitle="Connect and manage your workspace"
+        title="Manage Slack Workspace"
+        subtitle="Connect and manage your Slack workspace in one place"
         container="max-w-4xl"
       />
 
@@ -151,7 +158,7 @@ export default function SlackInstall() {
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={handleInstall} className="gap-2">
                     <RefreshCw className="w-4 h-4" />
-                    Reconnect
+                    Authenticate Slack
                   </Button>
                   <Button
                     size="sm"
@@ -169,7 +176,7 @@ export default function SlackInstall() {
                   className="bg-[#4A154B] hover:bg-[#3a1039] text-white gap-2 px-6"
                 >
                   <Slack className="w-5 h-5" />
-                  Add to Slack
+                  Authenticate Slack
                   <ExternalLink className="w-4 h-4" />
                 </Button>
               )}

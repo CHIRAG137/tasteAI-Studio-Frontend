@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { User, ArrowLeft, ExternalLink, Settings } from "lucide-react";
+import { User, ExternalLink, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isAuthenticated, getAuthHeaders } from "@/utils/auth";
 import { API_BASE_URL } from "@/api/auth";
@@ -60,10 +60,9 @@ const Profile = () => {
     fetchUserDetails();
   }, []);
 
-  const handleSlackAuth = async () => {
+  const handleSlackAuth = () => {
     setIsConnecting(true);
-    const token = localStorage.getItem("authToken");
-    window.location.href = `${API_BASE_URL}/api/slack/install?token=${token}`;
+    navigate("/slack/manage?from=profile");
   };
 
   return (
@@ -141,7 +140,7 @@ const Profile = () => {
                       "Connecting..."
                     ) : (
                       <>
-                        {slackIntegration ? "Reconnect" : "Connect"}
+                        {"Authenticate Slack"}
                         <ExternalLink className="ml-2 h-4 w-4" />
                       </>
                     )}

@@ -120,7 +120,7 @@ export const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
                         "Connecting..."
                       ) : (
                         <>
-                          {slackIntegration ? "Upgrade Slack Auth" : "Add to Slack"}
+                          {"Authenticate Slack"}
                           <ExternalLink className="ml-2 h-4 w-4" />
                         </>
                       )}
