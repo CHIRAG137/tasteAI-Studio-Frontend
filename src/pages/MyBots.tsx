@@ -46,6 +46,31 @@ const MyBots = () => {
       return bDate - aDate;
     });
 
+  const mapBotFromApi = (bot: any) => ({
+    id: bot._id || bot.id,
+    name: bot.name,
+    description: bot.description,
+    websiteUrl: bot.website_url,
+    voiceEnabled: bot.is_voice_enabled,
+    languages: Array.isArray(bot.supported_languages) ? bot.supported_languages : ["English"],
+    primaryPurpose: bot.primary_purpose,
+    conversationalTone: bot.conversation_tone,
+    conversationalStyle: bot.response_style,
+    targetAudience: bot.target_audience,
+    specializationArea: bot.specialisation_area,
+    isVideoBot: bot.is_video_bot,
+    videoBotImageUrl: bot.video_bot_image_url,
+    videoBotImagePublicId: bot.video_bot_image_public_id,
+    humanHandoffEnabled: bot.human_handoff_enabled,
+    isSlackEnabled: bot.is_slack_enabled,
+    customLLMProvider: bot.custom_llm_provider,
+    training_files: bot.training_files,
+    scrapedUrls: bot.scraped_urls,
+    conversationFlow: bot.conversationFlow,
+    createdAt: bot.createdAt || bot.created_at,
+    updatedAt: bot.updatedAt || bot.updated_at,
+  });
+
   const filteredBots = useMemo(() => {
     return savedBots.filter((bot) => {
       if (filters.searchQuery && !bot.name.toLowerCase().includes(filters.searchQuery.toLowerCase())) return false;
@@ -85,29 +110,7 @@ const MyBots = () => {
       if (!res.ok) throw new Error("Failed to fetch bots");
       const data = await res.json();
       const { bots, pagination } = data.result;
-      const mappedBots = bots.map((bot: any) => ({
-        id: bot._id,
-        name: bot.name,
-        description: bot.description,
-        websiteUrl: bot.website_url,
-        voiceEnabled: bot.is_voice_enabled,
-        languages: Array.isArray(bot.supported_languages) ? bot.supported_languages : ["English"],
-        primaryPurpose: bot.primary_purpose,
-        conversationalTone: bot.conversation_tone,
-        conversationalStyle: bot.response_style,
-        targetAudience: bot.target_audience,
-        specializationArea: bot.specialisation_area,
-        isVideoBot: bot.is_video_bot,
-        videoBotImageUrl: bot.video_bot_image_url,
-        videoBotImagePublicId: bot.video_bot_image_public_id,
-        humanHandoffEnabled: bot.human_handoff_enabled,
-        isSlackEnabled: bot.is_slack_enabled,
-        customLLMProvider: bot.custom_llm_provider,
-        training_files: bot.training_files,
-        scrapedUrls: bot.scraped_urls,
-        createdAt: bot.createdAt || bot.created_at,
-        updatedAt: bot.updatedAt || bot.updated_at,
-      }));
+      const mappedBots = bots.map((bot: any) => mapBotFromApi(bot));
       setSavedBots((prev) => {
         const next = append ? [...prev, ...mappedBots] : mappedBots;
         return sortBotsByUpdatedAt(next);
@@ -124,18 +127,55 @@ const MyBots = () => {
 
   useEffect(() => { fetchBots(1); }, []);
 
-  // Add newly created/updated bots to the list immediately
+  // Add newly created/updated bots immediately, then hydrate from DB by bot id.
   useEffect(() => {
-    if (newlyCreatedBots.length > 0) {
-      setSavedBots((prev) => {
-        const incoming = [...newlyCreatedBots];
-        const incomingIds = new Set(incoming.map((b) => b.id));
+    if (newlyCreatedBots.length === 0) return;
 
-        const existingWithoutIncoming = prev.filter((bot) => !incomingIds.has(bot.id));
-        return sortBotsByUpdatedAt([...incoming, ...existingWithoutIncoming]);
-      });
-      clearNewlyCreatedBots();
-    }
+    let isCancelled = false;
+    const incoming = [...newlyCreatedBots];
+    const incomingIds = new Set(incoming.map((b) => b.id).filter(Boolean));
+
+    setSavedBots((prev) => {
+      const existingWithoutIncoming = prev.filter((bot) => !incomingIds.has(bot.id));
+      return sortBotsByUpdatedAt([...incoming, ...existingWithoutIncoming]);
+    });
+
+    const hydrateIncomingBots = async () => {
+      const hydrated = await Promise.all(
+        incoming
+          .filter((b) => b.id)
+          .map(async (bot) => {
+            try {
+              const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${bot.id}`, {
+                headers: getAuthHeaders(),
+              });
+              if (!res.ok) return bot;
+              const data = await res.json();
+              const fetchedBot = data?.result;
+              if (!fetchedBot) return bot;
+              return mapBotFromApi(fetchedBot);
+            } catch (error) {
+              return bot;
+            }
+          })
+      );
+
+      if (isCancelled) return;
+      if (hydrated.length > 0) {
+        setSavedBots((prev) => {
+          const hydratedIds = new Set(hydrated.map((b) => b.id));
+          const existingWithoutHydrated = prev.filter((bot) => !hydratedIds.has(bot.id));
+          return sortBotsByUpdatedAt([...hydrated, ...existingWithoutHydrated]);
+        });
+      }
+    };
+
+    hydrateIncomingBots();
+    clearNewlyCreatedBots();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [newlyCreatedBots, clearNewlyCreatedBots]);
 
   const handleLoadMore = () => {

@@ -51,6 +51,11 @@ interface BotConfig {
   customModel?: string;
 }
 
+const resolveBotFromResponse = (result: any) => {
+  if (!result || typeof result !== "object") return {};
+  return result.result?.bot || result.result || result.data?.bot || result.data || {};
+};
+
 const EditBot = () => {
   const { botId } = useParams<{ botId: string }>();
   const navigate = useNavigate();
@@ -252,24 +257,48 @@ const EditBot = () => {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Update failed");
 
-      // Extract updated bot data to pass to context
-      const updatedBot = result.result || result.data || {};
-      const botData = {
-        id: botId,
-        name: updatedBot.name || botConfig.name,
-        description: updatedBot.description || botConfig.description,
-        websiteUrl: updatedBot.website_url || botConfig.websiteUrl,
-        voiceEnabled: updatedBot.is_voice_enabled || botConfig.voiceEnabled,
-        languages: updatedBot.supported_languages || botConfig.languages || ["English"],
-        primaryPurpose: updatedBot.primary_purpose || botConfig.primaryPurpose,
-        conversationalTone: updatedBot.conversation_tone || botConfig.conversationalTone,
-        isVideoBot: updatedBot.is_video_bot || botConfig.isVideoBot,
-        videoBotImageUrl: updatedBot.video_bot_image_url || botConfig.videoBotImageUrl,
-        videoBotImagePublicId: updatedBot.video_bot_image_public_id || botConfig.videoBotImagePublicId,
-        humanHandoffEnabled: updatedBot.human_handoff_enabled || botConfig.humanHandoffEnabled,
+      const updatedBot = resolveBotFromResponse(result);
+      const updatedBotId = updatedBot._id || updatedBot.id || botId;
+      let fullBot = updatedBot;
 
-        createdAt: updatedBot.createdAt || updatedBot.created_at || new Date().toISOString(),
-        updatedAt: updatedBot.updatedAt || updatedBot.updated_at || new Date().toISOString(),
+      if (updatedBotId) {
+        try {
+          const botRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${updatedBotId}`, {
+            headers: getAuthHeaders(),
+          });
+          if (botRes.ok) {
+            const botResult = await botRes.json();
+            fullBot = resolveBotFromResponse(botResult);
+          }
+        } catch (fetchErr) {
+          console.warn("Failed to fetch full bot after update, using immediate response payload.", fetchErr);
+        }
+      }
+
+      const botData = {
+        id: updatedBotId,
+        name: fullBot.name || botConfig.name,
+        description: fullBot.description || botConfig.description,
+        websiteUrl: fullBot.website_url || botConfig.websiteUrl,
+        voiceEnabled: fullBot.is_voice_enabled ?? botConfig.voiceEnabled,
+        languages: fullBot.supported_languages || botConfig.languages || ["English"],
+        primaryPurpose: fullBot.primary_purpose || botConfig.primaryPurpose,
+        conversationalTone: fullBot.conversation_tone || botConfig.conversationalTone,
+        conversationalStyle: fullBot.response_style || botConfig.responseStyle,
+        targetAudience: fullBot.target_audience || botConfig.targetAudience,
+        specializationArea: fullBot.specialisation_area || botConfig.specializationArea,
+        isVideoBot: fullBot.is_video_bot ?? botConfig.isVideoBot,
+        videoBotImageUrl: fullBot.video_bot_image_url || botConfig.videoBotImageUrl,
+        videoBotImagePublicId: fullBot.video_bot_image_public_id || botConfig.videoBotImagePublicId,
+        humanHandoffEnabled: fullBot.human_handoff_enabled ?? botConfig.humanHandoffEnabled,
+        isSlackEnabled: fullBot.is_slack_enabled ?? botConfig.isSlackEnabled,
+        customLLMProvider: fullBot.custom_llm_provider || botConfig.customLLMProvider || undefined,
+        training_files: fullBot.training_files || [],
+        scrapedUrls: fullBot.scraped_urls || [],
+        conversationFlow: fullBot.conversationFlow || botConfig.conversationFlow,
+
+        createdAt: fullBot.createdAt || fullBot.created_at || new Date().toISOString(),
+        updatedAt: fullBot.updatedAt || fullBot.updated_at || new Date().toISOString(),
       };
 
       toast({

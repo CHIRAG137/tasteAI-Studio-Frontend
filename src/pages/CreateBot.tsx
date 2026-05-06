@@ -41,6 +41,11 @@ interface BotConfig {
   customModel?: string;
 }
 
+const resolveBotFromResponse = (result: any) => {
+  if (!result || typeof result !== "object") return {};
+  return result.result?.bot || result.result || result.data?.bot || result.data || {};
+};
+
 const CreateBot = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -192,25 +197,49 @@ const CreateBot = () => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Failed to create bot");
 
-      // Extract bot data from response
-      const createdBot = result.result || result.data || {};
-      const createdAt = createdBot.createdAt || createdBot.created_at || new Date().toISOString();
+      const createdBot = resolveBotFromResponse(result);
+      const createdBotId = createdBot._id || createdBot.id;
+      let fullBot = createdBot;
+
+      if (createdBotId) {
+        try {
+          const botRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${createdBotId}`, {
+            headers: getAuthHeaders(),
+          });
+          if (botRes.ok) {
+            const botResult = await botRes.json();
+            fullBot = resolveBotFromResponse(botResult);
+          }
+        } catch (fetchErr) {
+          console.warn("Failed to fetch full bot after creation, using immediate response payload.", fetchErr);
+        }
+      }
+
+      const createdAt = fullBot.createdAt || fullBot.created_at || new Date().toISOString();
       const botData = {
-        id: createdBot._id || createdBot.id,
-        name: createdBot.name || botConfig.name,
-        description: createdBot.description || botConfig.description,
-        websiteUrl: createdBot.website_url || botConfig.websiteUrl,
-        voiceEnabled: createdBot.is_voice_enabled || botConfig.voiceEnabled,
-        languages: createdBot.supported_languages || botConfig.languages || ["English"],
-        primaryPurpose: createdBot.primary_purpose || botConfig.primaryPurpose,
-        conversationalTone: createdBot.conversation_tone || botConfig.conversationalTone,
-        isVideoBot: createdBot.is_video_bot || botConfig.isVideoBot,
-        videoBotImageUrl: createdBot.video_bot_image_url || botConfig.videoBotImageUrl,
-        videoBotImagePublicId: createdBot.video_bot_image_public_id || botConfig.videoBotImagePublicId,
-        humanHandoffEnabled: createdBot.human_handoff_enabled || botConfig.humanHandoffEnabled,
+        id: fullBot._id || fullBot.id || createdBotId,
+        name: fullBot.name || botConfig.name,
+        description: fullBot.description || botConfig.description,
+        websiteUrl: fullBot.website_url || botConfig.websiteUrl,
+        voiceEnabled: fullBot.is_voice_enabled ?? botConfig.voiceEnabled,
+        languages: fullBot.supported_languages || botConfig.languages || ["English"],
+        primaryPurpose: fullBot.primary_purpose || botConfig.primaryPurpose,
+        conversationalTone: fullBot.conversation_tone || botConfig.conversationalTone,
+        conversationalStyle: fullBot.response_style || botConfig.responseStyle,
+        targetAudience: fullBot.target_audience || botConfig.targetAudience,
+        specializationArea: fullBot.specialisation_area || botConfig.specializationArea,
+        isVideoBot: fullBot.is_video_bot ?? botConfig.isVideoBot,
+        videoBotImageUrl: fullBot.video_bot_image_url || botConfig.videoBotImageUrl,
+        videoBotImagePublicId: fullBot.video_bot_image_public_id || botConfig.videoBotImagePublicId,
+        humanHandoffEnabled: fullBot.human_handoff_enabled ?? botConfig.humanHandoffEnabled,
+        isSlackEnabled: fullBot.is_slack_enabled ?? botConfig.isSlackEnabled,
+        customLLMProvider: fullBot.custom_llm_provider || botConfig.customLLMProvider || undefined,
+        training_files: fullBot.training_files || [],
+        scrapedUrls: fullBot.scraped_urls || [],
+        conversationFlow: fullBot.conversationFlow || botConfig.conversationFlow,
 
         createdAt,
-        updatedAt: createdBot.updatedAt || createdBot.updated_at || createdAt,
+        updatedAt: fullBot.updatedAt || fullBot.updated_at || createdAt,
       };
 
       toast({
