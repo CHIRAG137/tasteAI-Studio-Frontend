@@ -1454,7 +1454,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 ) : (
                   <div className="text-center p-8 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 w-full h-full flex flex-col items-center justify-center">
                     <Video className="h-20 w-20 mx-auto mb-4 text-purple-400" />
-                    <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    <h3 className="text-2xl font-bold mb-2 bg-gradient-primary bg-clip-text text-transparent">
                       Video Bot
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 mb-6">
@@ -1532,7 +1532,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               </div>
             )}
 
-            <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-white dark:bg-gray-900 transition-all duration-300 relative min-h-0`}>
+            <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-background transition-all duration-300 relative min-h-0`}>
               <div 
                 ref={scrollAreaRef}
                 onScroll={handleScrollAreaScroll}
@@ -1555,7 +1555,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className={msg.sender === "agent" 
                           ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                          : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                          : "bg-gradient-primary text-white"
                         }>
                           {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                         </AvatarFallback>
@@ -1566,12 +1566,12 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                         <div
                           className={`rounded-lg p-3 ${
                             msg.sender === "user"
-                              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                              ? "bg-gradient-primary text-white"
                               : msg.sender === "agent"
                               ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
                               : msg.isSystemMessage
                               ? "bg-orange-100 text-orange-900 border border-orange-200"
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                              : "bg-muted text-foreground"
                           }`}
                         >
                           {typeof msg.content === "string"
@@ -1642,7 +1642,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className={handoffRequested 
                         ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                        : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                        : "bg-gradient-primary text-white"
                       }>
                         {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                       </AvatarFallback>
@@ -1670,7 +1670,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 </div>
               </div>
 
-              <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+              <div className="p-4 border-t bg-background flex-shrink-0">
                 {/* IMPROVED: Jump to Latest Button - only shown when stable */}
                 {showJumpButton && (
                   <div className="mb-3 flex justify-center">
@@ -1822,7 +1822,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     size="icon"
                     className={handoffRequested 
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
-                      : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                      : "bg-gradient-primary hover:opacity-90"
                     }
                   >
                     <Send className="h-4 w-4" />
@@ -1832,7 +1832,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 <div className="text-center py-2 border-t mt-2">
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Powered by{" "}
-                    <span className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    <span className="font-semibold bg-gradient-primary bg-clip-text text-transparent">
                       TasteAI Studio
                     </span>
                   </p>
@@ -1864,7 +1864,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className={msg.sender === "agent" 
                         ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                        : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                        : "bg-gradient-primary text-white"
                       }>
                         {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                       </AvatarFallback>
@@ -1875,12 +1875,12 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       <div
                         className={`rounded-lg p-3 ${
                           msg.sender === "user"
-                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                            ? "bg-gradient-primary text-white"
                             : msg.sender === "agent"
                             ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
                             : msg.isSystemMessage
                             ? "bg-orange-100 text-orange-900 border border-orange-200"
-                            : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            : "bg-muted text-foreground"
                         }`}
                       >
                         {typeof msg.content === "string"
@@ -1951,7 +1951,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className={handoffRequested 
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                      : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                      : "bg-gradient-primary text-white"
                     }>
                       {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                     </AvatarFallback>
@@ -1979,7 +1979,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               </div>
             </div>
 
-            <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+            <div className="p-4 border-t bg-background flex-shrink-0">
               {/* IMPROVED: Jump to Latest Button */}
               {showJumpButton && (
                 <div className="mb-3 flex justify-center">
@@ -2101,7 +2101,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   size="icon"
                   className={handoffRequested 
                     ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
-                    : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                    : "bg-gradient-primary hover:opacity-90"
                   }
                 >
                   <Send className="h-4 w-4" />
@@ -2110,7 +2110,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               <div className="text-center py-2 border-t mt-2">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Powered by{" "}
-                  <span className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="font-semibold bg-gradient-primary bg-clip-text text-transparent">
                     TasteAI Studio
                   </span>
                 </p>
@@ -2120,7 +2120,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         )}
         {showRatingModal && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4">
               <h3 className="text-lg font-semibold mb-2">Rate your experience</h3>
               <p className="text-sm text-gray-500 mb-4">How would you rate the support you received?</p>
               {isLoadingRating && (
