@@ -1260,92 +1260,108 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={`${bot.isVideoBot ? (showVideoAvatar ? 'max-w-6xl' : 'max-w-2xl') : 'max-w-2xl'} h-[600px] p-0 gap-0 flex flex-col bg-background/95 backdrop-blur-sm border shadow-2xl rounded-xl overflow-hidden transition-all duration-300`}>
         {/* Auth0 visitor enforcement disabled */}
-        <DialogHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0 space-y-0">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3 flex-1 min-w-0">
-              <Avatar className="h-12 w-12 border-2 border-white flex-shrink-0 mt-1">
-                <AvatarFallback className="bg-white text-blue-600">
-                  {handoffRequested ? <Headphones className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <DialogTitle className="text-xl text-white">{bot.name}</DialogTitle>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {/* Handoff Status Badge */}
-                    {handoffRequested && (
-                      <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 border-orange-200 animate-pulse">
-                        <Headphones className="h-3 w-3 mr-1" />
-                        {isConnectedToAgent ? "Agent Connected" : "Waiting for Agent"}
-                      </Badge>
-                    )}
+        <DialogHeader className="relative flex-shrink-0 space-y-0 p-0 overflow-hidden">
+          {/* Modern gradient backdrop */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-accent" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_hsl(var(--primary-glow)/0.45),transparent_55%)]" />
+          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-accent/30 blur-3xl" />
 
-                    <Badge
-                      variant="secondary"
-                      className={`text-xs ${bot.voiceEnabled ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}
-                    >
-                      {bot.voiceEnabled ? (
-                        <>
-                          <Volume2 className="h-3 w-3 mr-1" />
-                          Voice Enabled
-                        </>
-                      ) : (
-                        <>
-                          <VolumeX className="h-3 w-3 mr-1" />
-                          Voice Disabled
-                        </>
-                      )}
-                    </Badge>
-
-                    <Badge
-                      variant="secondary"
-                      className={`text-xs ${bot.isVideoBot ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}
-                    >
-                      {bot.isVideoBot ? (
-                        <>
-                          <Video className="h-3 w-3 mr-1" />
-                          Video Bot
-                        </>
-                      ) : (
-                        <>
-                          <Bot className="h-3 w-3 mr-1" />
-                          Chat Bot
-                        </>
-                      )}
-                    </Badge>
-
-                    {flowFinished ? (
-                      <Badge variant="secondary" className="text-xs bg-teal-100 text-teal-700 border-teal-200">
-                        Q&A Mode
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-xs bg-cyan-100 text-cyan-700 border-cyan-200">
-                        Flow Mode
-                      </Badge>
-                    )}
-                  </div>
+          <div className="relative px-5 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className="relative flex-shrink-0">
+                  <div className="absolute inset-0 rounded-full bg-white/30 blur-md" />
+                  <Avatar className="relative h-12 w-12 ring-2 ring-white/60 shadow-lg">
+                    <AvatarFallback className="bg-white text-primary">
+                      {handoffRequested ? <Headphones className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white ${handoffRequested ? (isConnectedToAgent ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse') : 'bg-emerald-400'}`} />
                 </div>
-                {bot.description && (
-                  <p className="text-sm text-white/90 mt-1.5 line-clamp-2">
-                    {bot.description}
-                  </p>
-                )}
-                {handoffRequested && assignedAgentEmail && (
-                  <p className="text-xs text-white/80 mt-1">
-                    <Clock className="inline h-3 w-3 mr-1" />
-                    Agent: {assignedAgentEmail}
-                  </p>
-                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <DialogTitle className="text-xl text-white font-semibold tracking-tight truncate" title={bot.name}>
+                      {bot.name}
+                    </DialogTitle>
+                  </div>
+                  {bot.description && (
+                    <p className="text-sm text-white/85 mt-1 line-clamp-2">
+                      {bot.description}
+                    </p>
+                  )}
+                  {handoffRequested && assignedAgentEmail && (
+                    <p className="text-xs text-white/80 mt-1.5 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Agent: {assignedAgentEmail}
+                    </p>
+                  )}
+                </div>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="text-white hover:bg-white/20 flex-shrink-0 rounded-full"
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="text-white hover:bg-white/20 flex-shrink-0"
-            >
-              <X className="h-5 w-5" />
-            </Button>
+
+            {/* All info tags (mirrors BotCard) */}
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {handoffRequested && (
+                <Badge className="text-[11px] bg-amber-400/95 text-amber-950 border-0 hover:bg-amber-400 animate-pulse">
+                  <Headphones className="h-3 w-3 mr-1" />
+                  {isConnectedToAgent ? "Agent Connected" : "Waiting for Agent"}
+                </Badge>
+              )}
+              <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+                {bot.isVideoBot ? <><Video className="h-3 w-3 mr-1" />Video Bot</> : <><Bot className="h-3 w-3 mr-1" />Chat Bot</>}
+              </Badge>
+              <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+                {(bot.isVideoBot || bot.voiceEnabled) ? <><Volume2 className="h-3 w-3 mr-1" />Voice Enabled</> : <><VolumeX className="h-3 w-3 mr-1" />Voice Disabled</>}
+              </Badge>
+              <Badge className={`text-[11px] border-0 ${flowFinished ? 'bg-teal-400/90 text-teal-950 hover:bg-teal-400' : 'bg-cyan-400/90 text-cyan-950 hover:bg-cyan-400'}`}>
+                {flowFinished ? "Q&A Mode" : "Flow Mode"}
+              </Badge>
+              {bot.primaryPurpose && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎯 {bot.primaryPurpose}</Badge>
+              )}
+              {bot.conversationalTone && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎭 {bot.conversationalTone}</Badge>
+              )}
+              {bot.targetAudience && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👥 {bot.targetAudience}</Badge>
+              )}
+              {(bot.conversationalStyle || bot.responseStyle) && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🧭 {bot.conversationalStyle || bot.responseStyle}</Badge>
+              )}
+              {bot.languages?.map((lang) => (
+                <Badge key={lang} className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 {lang}</Badge>
+              ))}
+              {bot.training_files && bot.training_files.length > 0 && (
+                <Badge
+                  className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm"
+                  title={bot.training_files.map((f) => f.originalname).join("\n")}
+                >
+                  📁 Training data ({bot.training_files.length})
+                </Badge>
+              )}
+              {bot.websiteUrl && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 Website training</Badge>
+              )}
+              <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+                🤖 {bot.customLLMProvider ? `Custom LLM (${bot.customLLMProvider})` : "Platform LLM"}
+              </Badge>
+              {bot.isSlackEnabled && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">💬 Slack</Badge>
+              )}
+              {bot.humanHandoffEnabled && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👤 Human handoff</Badge>
+              )}
+            </div>
           </div>
         </DialogHeader>
 
