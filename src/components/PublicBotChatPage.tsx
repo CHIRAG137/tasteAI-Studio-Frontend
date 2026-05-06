@@ -2014,14 +2014,6 @@ export const PublicBotChatPage = () => {
       </Card>
 
       {/* Footer Branding */}
-      <div className="text-center mt-4 pb-4">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Powered by{" "}
-          <span className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            TasteAI Studio
-          </span>
-        </p>
-      </div>
 
       {/* Rating Modal */}
       {showRatingModal && (
