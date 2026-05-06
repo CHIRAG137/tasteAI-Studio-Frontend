@@ -41,6 +41,13 @@ interface ChatBotProps {
     primaryPurpose: string;
     conversationalTone: string;
     humanHandoffEnabled?: boolean;
+    responseStyle?: string;
+    targetAudience?: string;
+    conversationalStyle?: string;
+    specializationArea?: string;
+    isSlackEnabled?: boolean;
+    customLLMProvider?: string;
+    training_files?: Array<{ originalname: string; size: number; mimeType: string }>;
   };
   onClose: () => void;
 }
@@ -1253,92 +1260,108 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={`${bot.isVideoBot ? (showVideoAvatar ? 'max-w-6xl' : 'max-w-2xl') : 'max-w-2xl'} h-[600px] p-0 gap-0 flex flex-col bg-background/95 backdrop-blur-sm border shadow-2xl rounded-xl overflow-hidden transition-all duration-300`}>
         {/* Auth0 visitor enforcement disabled */}
-        <DialogHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0 space-y-0">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3 flex-1 min-w-0">
-              <Avatar className="h-12 w-12 border-2 border-white flex-shrink-0 mt-1">
-                <AvatarFallback className="bg-white text-blue-600">
-                  {handoffRequested ? <Headphones className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <DialogTitle className="text-xl text-white">{bot.name}</DialogTitle>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {/* Handoff Status Badge */}
-                    {handoffRequested && (
-                      <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 border-orange-200 animate-pulse">
-                        <Headphones className="h-3 w-3 mr-1" />
-                        {isConnectedToAgent ? "Agent Connected" : "Waiting for Agent"}
-                      </Badge>
-                    )}
+        <DialogHeader className="relative flex-shrink-0 space-y-0 p-0 overflow-hidden">
+          {/* Modern gradient backdrop */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-accent" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_hsl(var(--primary-glow)/0.45),transparent_55%)]" />
+          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-accent/30 blur-3xl" />
 
-                    <Badge
-                      variant="secondary"
-                      className={`text-xs ${bot.voiceEnabled ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}
-                    >
-                      {bot.voiceEnabled ? (
-                        <>
-                          <Volume2 className="h-3 w-3 mr-1" />
-                          Voice Enabled
-                        </>
-                      ) : (
-                        <>
-                          <VolumeX className="h-3 w-3 mr-1" />
-                          Voice Disabled
-                        </>
-                      )}
-                    </Badge>
-
-                    <Badge
-                      variant="secondary"
-                      className={`text-xs ${bot.isVideoBot ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}
-                    >
-                      {bot.isVideoBot ? (
-                        <>
-                          <Video className="h-3 w-3 mr-1" />
-                          Video Bot
-                        </>
-                      ) : (
-                        <>
-                          <Bot className="h-3 w-3 mr-1" />
-                          Chat Bot
-                        </>
-                      )}
-                    </Badge>
-
-                    {flowFinished ? (
-                      <Badge variant="secondary" className="text-xs bg-teal-100 text-teal-700 border-teal-200">
-                        Q&A Mode
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-xs bg-cyan-100 text-cyan-700 border-cyan-200">
-                        Flow Mode
-                      </Badge>
-                    )}
-                  </div>
+          <div className="relative px-5 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className="relative flex-shrink-0">
+                  <div className="absolute inset-0 rounded-full bg-white/30 blur-md" />
+                  <Avatar className="relative h-12 w-12 ring-2 ring-white/60 shadow-lg">
+                    <AvatarFallback className="bg-white text-primary">
+                      {handoffRequested ? <Headphones className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white ${handoffRequested ? (isConnectedToAgent ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse') : 'bg-emerald-400'}`} />
                 </div>
-                {bot.description && (
-                  <p className="text-sm text-white/90 mt-1.5 line-clamp-2">
-                    {bot.description}
-                  </p>
-                )}
-                {handoffRequested && assignedAgentEmail && (
-                  <p className="text-xs text-white/80 mt-1">
-                    <Clock className="inline h-3 w-3 mr-1" />
-                    Agent: {assignedAgentEmail}
-                  </p>
-                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <DialogTitle className="text-xl text-white font-semibold tracking-tight truncate" title={bot.name}>
+                      {bot.name}
+                    </DialogTitle>
+                  </div>
+                  {bot.description && (
+                    <p className="text-sm text-white/85 mt-1 line-clamp-2">
+                      {bot.description}
+                    </p>
+                  )}
+                  {handoffRequested && assignedAgentEmail && (
+                    <p className="text-xs text-white/80 mt-1.5 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Agent: {assignedAgentEmail}
+                    </p>
+                  )}
+                </div>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="text-white hover:bg-white/20 flex-shrink-0 rounded-full"
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="text-white hover:bg-white/20 flex-shrink-0"
-            >
-              <X className="h-5 w-5" />
-            </Button>
+
+            {/* All info tags (mirrors BotCard) */}
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {handoffRequested && (
+                <Badge className="text-[11px] bg-amber-400/95 text-amber-950 border-0 hover:bg-amber-400 animate-pulse">
+                  <Headphones className="h-3 w-3 mr-1" />
+                  {isConnectedToAgent ? "Agent Connected" : "Waiting for Agent"}
+                </Badge>
+              )}
+              <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+                {bot.isVideoBot ? <><Video className="h-3 w-3 mr-1" />Video Bot</> : <><Bot className="h-3 w-3 mr-1" />Chat Bot</>}
+              </Badge>
+              <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+                {(bot.isVideoBot || bot.voiceEnabled) ? <><Volume2 className="h-3 w-3 mr-1" />Voice Enabled</> : <><VolumeX className="h-3 w-3 mr-1" />Voice Disabled</>}
+              </Badge>
+              <Badge className={`text-[11px] border-0 ${flowFinished ? 'bg-teal-400/90 text-teal-950 hover:bg-teal-400' : 'bg-cyan-400/90 text-cyan-950 hover:bg-cyan-400'}`}>
+                {flowFinished ? "Q&A Mode" : "Flow Mode"}
+              </Badge>
+              {bot.primaryPurpose && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎯 {bot.primaryPurpose}</Badge>
+              )}
+              {bot.conversationalTone && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎭 {bot.conversationalTone}</Badge>
+              )}
+              {bot.targetAudience && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👥 {bot.targetAudience}</Badge>
+              )}
+              {(bot.conversationalStyle || bot.responseStyle) && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🧭 {bot.conversationalStyle || bot.responseStyle}</Badge>
+              )}
+              {bot.languages?.map((lang) => (
+                <Badge key={lang} className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 {lang}</Badge>
+              ))}
+              {bot.training_files && bot.training_files.length > 0 && (
+                <Badge
+                  className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm"
+                  title={bot.training_files.map((f) => f.originalname).join("\n")}
+                >
+                  📁 Training data ({bot.training_files.length})
+                </Badge>
+              )}
+              {bot.websiteUrl && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 Website training</Badge>
+              )}
+              <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+                🤖 {bot.customLLMProvider ? `Custom LLM (${bot.customLLMProvider})` : "Platform LLM"}
+              </Badge>
+              {bot.isSlackEnabled && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">💬 Slack</Badge>
+              )}
+              {bot.humanHandoffEnabled && (
+                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👤 Human handoff</Badge>
+              )}
+            </div>
           </div>
         </DialogHeader>
 
@@ -1431,7 +1454,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 ) : (
                   <div className="text-center p-8 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 w-full h-full flex flex-col items-center justify-center">
                     <Video className="h-20 w-20 mx-auto mb-4 text-purple-400" />
-                    <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    <h3 className="text-2xl font-bold mb-2 bg-gradient-primary bg-clip-text text-transparent">
                       Video Bot
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 mb-6">
@@ -1509,7 +1532,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               </div>
             )}
 
-            <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-white dark:bg-gray-900 transition-all duration-300 relative min-h-0`}>
+            <div className={`${showVideoAvatar ? 'w-1/2' : 'w-full'} flex flex-col bg-background transition-all duration-300 relative min-h-0`}>
               <div 
                 ref={scrollAreaRef}
                 onScroll={handleScrollAreaScroll}
@@ -1532,7 +1555,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className={msg.sender === "agent" 
                           ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                          : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                          : "bg-gradient-primary text-white"
                         }>
                           {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                         </AvatarFallback>
@@ -1543,12 +1566,12 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                         <div
                           className={`rounded-lg p-3 ${
                             msg.sender === "user"
-                              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                              ? "bg-gradient-primary text-white"
                               : msg.sender === "agent"
                               ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
                               : msg.isSystemMessage
                               ? "bg-orange-100 text-orange-900 border border-orange-200"
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                              : "bg-muted text-foreground"
                           }`}
                         >
                           {typeof msg.content === "string"
@@ -1619,7 +1642,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className={handoffRequested 
                         ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                        : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                        : "bg-gradient-primary text-white"
                       }>
                         {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                       </AvatarFallback>
@@ -1647,7 +1670,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 </div>
               </div>
 
-              <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+              <div className="p-4 border-t bg-background flex-shrink-0">
                 {/* IMPROVED: Jump to Latest Button - only shown when stable */}
                 {showJumpButton && (
                   <div className="mb-3 flex justify-center">
@@ -1799,7 +1822,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     size="icon"
                     className={handoffRequested 
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
-                      : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                      : "bg-gradient-primary hover:opacity-90"
                     }
                   >
                     <Send className="h-4 w-4" />
@@ -1809,7 +1832,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 <div className="text-center py-2 border-t mt-2">
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Powered by{" "}
-                    <span className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    <span className="font-semibold bg-gradient-primary bg-clip-text text-transparent">
                       TasteAI Studio
                     </span>
                   </p>
@@ -1841,7 +1864,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className={msg.sender === "agent" 
                         ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                        : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                        : "bg-gradient-primary text-white"
                       }>
                         {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                       </AvatarFallback>
@@ -1852,12 +1875,12 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       <div
                         className={`rounded-lg p-3 ${
                           msg.sender === "user"
-                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                            ? "bg-gradient-primary text-white"
                             : msg.sender === "agent"
                             ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
                             : msg.isSystemMessage
                             ? "bg-orange-100 text-orange-900 border border-orange-200"
-                            : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            : "bg-muted text-foreground"
                         }`}
                       >
                         {typeof msg.content === "string"
@@ -1928,7 +1951,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className={handoffRequested 
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                      : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                      : "bg-gradient-primary text-white"
                     }>
                       {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                     </AvatarFallback>
@@ -1956,7 +1979,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               </div>
             </div>
 
-            <div className="p-4 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+            <div className="p-4 border-t bg-background flex-shrink-0">
               {/* IMPROVED: Jump to Latest Button */}
               {showJumpButton && (
                 <div className="mb-3 flex justify-center">
@@ -2078,7 +2101,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   size="icon"
                   className={handoffRequested 
                     ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
-                    : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+                    : "bg-gradient-primary hover:opacity-90"
                   }
                 >
                   <Send className="h-4 w-4" />
@@ -2087,7 +2110,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
               <div className="text-center py-2 border-t mt-2">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Powered by{" "}
-                  <span className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="font-semibold bg-gradient-primary bg-clip-text text-transparent">
                     TasteAI Studio
                   </span>
                 </p>
@@ -2097,7 +2120,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         )}
         {showRatingModal && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4">
               <h3 className="text-lg font-semibold mb-2">Rate your experience</h3>
               <p className="text-sm text-gray-500 mb-4">How would you rate the support you received?</p>
               {isLoadingRating && (
