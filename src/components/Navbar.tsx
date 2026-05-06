@@ -98,7 +98,7 @@ export const Navbar = () => {
             className="bg-gradient-primary hover:opacity-90 transition-all"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Create Healthcare Bot
+            Create Bot
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

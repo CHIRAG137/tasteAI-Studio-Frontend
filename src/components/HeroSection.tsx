@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Bot, Globe, Zap, ArrowRight, Sparkles, Code2, Heart, FileText } from "lucide-react";
+import { Bot, Globe, Zap, ArrowRight, Sparkles, Code2, Rocket, FileText } from "lucide-react";
 import { HeroIllustration } from "./HeroIllustration";
 import { Button } from "@/components/ui/button";
 
@@ -44,9 +44,9 @@ const features = [
 
 const stats = [
   { value: "< 5 min", label: "Setup Time" },
-  { value: "HIPAA", label: "Compliant" },
+  { value: "No Code", label: "Builder" },
   { value: "50+", label: "Languages" },
-  { value: "24/7", label: "Patient Care" },
+  { value: "24/7", label: "Automation" },
 ];
 
 interface HeroSectionProps {
@@ -131,8 +131,8 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
                 size="lg"
                 className="min-w-[260px] bg-gradient-to-r from-red-500 to-blue-600 hover:opacity-90 text-white px-8 py-6 text-lg rounded-xl shadow-strong transition-all group"
               >
-                <Heart className="w-5 h-5 mr-2 group-hover:animate-bounce" />
-                Create Healthcare Bot
+                <Rocket className="w-5 h-5 mr-2 group-hover:animate-bounce" />
+                Create AI Bot
                 <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
               </Button>
 
@@ -208,10 +208,10 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
           className="max-w-5xl mx-auto mb-20"
         >
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">
-            healthAI Studio
+            TasteAI Studio
           </h2>
           <p className="text-muted-foreground text-center mb-8 max-w-lg mx-auto">
-            Build, deploy, and manage AI agents for patient care, clinical workflows, and hospital operations
+            Build, deploy, and manage AI bots, agents, and workflows for support, sales, operations, and more
           </p>
           <HeroIllustration />
         </motion.div>
@@ -253,10 +253,10 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
                 }}
                 className="group relative p-6 rounded-2xl border border-red-200/50 bg-gradient-to-br from-white to-red-50/30 hover:border-red-300/70 transition-all duration-500 cursor-default overflow-hidden shadow-lg hover:shadow-2xl"
               >
-                {/* Healthcare-themed animated background */}
+                {/* Animated background */}
                 <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 via-blue-500/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
-                {/* Pulse animation for medical feel */}
+                {/* Pulse animation */}
                 <div className="absolute inset-0 rounded-2xl border-2 border-red-200/20 group-hover:border-red-300/40 transition-all duration-500">
                   <div className="absolute inset-0 rounded-2xl border border-blue-200/30 animate-pulse" style={{ animationDuration: '3s' }} />
                 </div>
@@ -268,18 +268,18 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
                   <h3 className="text-lg font-semibold text-foreground mb-3 group-hover:text-red-700 transition-colors duration-300">{feature.title}</h3>
                   <p className="text-muted-foreground text-sm leading-relaxed group-hover:text-gray-700 transition-colors duration-300">{feature.description}</p>
 
-                  {/* Healthcare workflow indicator */}
+                  {/* Workflow indicator */}
                   <div className="mt-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                     <div className="flex gap-1">
                       <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
                       <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '0.2s' }} />
                       <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" style={{ animationDelay: '0.4s' }} />
                     </div>
-                    <span className="text-xs text-red-600 font-medium">Active Healthcare Workflow</span>
+                    <span className="text-xs text-red-600 font-medium">Active Workflow</span>
                   </div>
                 </div>
 
-                {/* Medical cross decoration */}
+                {/* Decorative corner icon */}
                 <div className="absolute top-4 right-4 w-6 h-6 opacity-10 group-hover:opacity-30 transition-opacity duration-500">
                   <div className="absolute inset-0 bg-red-500 rounded-sm rotate-45"></div>
                   <div className="absolute inset-0 bg-red-500 rounded-sm"></div>
@@ -317,20 +317,20 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
               {
                 step: "01",
                 icon: FileText,
-                title: "Upload Medical Data",
-                description: "Import your hospital's knowledge base, patient FAQs, clinical guidelines, and treatment protocols.",
+                title: "Upload Your Content",
+                description: "Import your docs, FAQs, website data, and team knowledge from any domain.",
               },
               {
                 step: "02",
                 icon: Sparkles,
-                title: "Train Healthcare AI",
-                description: "Our AI learns from your medical content and specializes in healthcare-specific conversations and workflows.",
+                title: "Train Your AI",
+                description: "Let AI learn your context, tone, and business logic for smarter conversations and actions.",
               },
               {
                 step: "03",
                 icon: Globe,
                 title: "Deploy & Integrate",
-                description: "Embed voice, video, and text bots on your website, patient portal, and internal systems instantly.",
+                description: "Launch across web, Slack, and internal tools with voice, video, and text experiences.",
               },
             ].map((item, i) => (
               <motion.div
