@@ -770,6 +770,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             question,
             botId: bot.id,
             flowSessionId: sessionId,
+            chatHistory: messages.map(msg => ({ from: msg.sender, text: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content) })),
+            matchedAnswer: null,
+            userEmotion: question.length > 100 ? 'detailed' : 'concise',
           }),
         }
       );
@@ -1018,6 +1021,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
             question,
             botId: bot.id,
             flowSessionId: sessionId,
+            chatHistory: messages.map(msg => ({ from: msg.sender, text: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content) })),
+            matchedAnswer: null,
+            userEmotion: question.length > 100 ? 'detailed' : 'concise',
           }),
         }
       );

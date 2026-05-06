@@ -512,6 +512,9 @@ export default function EmbedChat() {
             question,
             botId: botData._id,
             flowSessionId: sessionId,
+            chatHistory: messages.map(msg => ({ from: msg.from, text: msg.text })),
+            matchedAnswer: null,
+            userEmotion: question.length > 100 ? 'detailed' : 'concise',
           }),
         }
       );
@@ -953,6 +956,9 @@ export default function EmbedChat() {
             question,
             botId: botData._id,
             flowSessionId: sessionId,
+            chatHistory: messages.map(msg => ({ from: msg.from, text: msg.text })),
+            matchedAnswer: null,
+            userEmotion: question.length > 100 ? 'detailed' : 'concise',
           }),
         }
       );

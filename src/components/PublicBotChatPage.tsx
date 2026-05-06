@@ -405,6 +405,9 @@ export const PublicBotChatPage = () => {
             question,
             botId: bot._id,
             flowSessionId: sessionId,
+            chatHistory: messages.map(msg => ({ from: msg.sender, text: msg.content })),
+            matchedAnswer: null,
+            userEmotion: question.length > 100 ? 'detailed' : 'concise',
           }),
         }
       );
@@ -884,6 +887,9 @@ export const PublicBotChatPage = () => {
             question,
             botId: bot._id,
             flowSessionId: sessionId,
+            chatHistory: messages.map(msg => ({ from: msg.sender, text: msg.content })),
+            matchedAnswer: null,
+            userEmotion: question.length > 100 ? 'detailed' : 'concise',
           }),
         }
       );
