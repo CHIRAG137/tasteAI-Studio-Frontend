@@ -372,7 +372,7 @@ export const VideoBotSection = ({
 
       const data = await response.json();
 
-      if (data.success !== "success") {
+      if (data.status !== "success") {
         throw new Error(data.message || "Failed to save cropped image");
       }
 
