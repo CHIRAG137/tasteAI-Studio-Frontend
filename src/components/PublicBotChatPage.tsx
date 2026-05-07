@@ -9,6 +9,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Bot, User, Send, Mic, MicOff, Video, Loader2, PhoneOff, Volume2, VolumeX, Headphones, Clock, ArrowDown } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { BrandLoader } from "@/components/BrandLoader";
+import { VisitorEmailOtpGate } from "@/components/visitor/VisitorEmailOtpGate";
+import { visitorEmailOtpHeaders } from "@/utils/visitorEmailOtp";
 
 import { useAuth0 } from "@auth0/auth0-react";
 
@@ -46,6 +48,7 @@ export const PublicBotChatPage = () => {
   const [isMuted, setIsMuted] = useState(true);
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [needsVisitorVerification, setNeedsVisitorVerification] = useState(false);
 
   // IMPROVED: Jump to latest state with better tracking
   const [showJumpButton, setShowJumpButton] = useState(false);
@@ -400,7 +403,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json"},
+          headers: { "Content-Type": "application/json", ...visitorEmailOtpHeaders(bot._id)},
           body: JSON.stringify({
             question,
             botId: bot._id,
@@ -415,6 +418,10 @@ export const PublicBotChatPage = () => {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data?.result?.code === "visitor_email_verification_required") {
+          setNeedsVisitorVerification(true);
+          return;
+        }
         throw new Error(data.error || "Failed to get answer");
       }
 
@@ -708,9 +715,13 @@ export const PublicBotChatPage = () => {
       try {
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/start/${bot._id}`,
-          { method: "POST" }
+          { method: "POST", headers: { ...visitorEmailOtpHeaders(bot._id) } }
         );
         const data = await res.json();
+        if (!res.ok && data?.result?.code === "visitor_email_verification_required") {
+          setNeedsVisitorVerification(true);
+          return;
+        }
 
         if (data.sessionId) {
           flowStartedRef.current = true;
@@ -882,7 +893,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json"},
+          headers: { "Content-Type": "application/json", ...visitorEmailOtpHeaders(bot._id)},
           body: JSON.stringify({
             question,
             botId: bot._id,
@@ -897,6 +908,10 @@ export const PublicBotChatPage = () => {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data?.result?.code === "visitor_email_verification_required") {
+          setNeedsVisitorVerification(true);
+          return;
+        }
         throw new Error(data.error || "Failed to get answer");
       }
 
@@ -971,7 +986,7 @@ export const PublicBotChatPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/respond`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json"},
+          headers: { "Content-Type": "application/json", ...visitorEmailOtpHeaders(bot._id)},
           body: JSON.stringify(requestBody),
         }
       );
@@ -979,6 +994,10 @@ export const PublicBotChatPage = () => {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data?.result?.code === "visitor_email_verification_required") {
+          setNeedsVisitorVerification(true);
+          return;
+        }
         throw new Error(data.error || "Failed to send message");
       }
 
@@ -2054,6 +2073,13 @@ export const PublicBotChatPage = () => {
             </div>
           </div>
         </div>
+      )}
+      {needsVisitorVerification && botId && (
+        <VisitorEmailOtpGate
+          botId={botId}
+          open={true}
+          onVerified={() => setNeedsVisitorVerification(false)}
+        />
       )}
     </div>
   );

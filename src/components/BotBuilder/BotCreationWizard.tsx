@@ -232,7 +232,12 @@ export const BotCreationWizard = ({
       case "persona":
         return <PersonaSection botConfig={botConfig} updateConfig={updateConfig} />;
       case "visitor-identity":
-        return <VisitorIdentitySection />;
+        return (
+          <VisitorIdentitySection
+            enabled={!!botConfig.requireVisitorEmailVerification}
+            onToggle={(val) => updateConfig("requireVisitorEmailVerification", val)}
+          />
+        );
       case "custom-llm":
         return (
           <CustomLLMSection

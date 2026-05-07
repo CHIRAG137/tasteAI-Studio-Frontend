@@ -39,6 +39,7 @@ interface BotConfig {
   customLLMProvider?: string | null;
   customApiKey?: string;
   customModel?: string;
+  requireVisitorEmailVerification?: boolean;
 }
 
 const resolveBotFromResponse = (result: any) => {
@@ -94,6 +95,7 @@ const CreateBot = () => {
     customLLMProvider: null,
     customApiKey: "",
     customModel: "",
+    requireVisitorEmailVerification: false,
   });
 
   const updateConfig = (field: keyof BotConfig, value: any) => {
@@ -174,6 +176,7 @@ const CreateBot = () => {
         custom_llm_provider: botConfig.customLLMProvider || "",
         custom_api_key: botConfig.customApiKey || "",
         custom_model: botConfig.customModel || "",
+        require_visitor_email_verification: (botConfig.requireVisitorEmailVerification || false).toString(),
       }).forEach(([key, value]) => formData.append(key, value as string));
 
       if (botConfig.scrapedMarkdown?.length)

@@ -43,6 +43,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { EmbedCustomization } from "@/components/EmbedCustomizer";
 import { useToast } from "@/components/ui/use-toast";
+import { VisitorEmailOtpGate } from "@/components/visitor/VisitorEmailOtpGate";
+import { visitorEmailOtpHeaders } from "@/utils/visitorEmailOtp";
 
 
 interface Message {
@@ -74,6 +76,7 @@ export default function EmbedChat() {
   const [isMuted, setIsMuted] = useState(true);
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [needsVisitorVerification, setNeedsVisitorVerification] = useState(false);
 
   // const getVisitorHdrs = (): Record<string, string> => ({});
   // disabled: botData?.require_visitor_auth0_identity && botId ? visitorHeaders(botId) :
@@ -831,9 +834,13 @@ export default function EmbedChat() {
       try {
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/start/${botData._id}`,
-          { method: "POST"}
+          { method: "POST", headers: { ...visitorEmailOtpHeaders(botData._id) } }
         );
         const data = await res.json();
+        if (!res.ok && data?.result?.code === "visitor_email_verification_required") {
+          setNeedsVisitorVerification(true);
+          return;
+        }
 
         if (data.sessionId) {
           flowStartedRef.current = true;
@@ -951,7 +958,7 @@ export default function EmbedChat() {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json"},
+          headers: { "Content-Type": "application/json", ...visitorEmailOtpHeaders(botData._id)},
           body: JSON.stringify({
             question,
             botId: botData._id,
@@ -966,6 +973,10 @@ export default function EmbedChat() {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data?.result?.code === "visitor_email_verification_required") {
+          setNeedsVisitorVerification(true);
+          return;
+        }
         throw new Error(data.error || "Failed to get answer");
       }
 
@@ -1055,7 +1066,7 @@ export default function EmbedChat() {
         `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/respond`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json"},
+          headers: { "Content-Type": "application/json", ...visitorEmailOtpHeaders(botData._id)},
           body: JSON.stringify(requestBody),
         }
       );
@@ -1063,6 +1074,10 @@ export default function EmbedChat() {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data?.result?.code === "visitor_email_verification_required") {
+          setNeedsVisitorVerification(true);
+          return;
+        }
         throw new Error(data.error || "Failed to send message");
       }
 
@@ -1864,6 +1879,13 @@ export default function EmbedChat() {
             </div>
           </div>
         </div>
+      )}
+      {needsVisitorVerification && botId && (
+        <VisitorEmailOtpGate
+          botId={botId}
+          open={true}
+          onVerified={() => setNeedsVisitorVerification(false)}
+        />
       )}
     </div>
   );

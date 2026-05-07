@@ -13,6 +13,8 @@ import {
 import { Send, Bot, User, X, Mic, MicOff, Loader2, Video, Phone, PhoneOff, Volume2, VolumeX, Headphones, Clock, ArrowDown } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { VisitorEmailOtpGate } from "@/components/visitor/VisitorEmailOtpGate";
+import { visitorEmailOtpHeaders } from "@/utils/visitorEmailOtp";
 
 
 interface Message {
@@ -97,6 +99,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const flowStartedRef = useRef(false);
+  const [needsVisitorVerification, setNeedsVisitorVerification] = useState(false);
 
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -900,9 +903,13 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       try {
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/start/${bot.id}`,
-          { method: "POST" }
+          { method: "POST", headers: { ...visitorEmailOtpHeaders(bot.id) } }
         );
         const data = await res.json();
+        if (!res.ok && data?.result?.code === "visitor_email_verification_required") {
+          setNeedsVisitorVerification(true);
+          return;
+        }
 
         if (data.sessionId) {
           flowStartedRef.current = true;
@@ -1023,7 +1030,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json"},
+          headers: { "Content-Type": "application/json", ...visitorEmailOtpHeaders(bot.id)},
           body: JSON.stringify({
             question,
             botId: bot.id,
@@ -1036,6 +1043,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       );
 
       const data = await res.json();
+      if (!res.ok && data?.result?.code === "visitor_email_verification_required") {
+        setNeedsVisitorVerification(true);
+        return;
+      }
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to get answer");
@@ -1098,12 +1109,16 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/respond`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json"},
+          headers: { "Content-Type": "application/json", ...visitorEmailOtpHeaders(bot.id)},
           body: JSON.stringify(requestBody),
         }
       );
 
       const data = await res.json();
+      if (!res.ok && data?.result?.code === "visitor_email_verification_required") {
+        setNeedsVisitorVerification(true);
+        return;
+      }
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to send message");
@@ -2162,6 +2177,13 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         )}
         {/* End Auth0 visitor enforcement disabled */}
       </DialogContent>
+      {needsVisitorVerification && (
+        <VisitorEmailOtpGate
+          botId={bot.id}
+          open={true}
+          onVerified={() => setNeedsVisitorVerification(false)}
+        />
+      )}
     </Dialog>
   );
 };

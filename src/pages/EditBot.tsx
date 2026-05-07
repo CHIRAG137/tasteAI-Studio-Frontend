@@ -49,6 +49,7 @@ interface BotConfig {
   customLLMProvider?: string | null;
   customApiKey?: string;
   customModel?: string;
+  requireVisitorEmailVerification?: boolean;
 }
 
 const resolveBotFromResponse = (result: any) => {
@@ -95,6 +96,7 @@ const EditBot = () => {
     customLLMProvider: null,
     customApiKey: "",
     customModel: "",
+    requireVisitorEmailVerification: false,
   });
 
   useEffect(() => {
@@ -138,6 +140,7 @@ const EditBot = () => {
           customLLMProvider: bot.custom_llm_provider || null,
           customApiKey: "",
           customModel: bot.custom_model || "",
+          requireVisitorEmailVerification: bot.require_visitor_email_verification || false,
         });
       } catch (err) {
         toast({
@@ -229,6 +232,7 @@ const EditBot = () => {
       formData.append("custom_llm_provider", botConfig.customLLMProvider || "");
       formData.append("custom_api_key", botConfig.customApiKey || "");
       formData.append("custom_model", botConfig.customModel || "");
+      formData.append("require_visitor_email_verification", (botConfig.requireVisitorEmailVerification || false).toString());
 
       if (botConfig.scrapedMarkdown?.length)
         formData.append("scraped_content", JSON.stringify(botConfig.scrapedMarkdown));
