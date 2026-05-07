@@ -11,6 +11,7 @@ import { Palette, Save, Eye, RotateCcw, Code, MessageSquare, MousePointer, Spark
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
+import { DEFAULT_EMBED_CUSTOMIZATION, mergeEmbedCustomization } from "@/utils/embedCustomizationDefaults";
 
 export interface EmbedCustomization {
   botId: string;
@@ -68,51 +69,7 @@ interface EmbedCustomizerProps {
   fullPage?: boolean;
 }
 
-const defaultCustomization: Omit<EmbedCustomization, 'botId'> = {
-  // Chat defaults
-  headerTitle: "Chat Assistant",
-  headerSubtitle: "Online",
-  placeholder: "Type your message...",
-  primaryColor: "#3b82f6",
-  backgroundColor: "#ffffff",
-  messageBackgroundColor: "#f1f5f9",
-  userMessageColor: "#3b82f6",
-  botMessageColor: "#f1f5f9",
-  textColor: "#1e293b",
-  borderRadius: "8",
-  fontFamily: "Inter, sans-serif",
-  headerBackground: "#ffffff",
-  chatCustomCSS: "",
-  useChatCustomCSS: false,
-  
-  // Button defaults
-  buttonBackground: "linear-gradient(135deg, #9b5de5, #f15bb5)",
-  buttonColor: "#ffffff",
-  buttonSize: "56",
-  buttonBorderRadius: "50",
-  buttonPosition: "bottom-right",
-  buttonBottom: "20",
-  buttonRight: "20",
-  buttonLeft: "20",
-  buttonCustomCSS: "",
-  useButtonCustomCSS: false,
-  
-  // New button features
-  buttonText: "Chat with us",
-  buttonShowText: false,
-  buttonTextPosition: "left",
-  buttonIcon: "chat",
-  buttonIconType: "default",
-  buttonCustomIcon: "",
-  buttonIconSize: "24",
-  buttonAnimation: "none",
-  buttonHoverAnimation: "scale",
-  buttonPulse: false,
-  buttonShadow: "0 4px 10px rgba(0,0,0,0.3)",
-  buttonTextColor: "#1e293b",
-  buttonTextSize: "14",
-  buttonPadding: "12"
-};
+const defaultCustomization = DEFAULT_EMBED_CUSTOMIZATION;
 
 const defaultChatCSS = `/* Chat container */
 .embed-chat-container {
@@ -411,19 +368,10 @@ export const EmbedCustomizer = ({
           const data = await response.json();
           const apiCustomization = data.result || {};
 
-          setCustomization({
-            ...defaultCustomization,
-            botId,
-            ...apiCustomization,
-            headerTitle: apiCustomization.headerTitle || botName || defaultCustomization.headerTitle
-          });
+          setCustomization(mergeEmbedCustomization(botId, botName, apiCustomization));
         } catch (error) {
           console.error("Error loading customization:", error);
-          setCustomization({
-            ...defaultCustomization,
-            botId,
-            headerTitle: botName || defaultCustomization.headerTitle
-          });
+          setCustomization(mergeEmbedCustomization(botId, botName, {}));
         }
       };
 
@@ -702,11 +650,7 @@ export const EmbedCustomizer = ({
   };
 
   const handleReset = () => {
-    setCustomization({
-      ...defaultCustomization,
-      botId,
-      headerTitle: botName || defaultCustomization.headerTitle
-    });
+    setCustomization(mergeEmbedCustomization(botId, botName, {}));
     toast({
       title: "Reset to Default",
       description: "All customizations have been reset to default values."

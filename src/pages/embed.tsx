@@ -45,6 +45,7 @@ import { EmbedCustomization } from "@/components/EmbedCustomizer";
 import { useToast } from "@/components/ui/use-toast";
 import { VisitorEmailOtpGate } from "@/components/visitor/VisitorEmailOtpGate";
 import { visitorEmailOtpHeaders } from "@/utils/visitorEmailOtp";
+import { mergeEmbedCustomization } from "@/utils/embedCustomizationDefaults";
 
 
 interface Message {
@@ -776,15 +777,18 @@ export default function EmbedChat() {
             `${import.meta.env.VITE_BACKEND_URL}/api/bots/customisation/${botId}`
           );
           const customizationData = await customizationResponse.json();
-          if (customizationData.result) {
-            setCustomization(customizationData.result);
-          }
+          const apiCustomization = customizationData?.result || {};
 
           const botResponse = await fetch(
             `${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}`
           );
           const botDataResult = await botResponse.json();
-          setBotData(botDataResult.result);
+          const botResult = botDataResult?.result;
+          setBotData(botResult);
+
+          // Always set a fully-populated customization object so embed UI doesn't render "whitish"
+          // when backend doc is missing fields (or when the user never opened customization).
+          setCustomization(mergeEmbedCustomization(botId, botResult?.name, apiCustomization));
         } catch (error) {
           console.error('Error loading data:', error);
           setMessages([{
@@ -1211,6 +1215,13 @@ export default function EmbedChat() {
 
   const videoBotAvatarUrl = botData?.video_bot_image_url || null;
 
+  const supportedLanguages: string[] = Array.isArray(botData?.supported_languages)
+    ? botData.supported_languages.filter((l: any) => typeof l === "string" && l.trim().length > 0)
+    : [];
+
+  const visibleLanguages = supportedLanguages.slice(0, 2);
+  const remainingLanguageCount = Math.max(supportedLanguages.length - visibleLanguages.length, 0);
+
   if (!botId) {
     return (
       <div className="flex items-center justify-center h-full p-4">
@@ -1251,7 +1262,7 @@ export default function EmbedChat() {
     if (customization?.useChatCustomCSS) return {};
     return {
       backgroundColor: customization?.userMessageColor || undefined,
-      color: "#000000",
+      color: "#ffffff",
       borderRadius: customization?.borderRadius ? `${customization.borderRadius}px` : '8px'
     };
   };
@@ -1482,6 +1493,27 @@ export default function EmbedChat() {
                   <Badge variant="secondary" className="text-[11px] px-2 py-0.5">
                     <Video className="h-3 w-3 mr-1" />
                     Video
+                  </Badge>
+                )}
+
+                {visibleLanguages.map((lang) => (
+                  <Badge
+                    key={lang}
+                    variant="secondary"
+                    className="text-[11px] px-2 py-0.5"
+                    title={`Language: ${lang}`}
+                  >
+                    🌐 {lang}
+                  </Badge>
+                ))}
+
+                {remainingLanguageCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="text-[11px] px-2 py-0.5"
+                    title={supportedLanguages.join(", ")}
+                  >
+                    +{remainingLanguageCount} more
                   </Badge>
                 )}
 
