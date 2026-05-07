@@ -37,6 +37,7 @@ interface BotConfig {
   humanHandoffEnabled?: boolean;
   humanHandoffEmails?: string;
   customLLMProvider?: string | null;
+  customApiKeySource?: "bot" | "user";
   customApiKey?: string;
   customModel?: string;
   requireVisitorEmailVerification?: boolean;
@@ -93,6 +94,7 @@ const CreateBot = () => {
     humanHandoffEnabled: false,
     humanHandoffEmails: "",
     customLLMProvider: null,
+    customApiKeySource: "bot",
     customApiKey: "",
     customModel: "",
     requireVisitorEmailVerification: false,
@@ -174,6 +176,7 @@ const CreateBot = () => {
         human_handoff_emails: botConfig.humanHandoffEmails || "",
 
         custom_llm_provider: botConfig.customLLMProvider || "",
+        custom_api_key_source: botConfig.customApiKeySource || "bot",
         custom_api_key: botConfig.customApiKey || "",
         custom_model: botConfig.customModel || "",
         require_visitor_email_verification: (botConfig.requireVisitorEmailVerification || false).toString(),

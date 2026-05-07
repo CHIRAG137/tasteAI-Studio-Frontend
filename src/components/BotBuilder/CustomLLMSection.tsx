@@ -17,7 +17,9 @@ import { API_BASE_URL } from "@/api/auth";
 interface CustomLLMSectionProps {
   customLLMProvider?: string | null;
   customModel?: string | null;
+  customApiKeySource?: "bot" | "user" | null;
   onProviderChange: (provider: string | null) => void;
+  onApiKeySourceChange: (source: "bot" | "user") => void;
   onApiKeyChange: (key: string) => void;
   onModelChange: (model: string) => void;
 }
@@ -25,7 +27,9 @@ interface CustomLLMSectionProps {
 export function CustomLLMSection({
   customLLMProvider,
   customModel,
+  customApiKeySource,
   onProviderChange,
+  onApiKeySourceChange,
   onApiKeyChange,
   onModelChange,
 }: CustomLLMSectionProps) {
@@ -35,6 +39,8 @@ export function CustomLLMSection({
   const [testStatus, setTestStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
   const [selectedProvider, setSelectedProvider] = useState(customLLMProvider || "none");
+  const [apiKeySource, setApiKeySource] = useState<"bot" | "user">(customApiKeySource || "bot");
+  const [savedKeyStatus, setSavedKeyStatus] = useState<{ openai?: boolean; gemini?: boolean }>({});
 
   const extractErrorMessage = (data: any) => {
     if (!data) return 'Unable to validate API key.';
@@ -60,8 +66,30 @@ export function CustomLLMSection({
     if (value === "none") {
       onProviderChange(null);
       setApiKeyInput("");
+      onApiKeyChange("");
     } else {
       onProviderChange(value);
+    }
+  };
+
+  const fetchSavedKeyStatus = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/user/api-keys`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const keys = Array.isArray(data?.result?.keys) ? data.result.keys : [];
+      const mapped: Record<string, boolean> = {};
+      for (const k of keys) {
+        if (k?.provider) mapped[k.provider] = !!k.hasKey;
+      }
+      setSavedKeyStatus({
+        openai: !!mapped.openai,
+        gemini: !!mapped.gemini,
+      });
+    } catch {
+      // non-fatal
     }
   };
 
@@ -113,28 +141,70 @@ export function CustomLLMSection({
         {selectedProvider !== "none" && (
           <>
             <div className="space-y-2">
+              <Label htmlFor="api-key-source">API Key Source</Label>
+              <Select
+                value={apiKeySource}
+                onValueChange={(value) => {
+                  const next = value === "user" ? "user" : "bot";
+                  setApiKeySource(next);
+                  setTestStatus("idle");
+                  setTestMessage("");
+                  onApiKeySourceChange(next);
+                  if (next === "user") {
+                    // don't keep plain key in bot config if using saved key
+                    setApiKeyInput("");
+                    onApiKeyChange("");
+                    fetchSavedKeyStatus();
+                  }
+                }}
+              >
+                <SelectTrigger id="api-key-source">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bot">Paste key (bot-specific)</SelectItem>
+                  <SelectItem value="user">Use saved key from Profile</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                If you choose saved key, the API key is never sent from this screen.
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="api-key">API Key</Label>
-              <div className="relative">
-                <Input
-                  id="api-key"
-                  type={showApiKey ? "text" : "password"}
-                  placeholder={`Enter your ${selectedProvider === 'openai' ? 'OpenAI' : 'Google Gemini'} API key`}
-                  value={apiKeyInput}
-                  onChange={(e) => handleApiKeyChange(e.target.value)}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showApiKey ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
+              {apiKeySource === "user" ? (
+                <Alert>
+                  <AlertDescription>
+                    Using your saved {selectedProvider === "openai" ? "OpenAI" : "Gemini"} key from Profile.{" "}
+                    {selectedProvider === "openai"
+                      ? (savedKeyStatus.openai ? "A key is saved." : "No key saved yet.")
+                      : (savedKeyStatus.gemini ? "A key is saved." : "No key saved yet.")}
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="relative">
+                  <Input
+                    id="api-key"
+                    type={showApiKey ? "text" : "password"}
+                    placeholder={`Enter your ${selectedProvider === 'openai' ? 'OpenAI' : 'Google Gemini'} API key`}
+                    value={apiKeyInput}
+                    onChange={(e) => handleApiKeyChange(e.target.value)}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showApiKey ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 {selectedProvider === 'openai' 
                   ? 'Get your API key from https://platform.openai.com/api-keys'
@@ -167,11 +237,6 @@ export function CustomLLMSection({
                 variant="secondary"
                 onClick={async () => {
                   if (!selectedProvider || selectedProvider === 'none') return;
-                  if (!apiKeyInput.trim()) {
-                    setTestStatus('error');
-                    setTestMessage('Enter your API key before testing.');
-                    return;
-                  }
                   const modelToTest = customModel || availableModels[0] || '';
                   if (!modelToTest) {
                     setTestStatus('error');
@@ -184,18 +249,27 @@ export function CustomLLMSection({
                   setTestMessage('');
 
                   try {
-                    const response = await fetch(`${API_BASE_URL}/api/bots/test-custom-llm`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        ...getAuthHeaders(),
-                      },
-                      body: JSON.stringify({
-                        custom_llm_provider: selectedProvider,
-                        custom_api_key: apiKeyInput,
-                        custom_model: modelToTest,
-                      }),
-                    });
+                    const response = apiKeySource === "user"
+                      ? await fetch(`${API_BASE_URL}/api/user/api-keys/${selectedProvider}/test`, {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            ...getAuthHeaders(),
+                          },
+                          body: JSON.stringify({ model: modelToTest }),
+                        })
+                      : await fetch(`${API_BASE_URL}/api/bots/test-custom-llm`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            ...getAuthHeaders(),
+                          },
+                          body: JSON.stringify({
+                            custom_llm_provider: selectedProvider,
+                            custom_api_key: apiKeyInput,
+                            custom_model: modelToTest,
+                          }),
+                        });
 
                     const data = await response.json();
                     if (response.ok) {
@@ -216,7 +290,14 @@ export function CustomLLMSection({
                     setIsTesting(false);
                   }
                 }}
-                disabled={isTesting || !apiKeyInput.trim() || !customModel && !availableModels[0]}
+                disabled={
+                  isTesting ||
+                  (!customModel && !availableModels[0]) ||
+                  (apiKeySource === "bot" && !apiKeyInput.trim()) ||
+                  (apiKeySource === "user" &&
+                    ((selectedProvider === "openai" && !savedKeyStatus.openai) ||
+                      (selectedProvider === "gemini" && !savedKeyStatus.gemini)))
+                }
               >
                 {isTesting ? 'Testing...' : 'Test API Key'}
               </Button>

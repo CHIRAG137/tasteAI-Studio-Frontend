@@ -47,6 +47,7 @@ interface BotConfig {
   humanHandoffEnabled?: boolean;
   humanHandoffEmails?: string;
   customLLMProvider?: string | null;
+  customApiKeySource?: "bot" | "user";
   customApiKey?: string;
   customModel?: string;
   requireVisitorEmailVerification?: boolean;
@@ -94,6 +95,7 @@ const EditBot = () => {
     humanHandoffEnabled: false,
     humanHandoffEmails: "",
     customLLMProvider: null,
+    customApiKeySource: "bot",
     customApiKey: "",
     customModel: "",
     requireVisitorEmailVerification: false,
@@ -138,6 +140,7 @@ const EditBot = () => {
           humanHandoffEnabled: bot.human_handoff_enabled || false,
           humanHandoffEmails: bot.human_handoff_emails || "",
           customLLMProvider: bot.custom_llm_provider || null,
+          customApiKeySource: bot.custom_api_key_source || "bot",
           customApiKey: "",
           customModel: bot.custom_model || "",
           requireVisitorEmailVerification: bot.require_visitor_email_verification || false,
@@ -230,6 +233,7 @@ const EditBot = () => {
       formData.append("human_handoff_enabled", (botConfig.humanHandoffEnabled || false).toString());
       formData.append("human_handoff_emails", botConfig.humanHandoffEmails || "");
       formData.append("custom_llm_provider", botConfig.customLLMProvider || "");
+      formData.append("custom_api_key_source", botConfig.customApiKeySource || "bot");
       formData.append("custom_api_key", botConfig.customApiKey || "");
       formData.append("custom_model", botConfig.customModel || "");
       formData.append("require_visitor_email_verification", (botConfig.requireVisitorEmailVerification || false).toString());

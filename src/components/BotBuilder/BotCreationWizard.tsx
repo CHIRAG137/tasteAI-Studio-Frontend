@@ -243,7 +243,9 @@ export const BotCreationWizard = ({
           <CustomLLMSection
             customLLMProvider={botConfig.customLLMProvider}
             customModel={botConfig.customModel}
+            customApiKeySource={botConfig.customApiKeySource}
             onProviderChange={(provider) => updateConfig("customLLMProvider", provider)}
+            onApiKeySourceChange={(source) => updateConfig("customApiKeySource", source)}
             onApiKeyChange={(key) => updateConfig("customApiKey", key)}
             onModelChange={(model) => updateConfig("customModel", model)}
           />

@@ -8,14 +8,12 @@ import { User, ExternalLink, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isAuthenticated, getAuthHeaders } from "@/utils/auth";
 import { API_BASE_URL } from "@/api/auth";
-import { TokenVaultProfileSection } from "@/components/profile/TokenVaultProfileSection";
 import { BrandLoader } from "@/components/BrandLoader";
 import { PageHeader } from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
-
-const auth0Configured = !!(
-  import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID
-);
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Eye, EyeOff, KeyRound } from "lucide-react";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -23,6 +21,13 @@ const Profile = () => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
+  const [apiKeys, setApiKeys] = useState<Record<string, { hasKey: boolean; masked?: string | null }>>({});
+  const [openAiKeyDraft, setOpenAiKeyDraft] = useState("");
+  const [geminiKeyDraft, setGeminiKeyDraft] = useState("");
+  const [showOpenAiKey, setShowOpenAiKey] = useState(false);
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+  const [isSavingProvider, setIsSavingProvider] = useState<null | "openai" | "gemini">(null);
+  const [isTestingProvider, setIsTestingProvider] = useState<null | "openai" | "gemini">(null);
   const [userDetails, setUserDetails] = useState<{
     name?: string;
     email?: string;
@@ -64,7 +69,116 @@ const Profile = () => {
 
   useEffect(() => {
     fetchUserDetails();
+    fetchApiKeys();
   }, []);
+
+  const fetchApiKeys = async () => {
+    if (!isAuthenticated()) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/user/api-keys`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const keys = Array.isArray(data?.result?.keys) ? data.result.keys : [];
+      const mapped: Record<string, { hasKey: boolean; masked?: string | null }> = {};
+      for (const k of keys) {
+        if (k?.provider) {
+          mapped[k.provider] = { hasKey: !!k.hasKey, masked: k.masked ?? null };
+        }
+      }
+      setApiKeys(mapped);
+    } catch (e) {
+      // Non-fatal
+    }
+  };
+
+  const saveProviderKey = async (provider: "openai" | "gemini") => {
+    if (!isAuthenticated()) {
+      navigate("/login");
+      return;
+    }
+    const draft = provider === "openai" ? openAiKeyDraft : geminiKeyDraft;
+    if (!draft.trim()) {
+      toast({
+        title: "Missing API key",
+        description: `Paste your ${provider === "openai" ? "OpenAI" : "Gemini"} key first.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingProvider(provider);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/user/api-keys/${provider}`, {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ apiKey: draft }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to save API key");
+      }
+
+      toast({
+        title: "Saved",
+        description: `${provider === "openai" ? "OpenAI" : "Gemini"} key saved securely.`,
+      });
+
+      if (provider === "openai") setOpenAiKeyDraft("");
+      else setGeminiKeyDraft("");
+
+      await fetchApiKeys();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save API key.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingProvider(null);
+    }
+  };
+
+  const testSavedProviderKey = async (provider: "openai" | "gemini") => {
+    if (!isAuthenticated()) {
+      navigate("/login");
+      return;
+    }
+    setIsTestingProvider(provider);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/user/api-keys/${provider}/test`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to validate API key");
+      }
+
+      toast({
+        title: "API key valid",
+        description: `${provider === "openai" ? "OpenAI" : "Gemini"} key validated successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Validation failed",
+        description: error instanceof Error ? error.message : "Unable to validate API key.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingProvider(null);
+    }
+  };
 
   const cancelEditName = () => {
     setIsEditingName(false);
@@ -193,11 +307,113 @@ const Profile = () => {
               </CardContent>
             </Card>
 
-            {auth0Configured && (
-              <TokenVaultProfileSection
-                hasAuth0Linked={!!userDetails?.auth0Id}
-              />
-            )}
+            {/* LLM API Keys */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <KeyRound className="h-5 w-5" />
+                  LLM API Keys
+                </CardTitle>
+                <CardDescription>
+                  Save your OpenAI/Gemini keys once, test them here, and reuse them in Custom LLM settings.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Alert>
+                  <AlertDescription>
+                    Keys are **encrypted at rest** on the server and **never returned** in plain text. We only show a masked hint (last 4).
+                  </AlertDescription>
+                </Alert>
+
+                {/* OpenAI */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <Label>OpenAI</Label>
+                    <span className="text-xs text-muted-foreground">
+                      Saved: {apiKeys.openai?.hasKey ? (apiKeys.openai?.masked || "Yes") : "No"}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type={showOpenAiKey ? "text" : "password"}
+                      placeholder="Paste OpenAI API key (stored encrypted)"
+                      value={openAiKeyDraft}
+                      onChange={(e) => setOpenAiKeyDraft(e.target.value)}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOpenAiKey((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showOpenAiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      type="button"
+                      onClick={() => saveProviderKey("openai")}
+                      disabled={isSavingProvider === "openai"}
+                    >
+                      {isSavingProvider === "openai" ? "Saving..." : "Save"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => testSavedProviderKey("openai")}
+                      disabled={!apiKeys.openai?.hasKey || isTestingProvider === "openai"}
+                    >
+                      {isTestingProvider === "openai" ? "Testing..." : "Test saved key"}
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Gemini */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <Label>Google Gemini</Label>
+                    <span className="text-xs text-muted-foreground">
+                      Saved: {apiKeys.gemini?.hasKey ? (apiKeys.gemini?.masked || "Yes") : "No"}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type={showGeminiKey ? "text" : "password"}
+                      placeholder="Paste Gemini API key (stored encrypted)"
+                      value={geminiKeyDraft}
+                      onChange={(e) => setGeminiKeyDraft(e.target.value)}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowGeminiKey((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showGeminiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      type="button"
+                      onClick={() => saveProviderKey("gemini")}
+                      disabled={isSavingProvider === "gemini"}
+                    >
+                      {isSavingProvider === "gemini" ? "Saving..." : "Save"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => testSavedProviderKey("gemini")}
+                      disabled={!apiKeys.gemini?.hasKey || isTestingProvider === "gemini"}
+                    >
+                      {isTestingProvider === "gemini" ? "Testing..." : "Test saved key"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Integrations Card */}
             <Card>
