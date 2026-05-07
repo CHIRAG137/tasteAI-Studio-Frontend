@@ -11,6 +11,7 @@ import { API_BASE_URL } from "@/api/auth";
 import { TokenVaultProfileSection } from "@/components/profile/TokenVaultProfileSection";
 import { BrandLoader } from "@/components/BrandLoader";
 import { PageHeader } from "@/components/PageHeader";
+import { Input } from "@/components/ui/input";
 
 const auth0Configured = !!(
   import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID
@@ -19,6 +20,9 @@ const auth0Configured = !!(
 const Profile = () => {
   const navigate = useNavigate();
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
   const [userDetails, setUserDetails] = useState<{
     name?: string;
     email?: string;
@@ -41,7 +45,9 @@ const Profile = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setUserDetails(data.result.user);
+        const user = data.result.user;
+        setUserDetails(user);
+        setNameDraft(user?.name || "");
         setSlackIntegration(data.result.hasSlackIntegration ? data.result.slackIntegration : null);
       }
     } catch (error) {
@@ -59,6 +65,57 @@ const Profile = () => {
   useEffect(() => {
     fetchUserDetails();
   }, []);
+
+  const cancelEditName = () => {
+    setIsEditingName(false);
+    setNameDraft(userDetails?.name || "");
+  };
+
+  const saveName = async () => {
+    if (!isAuthenticated()) {
+      navigate("/login");
+      return;
+    }
+
+    setIsSavingName(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+        method: "PATCH",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: nameDraft }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update name");
+      }
+
+      const updatedUser = data?.result?.user;
+      setUserDetails((prev) => ({
+        ...prev,
+        ...(updatedUser || {}),
+        name: updatedUser?.name ?? nameDraft,
+      }));
+      setNameDraft(updatedUser?.name ?? nameDraft);
+      setIsEditingName(false);
+      toast({
+        title: "Updated",
+        description: "Your name has been updated.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update name.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingName(false);
+    }
+  };
 
   const handleSlackAuth = () => {
     setIsConnecting(true);
@@ -96,7 +153,40 @@ const Profile = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div className="space-y-1">
-                    <h3 className="text-xl font-semibold">{userDetails?.name || "User"}</h3>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {isEditingName ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={nameDraft}
+                            onChange={(e) => setNameDraft(e.target.value)}
+                            className="h-9 w-[260px]"
+                            placeholder="Your name"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveName();
+                              if (e.key === "Escape") cancelEditName();
+                            }}
+                          />
+                          <Button onClick={saveName} disabled={isSavingName}>
+                            {isSavingName ? "Saving..." : "Save"}
+                          </Button>
+                          <Button variant="outline" onClick={cancelEditName} disabled={isSavingName}>
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <h3 className="text-xl font-semibold">{userDetails?.name || "User"}</h3>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsEditingName(true)}
+                          >
+                            Edit
+                          </Button>
+                        </>
+                      )}
+                    </div>
                     <p className="text-muted-foreground">{userDetails?.email || "No email available"}</p>
                   </div>
                 </div>
