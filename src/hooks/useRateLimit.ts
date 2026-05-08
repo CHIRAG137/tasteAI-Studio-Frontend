@@ -32,8 +32,10 @@ export const useRateLimit = (config: RateLimitConfig) => {
         const requests = getActiveRequests(Array.isArray(parsed.requests) ? parsed.requests : [], now);
         const oldestRequest = requests[0];
         const reachedLimit = requests.length >= maxRequests;
-        const retryAfter = reachedLimit && oldestRequest ? oldestRequest + windowMs : 0;
-        const isLimited = reachedLimit && retryAfter > now;
+        const computedRetryAfter = reachedLimit && oldestRequest ? oldestRequest + windowMs : 0;
+        const forcedRetryAfter = typeof parsed.retryAfter === "number" ? parsed.retryAfter : 0;
+        const retryAfter = Math.max(computedRetryAfter, forcedRetryAfter);
+        const isLimited = retryAfter > now;
 
         return {
           isLimited,
