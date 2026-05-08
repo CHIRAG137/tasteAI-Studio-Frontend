@@ -1025,6 +1025,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const handleAskQuestion = async () => {
     const question = inputMessage.trim();
     if (!question || isLoading) return;
+    if (!chatbotRateLimit.canMakeRequest) {
+      return;
+    }
 
     // Check for handoff intent
     if (flowFinished && detectHandoffIntent(question) && bot.humanHandoffEnabled) {
@@ -1073,6 +1076,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           }),
         }
       );
+      if (res.status === 429) {
+        const retryAfterHeader = res.headers.get("retry-after");
+        chatbotRateLimit.handleRateLimitError(retryAfterHeader ? parseInt(retryAfterHeader, 10) : 900);
+        throw new Error("Too many attempts. Please try again later.");
+      }
 
       const data = await res.json();
       if (!res.ok && data?.result?.code === "visitor_email_verification_required") {
@@ -1115,6 +1123,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
     const messageToSend = overrideInput || inputMessage.trim();
     if (!messageToSend || isLoading || !sessionId) return;
+    if (!chatbotRateLimit.canMakeRequest) {
+      return;
+    }
 
     setCurrentPausedFor(null);
 
@@ -1145,6 +1156,11 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
           body: JSON.stringify(requestBody),
         }
       );
+      if (res.status === 429) {
+        const retryAfterHeader = res.headers.get("retry-after");
+        chatbotRateLimit.handleRateLimitError(retryAfterHeader ? parseInt(retryAfterHeader, 10) : 900);
+        throw new Error("Too many attempts. Please try again later.");
+      }
 
       const data = await res.json();
       if (!res.ok && data?.result?.code === "visitor_email_verification_required") {
@@ -1287,6 +1303,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     (isAwaitingInput &&
       currentPausedFor?.type !== "branch" &&
       !currentPausedFor?.showConfirmationButtons);
+  const isChatRateLimited = !chatbotRateLimit.canMakeRequest;
 
   const shouldShowMicButton = bot.isVideoBot ? !flowFinished : (bot.voiceEnabled && canSendText);
 
@@ -1819,6 +1836,17 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     <AlertDescription>Processing your speech...</AlertDescription>
                   </Alert>
                 )}
+                {isChatRateLimited && (
+                  <Alert className="mb-2 border-amber-200 bg-amber-50">
+                    <Clock className="h-4 w-4 text-amber-700" />
+                    <AlertDescription className="text-sm text-amber-800">
+                      Too many attempts. Try again in{" "}
+                      <span className="rounded border border-amber-300 bg-white px-1.5 py-0.5">
+                        {chatbotRateLimit.formatTimeRemaining(chatbotRateLimit.remainingTime)}
+                      </span>
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 {!showVideoAvatar && (
                   <div className="mb-3">
@@ -1841,7 +1869,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder={getPlaceholderText()}
-                      disabled={isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing}
+                      disabled={isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing || isChatRateLimited}
                       className="pr-12"
                     />
                     {shouldShowMicButton && !handoffRequested && (
@@ -1865,15 +1893,16 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   </div>
                   <RateLimitedButton
                     onClick={() => handleSendMessage()}
-                    disabled={!inputMessage.trim() || isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
+                    disabled={!inputMessage.trim() || isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing || isChatRateLimited}
                     size="icon"
                     className={handoffRequested
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
                       : "bg-gradient-primary hover:opacity-90"
                     }
-                    rateLimitKey="chatbot_send_internal"
-                    maxRequests={20}
-                    windowMs={15 * 60 * 1000}
+                    rateLimitKey={RATE_LIMIT_CONFIGS.CHATBOT_ASK.key}
+                    maxRequests={RATE_LIMIT_CONFIGS.CHATBOT_ASK.maxRequests}
+                    windowMs={RATE_LIMIT_CONFIGS.CHATBOT_ASK.windowMs}
+                    showCountdown={false}
                     countdownMessage="Rate limit exceeded. Try again in"
                   >
                     <Send className="h-4 w-4" />
@@ -2095,6 +2124,17 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   <AlertDescription>Processing your speech...</AlertDescription>
                 </Alert>
               )}
+              {isChatRateLimited && (
+                <Alert className="mb-2 border-amber-200 bg-amber-50">
+                  <Clock className="h-4 w-4 text-amber-700" />
+                  <AlertDescription className="text-sm text-amber-800">
+                    Too many attempts. Try again in{" "}
+                    <span className="rounded border border-amber-300 bg-white px-1.5 py-0.5">
+                      {chatbotRateLimit.formatTimeRemaining(chatbotRateLimit.remainingTime)}
+                    </span>
+                  </AlertDescription>
+                </Alert>
+              )}
 
               {handoffStatus === 'resolved' && (
                 <Alert className="mb-2 bg-gray-50 border-gray-200">
@@ -2124,7 +2164,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder={getPlaceholderText()}
-                    disabled={isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing}
+                    disabled={isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing || isChatRateLimited}
                     className="pr-12"
                   />
                   {bot.voiceEnabled && canSendText && !handoffRequested && (
@@ -2148,15 +2188,16 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                 </div>
                 <RateLimitedButton
                   onClick={() => handleSendMessage()}
-                  disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
+                  disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing || isChatRateLimited}
                   size="icon"
                   className={handoffRequested 
                     ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
                     : "bg-gradient-primary hover:opacity-90"
                   }
-                  rateLimitKey="chatbot_send_internal_regular"
-                  maxRequests={20}
-                  windowMs={15 * 60 * 1000}
+                  rateLimitKey={RATE_LIMIT_CONFIGS.CHATBOT_ASK.key}
+                  maxRequests={RATE_LIMIT_CONFIGS.CHATBOT_ASK.maxRequests}
+                  windowMs={RATE_LIMIT_CONFIGS.CHATBOT_ASK.windowMs}
+                  showCountdown={false}
                   countdownMessage="Rate limit exceeded. Try again in"
                 >
                   <Send className="h-4 w-4" />

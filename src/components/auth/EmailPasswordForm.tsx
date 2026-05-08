@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate, useLocation } from "react-router-dom";
 import { loginUser, registerUser, humanAgentLogin } from "@/api/auth";
 import { setAuthToken, setLoginProvider, ensureLoginDeviceId } from "@/utils/auth";
-import { AlertTriangle, Clock, Info } from "lucide-react";
+import { Clock } from "lucide-react";
 import { toast } from "sonner";
 import { RateLimitedButton } from "@/components/RateLimitedButton";
 import { useRateLimit } from "@/hooks/useRateLimit";
@@ -22,29 +21,20 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [crossMethodError, setCrossMethodError] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || "/";
 
-  const authRateLimit = useRateLimit({
-    maxRequests: 10,
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    key: "email_auth"
-  });
   const globalAuthRateLimit = useRateLimit({
-    maxRequests: 10,
+    maxRequests: 3,
     windowMs: 15 * 60 * 1000,
     key: "auth_global",
   });
-  const isButtonDisabled =
-    loading || !authRateLimit.canMakeRequest || !globalAuthRateLimit.canMakeRequest;
+  const isRateLimited = !globalAuthRateLimit.canMakeRequest;
+  const isButtonDisabled = loading || isRateLimited;
 
   const handleFormSubmit = async () => {
     setLoading(true);
-    setError(null);
-    setCrossMethodError(false);
 
     try {
       let response;
@@ -57,7 +47,6 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
       }
 
       if (response.status === "success") {
-        authRateLimit.recordRequest();
         if (mode === "register") {
           toast.success("Registration successful! Please login now.");
           navigate("/login", {
@@ -72,7 +61,7 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
         }
       } else {
         const errorMsg = response.message || `${mode === "register" ? "Registration" : "Login"} failed`;
-        setError(errorMsg);
+        let toastMessage = errorMsg;
         
         // Check if this is a cross-method error
         if (
@@ -81,24 +70,21 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
             errorMsg.includes("Google") ||
             errorMsg.includes("original method"))
         ) {
-          setCrossMethodError(true);
+          toastMessage = "This account is linked to Auth0 or Google. Please use your original login method.";
         } else if (errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('rate limit')) {
           // Handle rate limit error
           const retryAfterSeconds = extractRetryAfterSeconds(errorMsg, 900);
-          authRateLimit.handleRateLimitError(retryAfterSeconds);
           setRateLimitByKey("auth_global", retryAfterSeconds);
         }
         
-        toast.error(errorMsg);
+        toast.error(toastMessage);
       }
     } catch (error) {
       console.error("Auth error:", error);
       const errorMsg = error instanceof Error ? error.message : `${mode === "register" ? "Registration" : "Login"} failed`;
-      setError(errorMsg);
       
       if (errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('rate limit')) {
         const retryAfterSeconds = extractRetryAfterSeconds(errorMsg, 900);
-        authRateLimit.handleRateLimitError(retryAfterSeconds);
         setRateLimitByKey("auth_global", retryAfterSeconds);
       }
       
@@ -110,24 +96,6 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
 
   return (
     <form className="space-y-4">
-      {error && (
-        <Alert className={crossMethodError ? "border-blue-200 bg-blue-50" : "border-red-200 bg-red-50"}>
-          {crossMethodError ? (
-            <>
-              <Info className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800 text-sm">
-                <strong>Account linked to Auth0 or Google:</strong> This email is registered with Auth0 or Google. 
-                Please use your original login method to access your account.
-              </AlertDescription>
-            </>
-          ) : (
-            <>
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-800 text-sm">{error}</AlertDescription>
-            </>
-          )}
-        </Alert>
-      )}
       {mode === "register" && (
         <div>
           <Label htmlFor="name">Name</Label>
@@ -170,7 +138,7 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
             className={`
         absolute -top-2 -right-2
         bg-white
-        ${isButtonDisabled ? "text-black/60 border-gray-300" : "text-black border-gradient-to-r from-purple-600 to-cyan-500"}
+        ${loading ? "text-black/60 border-gray-300" : "text-black border-gradient-to-r from-purple-600 to-cyan-500"}
         text-[10px] font-semibold
         px-2.5 py-1
         rounded-full
@@ -182,12 +150,15 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
           </span>
         ) : null}
         <RateLimitedButton
-          rateLimitKey="email_auth"
-          maxRequests={10}
+          rateLimitKey="auth_global"
+          maxRequests={3}
           windowMs={15 * 60 * 1000}
           countdownMessage="Too many authentication attempts. Try again in"
           showCountdown={false}
-          className="w-full bg-gradient-to-r from-purple-600 to-cyan-500"
+          showLimitedIcon={false}
+          keepOriginalVariantWhenLimited={true}
+          disabledTooltipMessage="Authentication is temporarily disabled due to too many attempts. Try again in some time."
+          className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 disabled:opacity-100"
           disabled={isButtonDisabled}
           onClick={handleFormSubmit}
         >

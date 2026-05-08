@@ -19,17 +19,13 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || "/";
   const [loading, setLoading] = useState(false);
-  const googleRateLimit = useRateLimit({
-    maxRequests: 10,
-    windowMs: 15 * 60 * 1000,
-    key: "google_auth",
-  });
   const globalAuthRateLimit = useRateLimit({
-    maxRequests: 10,
+    maxRequests: 3,
     windowMs: 15 * 60 * 1000,
     key: "auth_global",
   });
-  const isButtonDisabled = loading || !googleRateLimit.canMakeRequest || !globalAuthRateLimit.canMakeRequest;
+  const isRateLimited = !globalAuthRateLimit.canMakeRequest;
+  const isButtonDisabled = loading || isRateLimited;
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse: any) => {
@@ -48,7 +44,6 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
         } else {
           const rateLimitError = parseRateLimitError(response);
           if (rateLimitError) {
-            setRateLimitByKey("google_auth", rateLimitError.retryAfter);
             setRateLimitByKey("auth_global", rateLimitError.retryAfter);
           }
           toast.error(response.message || "Google login failed");
@@ -57,7 +52,6 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
         console.error("Google login error:", error);
         const rateLimitError = parseRateLimitError(error);
         if (rateLimitError) {
-          setRateLimitByKey("google_auth", extractRetryAfterSeconds(rateLimitError.message, rateLimitError.retryAfter));
           setRateLimitByKey("auth_global", extractRetryAfterSeconds(rateLimitError.message, rateLimitError.retryAfter));
         }
         toast.error(rateLimitError?.message || "Google login failed");
@@ -78,7 +72,7 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
           className={`
         absolute -top-2 -right-2
         bg-white
-        ${isButtonDisabled ? "text-black/60 border-gray-300" : "text-black border-gradient-to-r from-purple-600 to-cyan-500"}
+        ${loading ? "text-black/60 border-gray-300" : "text-black border-gradient-to-r from-purple-600 to-cyan-500"}
         text-[10px] font-semibold
         px-2.5 py-1
         rounded-full
@@ -90,12 +84,15 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
         </span>
       ) : null}
       <RateLimitedButton
-        rateLimitKey="google_auth"
-        maxRequests={10}
+        rateLimitKey="auth_global"
+        maxRequests={3}
         windowMs={15 * 60 * 1000}
         countdownMessage="Too many authentication attempts. Try again in"
         showCountdown={false}
-        className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600 text-white"
+        showLimitedIcon={false}
+        keepOriginalVariantWhenLimited={true}
+        disabledTooltipMessage="Authentication is temporarily disabled due to too many attempts. Try again in some time."
+        className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600 text-white disabled:opacity-100"
         disabled={isButtonDisabled}
         onClick={() => googleLogin()}
       >

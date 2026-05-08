@@ -5,6 +5,7 @@ interface RateLimitState {
   remainingTime: number;
   retryAfter: number;
   lastRequestTime: number | null;
+  requests: number[];
 }
 
 interface RateLimitConfig {
@@ -17,20 +18,30 @@ export const useRateLimit = (config: RateLimitConfig) => {
   const { maxRequests, windowMs, key } = config;
   const storageKey = `ratelimit_${key}`;
 
+  const getActiveRequests = useCallback(
+    (requests: number[] = [], now: number) => requests.filter((timestamp) => now - timestamp < windowMs),
+    [windowMs]
+  );
+
   const getInitialState = useCallback((): RateLimitState => {
+    const now = Date.now();
     const stored = localStorage.getItem(storageKey);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        const now = Date.now();
-        if (parsed.retryAfter && now < parsed.retryAfter) {
-          return {
-            isLimited: true,
-            remainingTime: Math.max(0, parsed.retryAfter - now),
-            retryAfter: parsed.retryAfter,
-            lastRequestTime: parsed.lastRequestTime
-          };
-        }
+        const requests = getActiveRequests(Array.isArray(parsed.requests) ? parsed.requests : [], now);
+        const oldestRequest = requests[0];
+        const reachedLimit = requests.length >= maxRequests;
+        const retryAfter = reachedLimit && oldestRequest ? oldestRequest + windowMs : 0;
+        const isLimited = reachedLimit && retryAfter > now;
+
+        return {
+          isLimited,
+          remainingTime: isLimited ? Math.max(0, retryAfter - now) : 0,
+          retryAfter: isLimited ? retryAfter : 0,
+          lastRequestTime: parsed.lastRequestTime ?? (requests.length ? requests[requests.length - 1] : null),
+          requests
+        };
       } catch (e) {
         // Ignore invalid stored data
       }
@@ -39,9 +50,10 @@ export const useRateLimit = (config: RateLimitConfig) => {
       isLimited: false,
       remainingTime: 0,
       retryAfter: 0,
-      lastRequestTime: null
+      lastRequestTime: null,
+      requests: []
     };
-  }, [storageKey]);
+  }, [getActiveRequests, maxRequests, storageKey, windowMs]);
 
   const [state, setState] = useState<RateLimitState>(getInitialState);
 
@@ -102,11 +114,34 @@ export const useRateLimit = (config: RateLimitConfig) => {
 
   const recordRequest = useCallback(() => {
     const now = Date.now();
-    setState(prev => ({
-      ...prev,
-      lastRequestTime: now
-    }));
-  }, []);
+    setState((prev) => {
+      const requests = getActiveRequests([...prev.requests, now], now);
+      const oldestRequest = requests[0];
+      const reachedLimit = requests.length >= maxRequests;
+      const retryAfter = reachedLimit && oldestRequest ? oldestRequest + windowMs : 0;
+      const isLimited = reachedLimit && retryAfter > now;
+
+      const newState = {
+        ...prev,
+        isLimited,
+        remainingTime: isLimited ? Math.max(0, retryAfter - now) : 0,
+        retryAfter: isLimited ? retryAfter : 0,
+        lastRequestTime: now,
+        requests
+      };
+
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          retryAfter: newState.retryAfter || null,
+          lastRequestTime: newState.lastRequestTime,
+          requests: newState.requests
+        })
+      );
+      window.dispatchEvent(new CustomEvent('ratelimit:update', { detail: { key } }));
+      return newState;
+    });
+  }, [getActiveRequests, key, maxRequests, storageKey, windowMs]);
 
   const handleRateLimitError = useCallback((retryAfterSeconds: number) => {
     const now = Date.now();
@@ -116,7 +151,8 @@ export const useRateLimit = (config: RateLimitConfig) => {
       isLimited: true,
       remainingTime: retryAfterSeconds * 1000,
       retryAfter,
-      lastRequestTime: state.lastRequestTime
+      lastRequestTime: state.lastRequestTime,
+      requests: state.requests
     };
 
     setState(newState);
@@ -124,7 +160,8 @@ export const useRateLimit = (config: RateLimitConfig) => {
     // Store in localStorage
     localStorage.setItem(storageKey, JSON.stringify({
       retryAfter,
-      lastRequestTime: state.lastRequestTime
+      lastRequestTime: state.lastRequestTime,
+      requests: state.requests
     }));
     window.dispatchEvent(new CustomEvent('ratelimit:update', { detail: { key } }));
   }, [key, state.lastRequestTime, storageKey]);

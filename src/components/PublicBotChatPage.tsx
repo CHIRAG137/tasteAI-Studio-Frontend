@@ -890,6 +890,9 @@ export const PublicBotChatPage = () => {
   const handleAskQuestion = async () => {
     const question = inputMessage.trim();
     if (!question || isLoading) return;
+    if (!chatbotRateLimit.canMakeRequest) {
+      return;
+    }
 
     if (flowFinished && detectHandoffIntent(question) && (bot?.human_handoff_enabled || bot?.humanHandoffEnabled)) {
       const userMessage: Message = {
@@ -936,6 +939,11 @@ export const PublicBotChatPage = () => {
           }),
         }
       );
+      if (res.status === 429) {
+        const retryAfterHeader = res.headers.get("retry-after");
+        chatbotRateLimit.handleRateLimitError(retryAfterHeader ? parseInt(retryAfterHeader, 10) : 900);
+        throw new Error("Too many attempts. Please try again later.");
+      }
 
       const data = await res.json();
 
@@ -979,6 +987,9 @@ export const PublicBotChatPage = () => {
 
     const messageToSend = overrideInput || inputMessage.trim();
     if (!messageToSend || isLoading || !sessionId) return;
+    if (!chatbotRateLimit.canMakeRequest) {
+      return;
+    }
 
     setCurrentPausedFor(null);
 
@@ -1022,6 +1033,11 @@ export const PublicBotChatPage = () => {
           body: JSON.stringify(requestBody),
         }
       );
+      if (res.status === 429) {
+        const retryAfterHeader = res.headers.get("retry-after");
+        chatbotRateLimit.handleRateLimitError(retryAfterHeader ? parseInt(retryAfterHeader, 10) : 900);
+        throw new Error("Too many attempts. Please try again later.");
+      }
 
       const data = await res.json();
 
@@ -1160,6 +1176,7 @@ export const PublicBotChatPage = () => {
   const canSendText = flowFinished || (isAwaitingInput &&
     currentPausedFor?.type !== "branch" &&
     !currentPausedFor?.showConfirmationButtons);
+  const isChatRateLimited = !chatbotRateLimit.canMakeRequest;
 
   const shouldShowMicButton = bot?.is_video_bot ? !flowFinished : (bot?.is_voice_enabled && canSendText);
 
@@ -1635,6 +1652,17 @@ export const PublicBotChatPage = () => {
                     <AlertDescription>Processing your speech...</AlertDescription>
                   </Alert>
                 )}
+                {isChatRateLimited && (
+                  <Alert className="mb-2 border-amber-200 bg-amber-50">
+                    <Clock className="h-4 w-4 text-amber-700" />
+                    <AlertDescription className="text-sm text-amber-800">
+                      Too many attempts. Try again in{" "}
+                      <span className="rounded border border-amber-300 bg-white px-1.5 py-0.5">
+                        {chatbotRateLimit.formatTimeRemaining(chatbotRateLimit.remainingTime)}
+                      </span>
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 {handoffRequested && !isConnectedToAgent && (
                   <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
@@ -1718,7 +1746,7 @@ export const PublicBotChatPage = () => {
                                 ? "Type your message..."
                                 : "Select an option above...")
                       }
-                      disabled={isLoading || isHandoffLoading || !canSendText || handoffStatus === 'resolved' || isProcessing}
+                      disabled={isLoading || isHandoffLoading || !canSendText || handoffStatus === 'resolved' || isProcessing || isChatRateLimited}
                       className="pr-12"
                     />
                     {shouldShowMicButton && canSendText && (
@@ -1742,15 +1770,16 @@ export const PublicBotChatPage = () => {
                   </div>
                   <RateLimitedButton
                     onClick={() => handleSendMessage()}
-                    disabled={!inputMessage.trim() || isLoading || isHandoffLoading || !canSendText || isListening || isProcessing}
+                    disabled={!inputMessage.trim() || isLoading || isHandoffLoading || !canSendText || isListening || isProcessing || isChatRateLimited}
                     size="icon"
                     className={handoffRequested
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
                       : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
                     }
-                    rateLimitKey="chatbot_send"
-                    maxRequests={20}
-                    windowMs={15 * 60 * 1000}
+                    rateLimitKey={RATE_LIMIT_CONFIGS.CHATBOT_ASK.key}
+                    maxRequests={RATE_LIMIT_CONFIGS.CHATBOT_ASK.maxRequests}
+                    windowMs={RATE_LIMIT_CONFIGS.CHATBOT_ASK.windowMs}
+                    showCountdown={false}
                     countdownMessage="Rate limit exceeded. Try again in"
                   >
                     <Send className="h-4 w-4" />
@@ -1979,6 +2008,17 @@ export const PublicBotChatPage = () => {
                   <AlertDescription>Processing your speech...</AlertDescription>
                 </Alert>
               )}
+              {isChatRateLimited && (
+                <Alert className="mb-2 border-amber-200 bg-amber-50">
+                  <Clock className="h-4 w-4 text-amber-700" />
+                  <AlertDescription className="text-sm text-amber-800">
+                    Too many attempts. Try again in{" "}
+                    <span className="rounded border border-amber-300 bg-white px-1.5 py-0.5">
+                      {chatbotRateLimit.formatTimeRemaining(chatbotRateLimit.remainingTime)}
+                    </span>
+                  </AlertDescription>
+                </Alert>
+              )}
 
               {handoffStatus === 'resolved' && (
                 <Alert className="mb-2 bg-gray-50 border-gray-200">
@@ -2021,7 +2061,7 @@ export const PublicBotChatPage = () => {
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder={getPlaceholderText()}
-                    disabled={isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing}
+                    disabled={isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing || isChatRateLimited}
                     className="pr-12"
                   />
                   {shouldShowMicButton && !handoffRequested && (
@@ -2043,17 +2083,22 @@ export const PublicBotChatPage = () => {
                     </Button>
                   )}
                 </div>
-                <Button
+                <RateLimitedButton
                   onClick={() => handleSendMessage()}
-                  disabled={!inputMessage.trim() || isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
+                  disabled={!inputMessage.trim() || isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing || isChatRateLimited}
                   size="icon"
                   className={handoffRequested
                     ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
                     : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
                   }
+                  rateLimitKey={RATE_LIMIT_CONFIGS.CHATBOT_ASK.key}
+                  maxRequests={RATE_LIMIT_CONFIGS.CHATBOT_ASK.maxRequests}
+                  windowMs={RATE_LIMIT_CONFIGS.CHATBOT_ASK.windowMs}
+                  showCountdown={false}
+                  countdownMessage="Rate limit exceeded. Try again in"
                 >
                   <Send className="h-4 w-4" />
-                </Button>
+                </RateLimitedButton>
               </div>
               <div className="text-center py-2 border-t mt-2">
                 <p className="text-xs text-gray-500 dark:text-gray-400">

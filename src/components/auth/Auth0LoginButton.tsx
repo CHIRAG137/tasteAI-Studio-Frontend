@@ -14,17 +14,13 @@ export function Auth0LoginButton({ mode = "login", badgeText }: Props) {
   const { loginWithRedirect } = useAuth0();
   const location = useLocation();
   const [loading, setLoading] = useState(false);
-  const auth0RateLimit = useRateLimit({
-    maxRequests: 10,
-    windowMs: 15 * 60 * 1000,
-    key: "auth0_auth",
-  });
   const globalAuthRateLimit = useRateLimit({
-    maxRequests: 10,
+    maxRequests: 3,
     windowMs: 15 * 60 * 1000,
     key: "auth_global",
   });
-  const isButtonDisabled = loading || !auth0RateLimit.canMakeRequest || !globalAuthRateLimit.canMakeRequest;
+  const isRateLimited = !globalAuthRateLimit.canMakeRequest;
+  const isButtonDisabled = loading || isRateLimited;
   const from =
     (location.state as { from?: { pathname?: string } })?.from?.pathname || "/";
 
@@ -51,7 +47,7 @@ export function Auth0LoginButton({ mode = "login", badgeText }: Props) {
           className={`
         absolute -top-2 -right-2
         bg-white
-        ${isButtonDisabled ? "text-black/60 border-gray-300 bg-white" : "text-black border-gradient-to-r from-purple-600 to-cyan-500 bg-white"}
+        ${loading ? "text-black/60 border-gray-300 bg-white" : "text-black border-gradient-to-r from-purple-600 to-cyan-500 bg-white"}
         text-[10px] font-semibold
         px-2.5 py-1
         rounded-full
@@ -64,11 +60,14 @@ export function Auth0LoginButton({ mode = "login", badgeText }: Props) {
       )}
 
       <RateLimitedButton
-        rateLimitKey="auth0_auth"
-        maxRequests={10}
+        rateLimitKey="auth_global"
+        maxRequests={3}
         windowMs={15 * 60 * 1000}
         countdownMessage="Too many authentication attempts. Try again in"
         showCountdown={false}
+        showLimitedIcon={false}
+        keepOriginalVariantWhenLimited={true}
+        disabledTooltipMessage="Authentication is temporarily disabled due to too many attempts. Try again in some time."
         className="
       w-full
       bg-gradient-to-r from-purple-600 to-cyan-500
@@ -77,6 +76,7 @@ export function Auth0LoginButton({ mode = "login", badgeText }: Props) {
       font-medium
       py-3
       shadow-md
+      disabled:opacity-100
     "
         disabled={isButtonDisabled}
         onClick={handleClick}

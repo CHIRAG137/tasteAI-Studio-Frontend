@@ -959,6 +959,9 @@ export default function EmbedChat() {
   const handleAskQuestion = async () => {
     const question = input.trim();
     if (!question || isLoading) return;
+    if (!embedRateLimit.canMakeRequest) {
+      return;
+    }
 
     if (flowFinished && detectHandoffIntent(question) && (botData?.human_handoff_enabled || botData?.humanHandoffEnabled)) {
       const userMessage: Message = {
@@ -1005,6 +1008,11 @@ export default function EmbedChat() {
           }),
         }
       );
+      if (res.status === 429) {
+        const retryAfterHeader = res.headers.get("retry-after");
+        embedRateLimit.handleRateLimitError(retryAfterHeader ? parseInt(retryAfterHeader, 10) : 900);
+        throw new Error("Too many attempts. Please try again later.");
+      }
 
       const data = await res.json();
 
@@ -1044,6 +1052,9 @@ export default function EmbedChat() {
     const messageToSend = overrideInput || input.trim();
 
     if (!messageToSend || isLoading) return;
+    if (!embedRateLimit.canMakeRequest) {
+      return;
+    }
 
     if (isPreview) {
       const userMessage: Message = {
@@ -1106,6 +1117,11 @@ export default function EmbedChat() {
           body: JSON.stringify(requestBody),
         }
       );
+      if (res.status === 429) {
+        const retryAfterHeader = res.headers.get("retry-after");
+        embedRateLimit.handleRateLimitError(retryAfterHeader ? parseInt(retryAfterHeader, 10) : 900);
+        throw new Error("Too many attempts. Please try again later.");
+      }
 
       const data = await res.json();
 
@@ -1244,6 +1260,7 @@ export default function EmbedChat() {
   const canSendText = isPreview || flowFinished || (isAwaitingInput &&
     currentPausedFor?.type !== "branch" &&
     !currentPausedFor?.showConfirmationButtons);
+  const isEmbedRateLimited = !embedRateLimit.canMakeRequest;
 
   const videoBotAvatarUrl = botData?.video_bot_image_url || null;
 
@@ -1838,6 +1855,17 @@ export default function EmbedChat() {
             </AlertDescription>
           </Alert>
         )}
+        {isEmbedRateLimited && (
+          <Alert className="mb-2 border-amber-200 bg-amber-50">
+            <Clock className="h-4 w-4 text-amber-700" />
+            <AlertDescription className="text-sm text-amber-800">
+              Too many attempts. Try again in{" "}
+              <span className="rounded border border-amber-300 bg-white px-1.5 py-0.5">
+                {embedRateLimit.formatTimeRemaining(embedRateLimit.remainingTime)}
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -1854,7 +1882,7 @@ export default function EmbedChat() {
                       ? "Ask me anything..."
                       : (customization?.placeholder || "Type your message...")
               }
-              disabled={isLoading || isHandoffLoading || !canSendText || handoffStatus === 'resolved' || isProcessing}
+              disabled={isLoading || isHandoffLoading || !canSendText || handoffStatus === 'resolved' || isProcessing || isEmbedRateLimited}
               className={`flex-1 transition-all duration-200 ${botData?.is_voice_enabled && canSendText && flowFinished && !botData?.is_video_bot ? 'pr-10' : ''
                 } ${customization?.useChatCustomCSS ? 'embed-input' : ''}`}
               style={getInputStyle()}
@@ -1884,14 +1912,15 @@ export default function EmbedChat() {
           </div>
           <RateLimitedButton
             onClick={() => handleSendMessage()}
-            disabled={!input.trim() || isLoading || isHandoffLoading || !canSendText || handoffStatus === 'resolved' || isListening || isProcessing}
+            disabled={!input.trim() || isLoading || isHandoffLoading || !canSendText || handoffStatus === 'resolved' || isListening || isProcessing || isEmbedRateLimited}
             size="icon"
             className={`shrink-0 transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-send-button' : ''
               }`}
             style={getSendButtonStyle()}
-            rateLimitKey="embed_send"
-            maxRequests={50}
-            windowMs={15 * 60 * 1000}
+            rateLimitKey={RATE_LIMIT_CONFIGS.EMBED_CHATBOT.key}
+            maxRequests={RATE_LIMIT_CONFIGS.EMBED_CHATBOT.maxRequests}
+            windowMs={RATE_LIMIT_CONFIGS.EMBED_CHATBOT.windowMs}
+            showCountdown={false}
             countdownMessage="Rate limit exceeded. Try again in"
           >
             <Send className="h-4 w-4" />
