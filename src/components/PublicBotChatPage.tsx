@@ -12,7 +12,7 @@ import { BrandLoader } from "@/components/BrandLoader";
 import { VisitorEmailOtpGate } from "@/components/visitor/VisitorEmailOtpGate";
 import { visitorEmailOtpHeaders } from "@/utils/visitorEmailOtp";
 import { useRateLimit } from "@/hooks/useRateLimit";
-import { handleApiResponse, RATE_LIMIT_CONFIGS } from "@/utils/rateLimit";
+import { handleApiResponse, RATE_LIMIT_CONFIGS, extractRetryAfterSeconds } from "@/utils/rateLimit";
 import { RateLimitedButton } from "@/components/RateLimitedButton";
 
 import { useAuth0 } from "@auth0/auth0-react";
@@ -458,6 +458,9 @@ export const PublicBotChatPage = () => {
       const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
                               errorMessage.toLowerCase().includes('too many') ||
                               errorMessage.toLowerCase().includes('try again later');
+      if (isRateLimitError) {
+        chatbotRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMessage, 900));
+      }
 
       toast({
         title: isRateLimitError ? "Rate Limit Exceeded" : "Error",
@@ -960,9 +963,16 @@ export const PublicBotChatPage = () => {
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
+      const errorMessage = err.message || "Something went wrong";
+      const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
+        errorMessage.toLowerCase().includes('too many') ||
+        errorMessage.toLowerCase().includes('try again later');
+      if (isRateLimitError) {
+        chatbotRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMessage, 900));
+      }
       toast({
-        title: "Error",
-        description: err.message || "Something went wrong",
+        title: isRateLimitError ? "Rate Limit Exceeded" : "Error",
+        description: errorMessage,
         variant: "destructive"
       });
       setMessages((prev) => [
@@ -1104,9 +1114,16 @@ export const PublicBotChatPage = () => {
       textsToSpeak.forEach(text => queueTextToSpeech(text));
     } catch (err: any) {
       console.error(err);
+      const errorMessage = err.message || "Something went wrong";
+      const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
+        errorMessage.toLowerCase().includes('too many') ||
+        errorMessage.toLowerCase().includes('try again later');
+      if (isRateLimitError) {
+        chatbotRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMessage, 900));
+      }
       toast({
-        title: "Error",
-        description: err.message || "Something went wrong",
+        title: isRateLimitError ? "Rate Limit Exceeded" : "Error",
+        description: errorMessage,
         variant: "destructive"
       });
       setMessages((prev) => [

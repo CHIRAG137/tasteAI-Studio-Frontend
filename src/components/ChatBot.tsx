@@ -16,7 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { VisitorEmailOtpGate } from "@/components/visitor/VisitorEmailOtpGate";
 import { visitorEmailOtpHeaders } from "@/utils/visitorEmailOtp";
 import { useRateLimit } from "@/hooks/useRateLimit";
-import { handleApiResponse, RATE_LIMIT_CONFIGS } from "@/utils/rateLimit";
+import { handleApiResponse, RATE_LIMIT_CONFIGS, extractRetryAfterSeconds } from "@/utils/rateLimit";
 import { RateLimitedButton } from "@/components/RateLimitedButton";
 
 
@@ -827,6 +827,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
                               errorMessage.toLowerCase().includes('too many') ||
                               errorMessage.toLowerCase().includes('try again later');
+      if (isRateLimitError) {
+        chatbotRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMessage, 900));
+      }
 
       toast({
         title: isRateLimitError ? "Rate Limit Exceeded" : "Error",
@@ -1098,18 +1101,29 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
+      const errorMessage = err.message || "Something went wrong";
+      const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
+        errorMessage.toLowerCase().includes('too many') ||
+        errorMessage.toLowerCase().includes('try again later');
+      if (isRateLimitError) {
+        chatbotRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMessage, 900));
+      }
       toast({
-        title: "Error",
-        description: err.message || "Something went wrong",
+        title: isRateLimitError ? "Rate Limit Exceeded" : "Error",
+        description: errorMessage,
         variant: "destructive"
       });
-      const errorMessage = {
-        id: Date.now().toString() + Math.random(),
-        content: "I'm having trouble answering that. Please try again.",
-        sender: "bot" as const,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      if (!isRateLimitError) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString() + Math.random(),
+            content: "I'm having trouble answering that. Please try again.",
+            sender: "bot",
+            timestamp: new Date(),
+          },
+        ]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1229,9 +1243,16 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
 
     } catch (err: any) {
       console.error(err);
+      const errorMessage = err.message || "Something went wrong";
+      const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
+        errorMessage.toLowerCase().includes('too many') ||
+        errorMessage.toLowerCase().includes('try again later');
+      if (isRateLimitError) {
+        chatbotRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMessage, 900));
+      }
       toast({
-        title: "Error",
-        description: err.message || "Something went wrong",
+        title: isRateLimitError ? "Rate Limit Exceeded" : "Error",
+        description: errorMessage,
         variant: "destructive"
       });
       setMessages((prev) => [

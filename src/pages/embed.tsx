@@ -47,7 +47,7 @@ import { VisitorEmailOtpGate } from "@/components/visitor/VisitorEmailOtpGate";
 import { visitorEmailOtpHeaders } from "@/utils/visitorEmailOtp";
 import { mergeEmbedCustomization } from "@/utils/embedCustomizationDefaults";
 import { useRateLimit } from "@/hooks/useRateLimit";
-import { handleApiResponse, RATE_LIMIT_CONFIGS } from "@/utils/rateLimit";
+import { handleApiResponse, RATE_LIMIT_CONFIGS, extractRetryAfterSeconds } from "@/utils/rateLimit";
 import { RateLimitedButton } from "@/components/RateLimitedButton";
 
 
@@ -562,6 +562,9 @@ export default function EmbedChat() {
       const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
                               errorMessage.toLowerCase().includes('too many') ||
                               errorMessage.toLowerCase().includes('try again later');
+      if (isRateLimitError) {
+        embedRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMessage, 900));
+      }
 
       toast({
         title: isRateLimitError ? "Rate Limit Exceeded" : "Error",
@@ -1029,9 +1032,16 @@ export default function EmbedChat() {
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
+      const errorMessage = err.message || "Something went wrong";
+      const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
+        errorMessage.toLowerCase().includes('too many') ||
+        errorMessage.toLowerCase().includes('try again later');
+      if (isRateLimitError) {
+        embedRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMessage, 900));
+      }
       toast({
-        title: "Error",
-        description: err.message || "Something went wrong",
+        title: isRateLimitError ? "Rate Limit Exceeded" : "Error",
+        description: errorMessage,
         variant: "destructive"
       });
       setMessages((prev) => [
@@ -1188,9 +1198,16 @@ export default function EmbedChat() {
       textsToSpeak.forEach(text => queueTextToSpeech(text));
     } catch (err: any) {
       console.error(err);
+      const errorMessage = err.message || "Something went wrong";
+      const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
+        errorMessage.toLowerCase().includes('too many') ||
+        errorMessage.toLowerCase().includes('try again later');
+      if (isRateLimitError) {
+        embedRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMessage, 900));
+      }
       toast({
-        title: "Error",
-        description: err.message || "Something went wrong",
+        title: isRateLimitError ? "Rate Limit Exceeded" : "Error",
+        description: errorMessage,
         variant: "destructive"
       });
       setMessages((prev) => [
