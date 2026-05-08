@@ -1,9 +1,11 @@
 import { useGoogleLogin } from "@react-oauth/google";
-import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 import { googleLoginUser, humanAgentGoogleLogin } from "@/api/auth";
 import { setAuthToken, setLoginProvider, ensureLoginDeviceId } from "@/utils/auth";
 import { toast } from "sonner";
+import { RateLimitedButton } from "@/components/RateLimitedButton";
+import { parseRateLimitError, setRateLimitByKey, extractRetryAfterSeconds } from "@/utils/rateLimit";
 
 type Props = {
   mode?: "login" | "register";
@@ -15,10 +17,12 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || "/";
+  const [loading, setLoading] = useState(false);
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse: any) => {
       try {
+        setLoading(true);
         const apiCall = isAgent ? humanAgentGoogleLogin : googleLoginUser;
         const token = tokenResponse.access_token;
         const deviceId = ensureLoginDeviceId();
@@ -30,14 +34,25 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
           toast.success("Login successful!");
           navigate(from, { replace: true });
         } else {
+          const rateLimitError = parseRateLimitError(response);
+          if (rateLimitError) {
+            setRateLimitByKey("google_auth", rateLimitError.retryAfter);
+          }
           toast.error(response.message || "Google login failed");
         }
       } catch (error) {
         console.error("Google login error:", error);
-        toast.error("Google login failed");
+        const rateLimitError = parseRateLimitError(error);
+        if (rateLimitError) {
+          setRateLimitByKey("google_auth", extractRetryAfterSeconds(rateLimitError.message, rateLimitError.retryAfter));
+        }
+        toast.error(rateLimitError?.message || "Google login failed");
+      } finally {
+        setLoading(false);
       }
     },
     onError: () => {
+      setLoading(false);
       toast.error("Google login failed");
     },
   });
@@ -60,9 +75,13 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
           {badgeText}
         </span>
       ) : null}
-      <Button
-        type="button"
+      <RateLimitedButton
+        rateLimitKey="google_auth"
+        maxRequests={10}
+        windowMs={15 * 60 * 1000}
+        countdownMessage="Too many authentication attempts. Try again in"
         className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600 text-white"
+        disabled={loading}
         onClick={() => googleLogin()}
       >
         <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
@@ -83,8 +102,8 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
           />
         </svg>
-        {mode === "register" ? "Sign Up with Google" : "Sign In with Google"}
-      </Button>
+        {loading ? "Loading..." : mode === "register" ? "Sign Up with Google" : "Sign In with Google"}
+      </RateLimitedButton>
     </div>
   );
 }

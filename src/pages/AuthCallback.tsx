@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { auth0LoginUser } from "@/api/auth";
 import { setAuthToken, setLoginProvider, ensureLoginDeviceId } from "@/utils/auth";
 import { BrandLoader } from "@/components/BrandLoader";
+import { parseRateLimitError, setRateLimitByKey } from "@/utils/rateLimit";
 
 const AuthCallback = () => {
   const { isLoading, isAuthenticated, getAccessTokenSilently, error } =
@@ -63,7 +64,12 @@ const AuthCallback = () => {
         navigate(returnTo, { replace: true });
       } catch (e: unknown) {
         done.current = false;
-        setMessage(e instanceof Error ? e.message : "Sign-in failed");
+        const message = e instanceof Error ? e.message : "Sign-in failed";
+        const rateLimitError = parseRateLimitError({ message });
+        if (rateLimitError) {
+          setRateLimitByKey("auth0_auth", rateLimitError.retryAfter);
+        }
+        setMessage(message);
       }
     })();
   }, [isLoading, isAuthenticated, error, getAccessTokenSilently, navigate]);

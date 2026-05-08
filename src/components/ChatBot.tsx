@@ -15,6 +15,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { VisitorEmailOtpGate } from "@/components/visitor/VisitorEmailOtpGate";
 import { visitorEmailOtpHeaders } from "@/utils/visitorEmailOtp";
+import { useRateLimit } from "@/hooks/useRateLimit";
+import { handleApiResponse, RATE_LIMIT_CONFIGS } from "@/utils/rateLimit";
+import { RateLimitedButton } from "@/components/RateLimitedButton";
 
 
 interface Message {
@@ -88,7 +91,10 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const [previousRatingValue, setPreviousRatingValue] = useState<number | null>(null);
   const [previousRatingFeedback, setPreviousRatingFeedback] = useState<string>('');
   const [isLoadingRating, setIsLoadingRating] = useState(false);
-  
+
+  // Rate limiting for chatbot interactions
+  const chatbotRateLimit = useRateLimit(RATE_LIMIT_CONFIGS.CHATBOT_ASK);
+
   // IMPROVED: Jump to latest state with better tracking
   const [showJumpButton, setShowJumpButton] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -741,6 +747,16 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
   const handleVoiceQuestion = async (question: string) => {
     if (!question.trim() || isLoading) return;
 
+    // Check rate limit before proceeding
+    if (!chatbotRateLimit.canMakeRequest) {
+      toast({
+        title: "Rate Limit Exceeded",
+        description: `You've reached the limit for chatbot questions. Try again in ${chatbotRateLimit.formatTimeRemaining(chatbotRateLimit.remainingTime)}.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Check for handoff intent in voice mode too
     if (flowFinished && detectHandoffIntent(question) && bot.humanHandoffEnabled) {
       const userMessage: Message = {
@@ -771,6 +787,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
     }
 
     try {
+      // Record the request attempt
+      chatbotRateLimit.recordRequest();
+
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
@@ -787,6 +806,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
         }
       );
 
+      // Handle rate limiting in response
+      await handleApiResponse(res, chatbotRateLimit);
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -799,12 +821,22 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
+
+      // Check if this is a rate limit error
+      const errorMessage = err.message || "Something went wrong";
+      const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
+                              errorMessage.toLowerCase().includes('too many') ||
+                              errorMessage.toLowerCase().includes('try again later');
+
       toast({
-        title: "Error",
-        description: err.message || "Something went wrong",
+        title: isRateLimitError ? "Rate Limit Exceeded" : "Error",
+        description: errorMessage,
         variant: "destructive"
       });
-      addBotMessage("I'm having trouble answering that. Please try again.");
+
+      if (!isRateLimitError) {
+        addBotMessage("I'm having trouble answering that. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1831,17 +1863,21 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                       </Button>
                     )}
                   </div>
-                  <Button
+                  <RateLimitedButton
                     onClick={() => handleSendMessage()}
                     disabled={!inputMessage.trim() || isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
                     size="icon"
-                    className={handoffRequested 
+                    className={handoffRequested
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
                       : "bg-gradient-primary hover:opacity-90"
                     }
+                    rateLimitKey="chatbot_send_internal"
+                    maxRequests={20}
+                    windowMs={15 * 60 * 1000}
+                    countdownMessage="Rate limit exceeded. Try again in"
                   >
                     <Send className="h-4 w-4" />
-                  </Button>
+                  </RateLimitedButton>
                 </div>
 
                 <div className="text-center py-2 border-t mt-2">
@@ -2110,7 +2146,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     </Button>
                   )}
                 </div>
-                <Button
+                <RateLimitedButton
                   onClick={() => handleSendMessage()}
                   disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing}
                   size="icon"
@@ -2118,9 +2154,13 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
                     : "bg-gradient-primary hover:opacity-90"
                   }
+                  rateLimitKey="chatbot_send_internal_regular"
+                  maxRequests={20}
+                  windowMs={15 * 60 * 1000}
+                  countdownMessage="Rate limit exceeded. Try again in"
                 >
                   <Send className="h-4 w-4" />
-                </Button>
+                </RateLimitedButton>
               </div>
               <div className="text-center py-2 border-t mt-2">
                 <p className="text-xs text-gray-500 dark:text-gray-400">

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -8,6 +7,9 @@ import { loginUser, registerUser, humanAgentLogin } from "@/api/auth";
 import { setAuthToken, setLoginProvider, ensureLoginDeviceId } from "@/utils/auth";
 import { AlertTriangle, Info } from "lucide-react";
 import { toast } from "sonner";
+import { RateLimitedButton } from "@/components/RateLimitedButton";
+import { useRateLimit } from "@/hooks/useRateLimit";
+import { extractRetryAfterSeconds } from "@/utils/rateLimit";
 
 type Props = {
   mode: "login" | "register";
@@ -26,8 +28,13 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || "/";
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const authRateLimit = useRateLimit({
+    maxRequests: 10,
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    key: "email_auth"
+  });
+
+  const handleFormSubmit = async () => {
     setLoading(true);
     setError(null);
     setCrossMethodError(false);
@@ -43,6 +50,7 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
       }
 
       if (response.status === "success") {
+        authRateLimit.recordRequest();
         if (mode === "register") {
           toast.success("Registration successful! Please login now.");
           navigate("/login", {
@@ -62,11 +70,14 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
         // Check if this is a cross-method error
         if (
           mode === "login" &&
-          errorMsg.includes("Auth0") ||
-          errorMsg.includes("Google") ||
-          errorMsg.includes("original method")
+          (errorMsg.includes("Auth0") ||
+            errorMsg.includes("Google") ||
+            errorMsg.includes("original method"))
         ) {
           setCrossMethodError(true);
+        } else if (errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('rate limit')) {
+          // Handle rate limit error
+          authRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMsg, 900));
         }
         
         toast.error(errorMsg);
@@ -75,6 +86,11 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
       console.error("Auth error:", error);
       const errorMsg = error instanceof Error ? error.message : `${mode === "register" ? "Registration" : "Login"} failed`;
       setError(errorMsg);
+      
+      if (errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('rate limit')) {
+        authRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMsg, 900));
+      }
+      
       toast.error(errorMsg);
     } finally {
       setLoading(false);
@@ -82,7 +98,7 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form className="space-y-4">
       {error && (
         <Alert className={crossMethodError ? "border-blue-200 bg-blue-50" : "border-red-200 bg-red-50"}>
           {crossMethodError ? (
@@ -154,10 +170,17 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
             Last used
           </span>
         ) : null}
-        <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-cyan-500
-" disabled={loading}>
+        <RateLimitedButton
+          rateLimitKey="email_auth"
+          maxRequests={10}
+          windowMs={15 * 60 * 1000}
+          countdownMessage="Too many authentication attempts. Try again in"
+          className="w-full bg-gradient-to-r from-purple-600 to-cyan-500"
+          disabled={loading}
+          onClick={handleFormSubmit}
+        >
           {loading ? "Loading..." : mode === "register" ? "Sign Up" : "Sign In"}
-        </Button>
+        </RateLimitedButton>
       </div>
     </form>
   );

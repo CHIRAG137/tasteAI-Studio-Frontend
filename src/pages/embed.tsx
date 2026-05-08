@@ -46,6 +46,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { VisitorEmailOtpGate } from "@/components/visitor/VisitorEmailOtpGate";
 import { visitorEmailOtpHeaders } from "@/utils/visitorEmailOtp";
 import { mergeEmbedCustomization } from "@/utils/embedCustomizationDefaults";
+import { useRateLimit } from "@/hooks/useRateLimit";
+import { handleApiResponse, RATE_LIMIT_CONFIGS } from "@/utils/rateLimit";
+import { RateLimitedButton } from "@/components/RateLimitedButton";
 
 
 interface Message {
@@ -78,6 +81,9 @@ export default function EmbedChat() {
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [needsVisitorVerification, setNeedsVisitorVerification] = useState(false);
+
+  // Rate limiting for embed chatbot interactions
+  const embedRateLimit = useRateLimit(RATE_LIMIT_CONFIGS.EMBED_CHATBOT);
 
   // const getVisitorHdrs = (): Record<string, string> => ({});
   // disabled: botData?.require_visitor_auth0_identity && botId ? visitorHeaders(botId) :
@@ -479,6 +485,16 @@ export default function EmbedChat() {
   const handleVoiceQuestion = async (question: string) => {
     if (!question.trim() || isLoading) return;
 
+    // Check rate limit before proceeding
+    if (!embedRateLimit.canMakeRequest) {
+      toast({
+        title: "Rate Limit Exceeded",
+        description: `You've reached the limit for embed chatbot interactions. Try again in ${embedRateLimit.formatTimeRemaining(embedRateLimit.remainingTime)}.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (flowFinished && detectHandoffIntent(question) && (botData?.human_handoff_enabled || botData?.humanHandoffEnabled)) {
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -507,6 +523,9 @@ export default function EmbedChat() {
     }
 
     try {
+      // Record the request attempt
+      embedRateLimit.recordRequest();
+
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
@@ -523,6 +542,9 @@ export default function EmbedChat() {
         }
       );
 
+      // Handle rate limiting in response
+      await handleApiResponse(res, embedRateLimit);
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -534,12 +556,22 @@ export default function EmbedChat() {
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
+
+      // Check if this is a rate limit error
+      const errorMessage = err.message || "Something went wrong";
+      const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
+                              errorMessage.toLowerCase().includes('too many') ||
+                              errorMessage.toLowerCase().includes('try again later');
+
       toast({
-        title: "Error",
-        description: err.message || "Something went wrong",
+        title: isRateLimitError ? "Rate Limit Exceeded" : "Error",
+        description: errorMessage,
         variant: "destructive"
       });
-      addBotMessage("I'm having trouble answering that. Please try again.");
+
+      if (!isRateLimitError) {
+        addBotMessage("I'm having trouble answering that. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1850,16 +1882,20 @@ export default function EmbedChat() {
               </Button>
             )}
           </div>
-          <Button
+          <RateLimitedButton
             onClick={() => handleSendMessage()}
             disabled={!input.trim() || isLoading || isHandoffLoading || !canSendText || handoffStatus === 'resolved' || isListening || isProcessing}
             size="icon"
             className={`shrink-0 transition-all duration-200 ${customization?.useChatCustomCSS ? 'embed-send-button' : ''
               }`}
             style={getSendButtonStyle()}
+            rateLimitKey="embed_send"
+            maxRequests={50}
+            windowMs={15 * 60 * 1000}
+            countdownMessage="Rate limit exceeded. Try again in"
           >
             <Send className="h-4 w-4" />
-          </Button>
+          </RateLimitedButton>
         </div>
 
         <div className="text-center py-2 border-t mt-2">

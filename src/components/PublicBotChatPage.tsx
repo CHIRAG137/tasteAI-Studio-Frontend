@@ -11,6 +11,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { BrandLoader } from "@/components/BrandLoader";
 import { VisitorEmailOtpGate } from "@/components/visitor/VisitorEmailOtpGate";
 import { visitorEmailOtpHeaders } from "@/utils/visitorEmailOtp";
+import { useRateLimit } from "@/hooks/useRateLimit";
+import { handleApiResponse, RATE_LIMIT_CONFIGS } from "@/utils/rateLimit";
+import { RateLimitedButton } from "@/components/RateLimitedButton";
 
 import { useAuth0 } from "@auth0/auth0-react";
 
@@ -49,6 +52,9 @@ export const PublicBotChatPage = () => {
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [needsVisitorVerification, setNeedsVisitorVerification] = useState(false);
+
+  // Rate limiting for chatbot interactions
+  const chatbotRateLimit = useRateLimit(RATE_LIMIT_CONFIGS.CHATBOT_ASK);
 
   // IMPROVED: Jump to latest state with better tracking
   const [showJumpButton, setShowJumpButton] = useState(false);
@@ -371,6 +377,16 @@ export const PublicBotChatPage = () => {
   const handleVoiceQuestion = async (question: string) => {
     if (!question.trim() || isLoading) return;
 
+    // Check rate limit before proceeding
+    if (!chatbotRateLimit.canMakeRequest) {
+      toast({
+        title: "Rate Limit Exceeded",
+        description: `You've reached the limit for chatbot questions. Try again in ${chatbotRateLimit.formatTimeRemaining(chatbotRateLimit.remainingTime)}.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (flowFinished && detectHandoffIntent(question) && (bot?.human_handoff_enabled || bot?.humanHandoffEnabled)) {
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -399,6 +415,9 @@ export const PublicBotChatPage = () => {
     }
 
     try {
+      // Record the request attempt
+      chatbotRateLimit.recordRequest();
+
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
@@ -415,6 +434,9 @@ export const PublicBotChatPage = () => {
         }
       );
 
+      // Handle rate limiting in response
+      await handleApiResponse(res, chatbotRateLimit);
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -430,12 +452,22 @@ export const PublicBotChatPage = () => {
       queueTextToSpeech(answerText);
     } catch (err: any) {
       console.error(err);
+
+      // Check if this is a rate limit error
+      const errorMessage = err.message || "Something went wrong";
+      const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
+                              errorMessage.toLowerCase().includes('too many') ||
+                              errorMessage.toLowerCase().includes('try again later');
+
       toast({
-        title: "Error",
-        description: err.message || "Something went wrong",
+        title: isRateLimitError ? "Rate Limit Exceeded" : "Error",
+        description: errorMessage,
         variant: "destructive"
       });
-      addBotMessage("I'm having trouble answering that. Please try again.");
+
+      if (!isRateLimitError) {
+        addBotMessage("I'm having trouble answering that. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1708,7 +1740,7 @@ export const PublicBotChatPage = () => {
                       </Button>
                     )}
                   </div>
-                  <Button
+                  <RateLimitedButton
                     onClick={() => handleSendMessage()}
                     disabled={!inputMessage.trim() || isLoading || isHandoffLoading || !canSendText || isListening || isProcessing}
                     size="icon"
@@ -1716,9 +1748,13 @@ export const PublicBotChatPage = () => {
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
                       : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
                     }
+                    rateLimitKey="chatbot_send"
+                    maxRequests={20}
+                    windowMs={15 * 60 * 1000}
+                    countdownMessage="Rate limit exceeded. Try again in"
                   >
                     <Send className="h-4 w-4" />
-                  </Button>
+                  </RateLimitedButton>
                 </div>
               </div>
             </div>
