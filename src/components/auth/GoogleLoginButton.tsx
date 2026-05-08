@@ -5,6 +5,7 @@ import { googleLoginUser, humanAgentGoogleLogin } from "@/api/auth";
 import { setAuthToken, setLoginProvider, ensureLoginDeviceId } from "@/utils/auth";
 import { toast } from "sonner";
 import { RateLimitedButton } from "@/components/RateLimitedButton";
+import { useRateLimit } from "@/hooks/useRateLimit";
 import { parseRateLimitError, setRateLimitByKey, extractRetryAfterSeconds } from "@/utils/rateLimit";
 
 type Props = {
@@ -18,6 +19,17 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || "/";
   const [loading, setLoading] = useState(false);
+  const googleRateLimit = useRateLimit({
+    maxRequests: 10,
+    windowMs: 15 * 60 * 1000,
+    key: "google_auth",
+  });
+  const globalAuthRateLimit = useRateLimit({
+    maxRequests: 10,
+    windowMs: 15 * 60 * 1000,
+    key: "auth_global",
+  });
+  const isButtonDisabled = loading || !googleRateLimit.canMakeRequest || !globalAuthRateLimit.canMakeRequest;
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse: any) => {
@@ -37,6 +49,7 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
           const rateLimitError = parseRateLimitError(response);
           if (rateLimitError) {
             setRateLimitByKey("google_auth", rateLimitError.retryAfter);
+            setRateLimitByKey("auth_global", rateLimitError.retryAfter);
           }
           toast.error(response.message || "Google login failed");
         }
@@ -45,6 +58,7 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
         const rateLimitError = parseRateLimitError(error);
         if (rateLimitError) {
           setRateLimitByKey("google_auth", extractRetryAfterSeconds(rateLimitError.message, rateLimitError.retryAfter));
+          setRateLimitByKey("auth_global", extractRetryAfterSeconds(rateLimitError.message, rateLimitError.retryAfter));
         }
         toast.error(rateLimitError?.message || "Google login failed");
       } finally {
@@ -61,16 +75,16 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
     <div className="relative inline-block w-full">
       {badgeText ? (
         <span
-          className="
+          className={`
         absolute -top-2 -right-2
         bg-white
-        text-black
+        ${isButtonDisabled ? "text-black/60 border-gray-300" : "text-black border-gradient-to-r from-purple-600 to-cyan-500"}
         text-[10px] font-semibold
         px-2.5 py-1
         rounded-full
-        border border-gradient-to-r from-purple-600 to-cyan-500
+        border
         shadow-sm
-      "
+      `}
         >
           {badgeText}
         </span>
@@ -80,8 +94,9 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
         maxRequests={10}
         windowMs={15 * 60 * 1000}
         countdownMessage="Too many authentication attempts. Try again in"
+        showCountdown={false}
         className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600 text-white"
-        disabled={loading}
+        disabled={isButtonDisabled}
         onClick={() => googleLogin()}
       >
         <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">

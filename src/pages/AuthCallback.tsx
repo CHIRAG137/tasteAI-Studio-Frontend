@@ -68,6 +68,7 @@ const AuthCallback = () => {
         const rateLimitError = parseRateLimitError({ message });
         if (rateLimitError) {
           setRateLimitByKey("auth0_auth", rateLimitError.retryAfter);
+          setRateLimitByKey("auth_global", rateLimitError.retryAfter);
         }
         setMessage(message);
       }

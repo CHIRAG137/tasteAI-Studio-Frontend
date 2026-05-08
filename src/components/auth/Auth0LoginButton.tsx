@@ -2,6 +2,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { useLocation } from "react-router-dom";
 import { useState } from "react";
 import { RateLimitedButton } from "@/components/RateLimitedButton";
+import { useRateLimit } from "@/hooks/useRateLimit";
 import { toast } from "sonner";
 
 type Props = {
@@ -13,6 +14,17 @@ export function Auth0LoginButton({ mode = "login", badgeText }: Props) {
   const { loginWithRedirect } = useAuth0();
   const location = useLocation();
   const [loading, setLoading] = useState(false);
+  const auth0RateLimit = useRateLimit({
+    maxRequests: 10,
+    windowMs: 15 * 60 * 1000,
+    key: "auth0_auth",
+  });
+  const globalAuthRateLimit = useRateLimit({
+    maxRequests: 10,
+    windowMs: 15 * 60 * 1000,
+    key: "auth_global",
+  });
+  const isButtonDisabled = loading || !auth0RateLimit.canMakeRequest || !globalAuthRateLimit.canMakeRequest;
   const from =
     (location.state as { from?: { pathname?: string } })?.from?.pathname || "/";
 
@@ -36,16 +48,16 @@ export function Auth0LoginButton({ mode = "login", badgeText }: Props) {
     <div className="relative inline-block w-full">
       {badgeText && (
         <span
-          className="
+          className={`
         absolute -top-2 -right-2
         bg-white
-        text-black
+        ${isButtonDisabled ? "text-black/60 border-gray-300 bg-white" : "text-black border-gradient-to-r from-purple-600 to-cyan-500 bg-white"}
         text-[10px] font-semibold
         px-2.5 py-1
         rounded-full
-        border border-gradient-to-r from-purple-600 to-cyan-500
+        border
         shadow-sm
-      "
+      `}
         >
           {badgeText}
         </span>
@@ -56,6 +68,7 @@ export function Auth0LoginButton({ mode = "login", badgeText }: Props) {
         maxRequests={10}
         windowMs={15 * 60 * 1000}
         countdownMessage="Too many authentication attempts. Try again in"
+        showCountdown={false}
         className="
       w-full
       bg-gradient-to-r from-purple-600 to-cyan-500
@@ -65,7 +78,7 @@ export function Auth0LoginButton({ mode = "login", badgeText }: Props) {
       py-3
       shadow-md
     "
-        disabled={loading}
+        disabled={isButtonDisabled}
         onClick={handleClick}
       >
         {loading ? "Loading..." : mode === "register" ? "Sign Up with Auth0" : "Sign In with Auth0"}

@@ -5,11 +5,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate, useLocation } from "react-router-dom";
 import { loginUser, registerUser, humanAgentLogin } from "@/api/auth";
 import { setAuthToken, setLoginProvider, ensureLoginDeviceId } from "@/utils/auth";
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle, Clock, Info } from "lucide-react";
 import { toast } from "sonner";
 import { RateLimitedButton } from "@/components/RateLimitedButton";
 import { useRateLimit } from "@/hooks/useRateLimit";
-import { extractRetryAfterSeconds } from "@/utils/rateLimit";
+import { extractRetryAfterSeconds, setRateLimitByKey } from "@/utils/rateLimit";
 
 type Props = {
   mode: "login" | "register";
@@ -33,6 +33,13 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
     windowMs: 15 * 60 * 1000, // 15 minutes
     key: "email_auth"
   });
+  const globalAuthRateLimit = useRateLimit({
+    maxRequests: 10,
+    windowMs: 15 * 60 * 1000,
+    key: "auth_global",
+  });
+  const isButtonDisabled =
+    loading || !authRateLimit.canMakeRequest || !globalAuthRateLimit.canMakeRequest;
 
   const handleFormSubmit = async () => {
     setLoading(true);
@@ -77,7 +84,9 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
           setCrossMethodError(true);
         } else if (errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('rate limit')) {
           // Handle rate limit error
-          authRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMsg, 900));
+          const retryAfterSeconds = extractRetryAfterSeconds(errorMsg, 900);
+          authRateLimit.handleRateLimitError(retryAfterSeconds);
+          setRateLimitByKey("auth_global", retryAfterSeconds);
         }
         
         toast.error(errorMsg);
@@ -88,7 +97,9 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
       setError(errorMsg);
       
       if (errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('rate limit')) {
-        authRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMsg, 900));
+        const retryAfterSeconds = extractRetryAfterSeconds(errorMsg, 900);
+        authRateLimit.handleRateLimitError(retryAfterSeconds);
+        setRateLimitByKey("auth_global", retryAfterSeconds);
       }
       
       toast.error(errorMsg);
@@ -156,16 +167,16 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
       <div className="relative inline-block w-full">
         {showLastUsedBadge ? (
           <span
-            className="
+            className={`
         absolute -top-2 -right-2
         bg-white
-        text-black
+        ${isButtonDisabled ? "text-black/60 border-gray-300" : "text-black border-gradient-to-r from-purple-600 to-cyan-500"}
         text-[10px] font-semibold
         px-2.5 py-1
         rounded-full
-        border border-gradient-to-r from-purple-600 to-cyan-500
+        border
         shadow-sm
-      "
+      `}
           >
             Last used
           </span>
@@ -175,12 +186,22 @@ export function EmailPasswordForm({ mode, isAgent = false, showLastUsedBadge = f
           maxRequests={10}
           windowMs={15 * 60 * 1000}
           countdownMessage="Too many authentication attempts. Try again in"
+          showCountdown={false}
           className="w-full bg-gradient-to-r from-purple-600 to-cyan-500"
-          disabled={loading}
+          disabled={isButtonDisabled}
           onClick={handleFormSubmit}
         >
           {loading ? "Loading..." : mode === "register" ? "Sign Up" : "Sign In"}
         </RateLimitedButton>
+        {!globalAuthRateLimit.canMakeRequest && (
+          <div className="mt-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <span>Too many attempts. Please try again in</span>
+            <span className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-white px-2 py-0.5 text-amber-700">
+              <Clock className="h-3 w-3" />
+              {globalAuthRateLimit.formatTimeRemaining(globalAuthRateLimit.remainingTime)}
+            </span>
+          </div>
+        )}
       </div>
     </form>
   );
