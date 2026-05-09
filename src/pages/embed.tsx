@@ -1410,7 +1410,7 @@ export default function EmbedChat() {
                         className={`h-10 w-10 rounded-full shadow-lg transition-all ${!isMuted
                           ? isListening
                             ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                            : "bg-green-500 hover:bg-green-600"
+                            : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
                           : "bg-gray-400 hover:bg-gray-500"
                           }`}
                         disabled={isLoading || isProcessing || isSpeaking || handoffStatus === 'resolved'}
@@ -1468,7 +1468,7 @@ export default function EmbedChat() {
                         className={`h-10 w-10 rounded-full shadow-lg ${!isMuted
                           ? isListening
                             ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                            : "bg-green-500 hover:bg-green-600"
+                            : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
                           : "bg-gray-400 hover:bg-gray-500"
                           }`}
                         disabled={isLoading || isProcessing || isSpeaking || handoffStatus === 'resolved'}
@@ -1795,7 +1795,7 @@ export default function EmbedChat() {
             <AlertDescription className="flex items-center justify-between">
               <span className="text-amber-800 text-sm">Enable voice responses?</span>
               <div className="flex gap-2">
-                <Button size="sm" onClick={enableTTS} className="bg-amber-600 hover:bg-amber-700 h-7 text-xs">
+                <Button size="sm" onClick={enableTTS} className="h-7 text-xs">
                   Enable
                 </Button>
                 <Button size="sm" variant="outline" onClick={disableTTS} className="h-7 text-xs">
@@ -1947,7 +1947,7 @@ export default function EmbedChat() {
         <div className="text-center py-2 border-t mt-2">
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Powered by{" "}
-            <span className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <span className="font-semibold bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent">
               TasteAI Studio
             </span>
           </p>

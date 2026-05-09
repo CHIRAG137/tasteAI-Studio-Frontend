@@ -131,7 +131,7 @@ export default function TestEmbed() {
               onClick={() => navigate("/")}
               className="text-base font-bold text-foreground hover:text-primary transition-colors"
             >
-              healthAI
+              tasteAI
             </button>
             <div className="h-4 w-px bg-border" />
             <Button

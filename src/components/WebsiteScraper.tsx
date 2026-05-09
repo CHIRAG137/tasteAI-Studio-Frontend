@@ -270,7 +270,6 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
         <Button
           onClick={handleSearchUrls}
           disabled={!websiteUrl?.trim() || searchLoading || scrapeLoading}
-          className="bg-gradient-primary hover:opacity-90"
         >
           {searchLoading ? (
             <>
@@ -329,7 +328,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
           <Button
             onClick={handleScrapeSelected}
             disabled={selectedCount === 0 || scrapeLoading}
-            className="w-full bg-gradient-primary hover:opacity-90"
+            className="w-full"
           >
             {scrapeLoading ? (
               <>
@@ -379,7 +378,7 @@ export const WebsiteScraper = ({ websiteUrl, onScrapedDataReady }: WebsiteScrape
             <Button
               type="button"
               onClick={handleUseForTraining}
-              className="bg-gradient-primary hover:opacity-90 animate-[btn-breathe_8s_ease-in-out_infinite] hover:[animation-play-state:paused]"
+              className="animate-[btn-breathe_8s_ease-in-out_infinite] hover:[animation-play-state:paused]"
             >
               Use for Bot Training
             </Button>

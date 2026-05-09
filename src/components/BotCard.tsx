@@ -259,7 +259,7 @@ export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, o
         <div className="pt-2">
           <Button
             onClick={() => onTest(bot.id)}
-            className="w-full bg-gradient-primary hover:opacity-90"
+            className="w-full"
             size="sm"
           >
             <Play className="w-4 h-4 mr-2" />

@@ -129,7 +129,7 @@ export default function Workflows() {
             </Button>
             <Button
               onClick={() => navigate("/workflows/create")}
-              className="bg-gradient-primary hover:opacity-90 transition-all gap-2"
+              className="transition-all gap-2"
             >
               <Plus className="w-4 h-4" />
               New Workflow

@@ -338,7 +338,7 @@ export default function WorkflowBuilder() {
               <Play className="w-4 h-4" />
               Test
             </Button>
-            <Button size="sm" className="bg-gradient-primary gap-2">
+            <Button size="sm" className="gap-2">
               <Save className="w-4 h-4" />
               Save
             </Button>

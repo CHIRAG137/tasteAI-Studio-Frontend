@@ -64,15 +64,15 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="w-full bg-background border-b border-border px-4 py-3 sticky top-0 z-50 backdrop-blur-sm bg-background/95">
+    <nav className="w-full border-b border-purple-100/60 bg-background/90 px-4 py-3 sticky top-0 z-50 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 dark:border-border dark:bg-background/95">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-6">
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="text-xl font-bold text-foreground hover:text-primary transition-colors"
+            className="text-xl font-bold bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent hover:opacity-90 transition-opacity"
           >
-            healthAI Studio
+            TasteAI Studio
           </button>
         </div>
 
@@ -93,10 +93,7 @@ export const Navbar = () => {
             <Zap className="w-4 h-4 mr-2" />
             Workflows
           </Button>
-          <Button
-            onClick={() => navigate('/create')}
-            className="bg-gradient-primary hover:opacity-90 transition-all"
-          >
+          <Button onClick={() => navigate('/create')}>
             <Plus className="w-4 h-4 mr-2" />
             Create Bot
           </Button>

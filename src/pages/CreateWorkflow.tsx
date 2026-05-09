@@ -196,7 +196,7 @@ export default function CreateWorkflow() {
                 size="sm"
                 onClick={() => setStep((s) => (s + 1) as Step)}
                 disabled={!canProceed()}
-                className="bg-gradient-primary gap-2"
+                className="gap-2"
               >
                 Next
                 <ArrowRight className="w-4 h-4" />
@@ -206,7 +206,7 @@ export default function CreateWorkflow() {
                 size="sm"
                 onClick={handleCreate}
                 disabled={isSubmitting}
-                className="bg-gradient-primary gap-2"
+                className="gap-2"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 {isSubmitting

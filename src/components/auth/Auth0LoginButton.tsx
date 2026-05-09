@@ -68,16 +68,7 @@ export function Auth0LoginButton({ mode = "login", badgeText }: Props) {
         showLimitedIcon={false}
         keepOriginalVariantWhenLimited={true}
         disabledTooltipMessage="Authentication is temporarily disabled due to too many attempts. Try again in some time."
-        className="
-      w-full
-      bg-gradient-to-r from-purple-600 to-cyan-500
-      hover:from-purple-700 hover:to-cyan-600
-      text-white
-      font-medium
-      py-3
-      shadow-md
-      disabled:opacity-100
-    "
+        className="w-full py-3 font-medium shadow-md disabled:opacity-100"
         disabled={isButtonDisabled}
         onClick={handleClick}
       >

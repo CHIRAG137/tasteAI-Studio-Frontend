@@ -92,7 +92,7 @@ export function GoogleLoginButton({ mode = "login", isAgent = false, badgeText }
         showLimitedIcon={false}
         keepOriginalVariantWhenLimited={true}
         disabledTooltipMessage="Authentication is temporarily disabled due to too many attempts. Try again in some time."
-        className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600 text-white disabled:opacity-100"
+        className="w-full py-3 font-medium shadow-md disabled:opacity-100"
         disabled={isButtonDisabled}
         onClick={() => googleLogin()}
       >

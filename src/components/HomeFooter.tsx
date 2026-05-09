@@ -76,8 +76,8 @@ export const HomeFooter = () => {
   };
 
   return (
-    <footer className="relative border-t border-border/60 bg-gradient-to-b from-background to-muted/30">
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_0%,rgba(99,102,241,0.08),transparent_35%),radial-gradient(circle_at_80%_100%,rgba(6,182,212,0.08),transparent_30%)]" />
+    <footer className="relative border-t border-purple-100/70 bg-gradient-to-b from-purple-50/90 via-blue-50/40 to-cyan-50/60 dark:border-border dark:from-background dark:via-background dark:to-muted/30">
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_0%,rgba(147,51,234,0.08),transparent_38%),radial-gradient(circle_at_80%_100%,rgba(6,182,212,0.1),transparent_32%)]" />
       <div className="relative max-w-7xl mx-auto px-4 py-14">
         <div className="grid lg:grid-cols-2 gap-10">
           <div>
@@ -159,7 +159,7 @@ export const HomeFooter = () => {
                 />
               </div>
 
-              <Button type="submit" disabled={isSubmitting} className="w-full gap-2 bg-gradient-primary hover:opacity-90">
+              <Button type="submit" disabled={isSubmitting} className="w-full gap-2">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />

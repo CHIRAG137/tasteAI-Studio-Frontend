@@ -1477,7 +1477,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                             size="lg"
                             className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${
                               ttsEnabled
-                                ? "bg-blue-500 hover:bg-blue-600"
+                                ? "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
                                 : "bg-gray-400 hover:bg-gray-500"
                             }`}
                             title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
@@ -1495,7 +1495,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                             className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${!isMuted
                               ? isListening
                                 ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                                : "bg-green-500 hover:bg-green-600"
+                                : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
                               : "bg-gray-400 hover:bg-gray-500"
                               }`}
                             disabled={isLoading || isProcessing || isSpeaking}
@@ -1554,7 +1554,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                             size="lg"
                             className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${
                               ttsEnabled
-                                ? "bg-blue-500 hover:bg-blue-600"
+                                ? "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
                                 : "bg-gray-400 hover:bg-gray-500"
                             }`}
                             title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
@@ -1572,7 +1572,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                             className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${!isMuted
                               ? isListening
                                 ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                                : "bg-green-500 hover:bg-green-600"
+                                : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
                               : "bg-gray-400 hover:bg-gray-500"
                               }`}
                             disabled={isLoading || isProcessing || isSpeaking}
@@ -1680,7 +1680,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                             <Button
                               size="sm"
                               onClick={() => handleConfirmationClick("yes")}
-                              className="bg-green-600 hover:bg-green-700"
                             >
                               Yes
                             </Button>
@@ -1702,10 +1701,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                               <Button
                                 key={idx}
                                 size="sm"
-                                variant="outline"
+                                variant={msg.selectedBranch === opt ? "default" : "outline"}
                                 onClick={() => handleBranchOptionClick(opt, msg.id)}
                                 disabled={!!msg.selectedBranch}
-                                className={msg.selectedBranch === opt ? "bg-blue-500 text-white border-blue-600" : ""}
                               >
                                 {opt}
                               </Button>
@@ -1813,7 +1811,7 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     <AlertDescription className="flex items-center justify-between">
                       <span className="text-amber-800">Enable voice responses from the bot?</span>
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={enableTTS} className="bg-amber-600 hover:bg-amber-700">
+                        <Button size="sm" onClick={enableTTS}>
                           Enable
                         </Button>
                         <Button size="sm" variant="outline" onClick={disableTTS}>
@@ -1916,10 +1914,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                     onClick={() => handleSendMessage()}
                     disabled={!inputMessage.trim() || isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing || isChatRateLimited}
                     size="icon"
-                    className={handoffRequested
-                      ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
-                      : "bg-gradient-primary hover:opacity-90"
-                    }
                     rateLimitKey={RATE_LIMIT_CONFIGS.CHATBOT_ASK.key}
                     maxRequests={RATE_LIMIT_CONFIGS.CHATBOT_ASK.maxRequests}
                     windowMs={RATE_LIMIT_CONFIGS.CHATBOT_ASK.windowMs}
@@ -2005,7 +1999,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                           <Button
                             size="sm"
                             onClick={() => handleConfirmationClick("yes")}
-                            className="bg-green-600 hover:bg-green-700"
                           >
                             Yes
                           </Button>
@@ -2027,10 +2020,9 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                             <Button
                               key={idx}
                               size="sm"
-                              variant="outline"
+                              variant={msg.selectedBranch === opt ? "default" : "outline"}
                               onClick={() => handleBranchOptionClick(opt, msg.id)}
                               disabled={!!msg.selectedBranch}
-                              className={msg.selectedBranch === opt ? "bg-blue-500 text-white border-blue-600" : ""}
                             >
                               {opt}
                             </Button>
@@ -2211,10 +2203,6 @@ export const ChatBot = ({ bot, onClose }: ChatBotProps) => {
                   onClick={() => handleSendMessage()}
                   disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing || isChatRateLimited}
                   size="icon"
-                  className={handoffRequested 
-                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
-                    : "bg-gradient-primary hover:opacity-90"
-                  }
                   rateLimitKey={RATE_LIMIT_CONFIGS.CHATBOT_ASK.key}
                   maxRequests={RATE_LIMIT_CONFIGS.CHATBOT_ASK.maxRequests}
                   windowMs={RATE_LIMIT_CONFIGS.CHATBOT_ASK.windowMs}

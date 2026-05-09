@@ -5,20 +5,23 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/80 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-soft hover:shadow-medium",
+        default:
+          "border-0 bg-gradient-to-r from-purple-600 to-cyan-500 text-white shadow-md hover:shadow-lg hover:from-purple-700 hover:to-cyan-600 dark:from-purple-500 dark:to-cyan-400 dark:hover:from-purple-400 dark:hover:to-cyan-300",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-soft hover:shadow-medium",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-soft hover:shadow-medium",
+          "border border-purple-200 bg-background text-foreground shadow-soft hover:border-purple-300 hover:bg-gradient-to-r hover:from-purple-50 hover:to-cyan-50 hover:text-purple-950 dark:border-purple-500/30 dark:hover:from-purple-950/40 dark:hover:to-cyan-950/30 dark:hover:text-purple-50",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-soft hover:shadow-medium",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        gradient: "bg-gradient-primary text-white hover:opacity-90 shadow-medium hover:shadow-strong border-0",
+        ghost:
+          "hover:bg-purple-50/80 hover:text-purple-950 dark:hover:bg-purple-950/40 dark:hover:text-purple-50",
+        link: "text-purple-600 underline-offset-4 hover:underline hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300",
+        gradient:
+          "border-0 bg-gradient-to-r from-purple-600 to-cyan-500 text-white shadow-md hover:shadow-lg hover:from-purple-700 hover:to-cyan-600 dark:from-purple-500 dark:to-cyan-400 dark:hover:from-purple-400 dark:hover:to-cyan-300",
       },
       size: {
         default: "h-10 px-4 py-2",

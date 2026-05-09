@@ -119,7 +119,7 @@ export function VisitorEmailOtpGate({
                 placeholder="you@company.com"
               />
             </div>
-            <Button onClick={requestOtp} disabled={isLoading} className="w-full gap-2 bg-gradient-primary hover:opacity-90">
+            <Button onClick={requestOtp} disabled={isLoading} className="w-full gap-2">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               Send OTP
             </Button>
@@ -137,7 +137,7 @@ export function VisitorEmailOtpGate({
               />
               <p className="text-xs text-muted-foreground">Sent to {email}</p>
             </div>
-            <Button onClick={verifyOtp} disabled={isLoading} className="w-full gap-2 bg-gradient-primary hover:opacity-90">
+            <Button onClick={verifyOtp} disabled={isLoading} className="w-full gap-2">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               Verify & Continue
             </Button>

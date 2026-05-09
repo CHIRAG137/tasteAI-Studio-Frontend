@@ -64,7 +64,7 @@ export const PageHeader = ({
               onClick={() => navigate("/")}
               className="text-lg font-bold text-foreground hover:text-primary transition-colors whitespace-nowrap"
             >
-              healthAI
+              tasteAI
             </button>
             <div className="h-5 w-px bg-border flex-shrink-0" />
             <Button

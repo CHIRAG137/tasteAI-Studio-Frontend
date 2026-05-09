@@ -216,7 +216,7 @@ const MyBots = () => {
           actions={
             <Button
               onClick={() => navigate("/create")}
-              className="bg-gradient-primary hover:opacity-90 gap-2"
+              className="gap-2"
             >
               <Plus className="w-4 h-4" />
               Create Bot
@@ -255,7 +255,7 @@ const MyBots = () => {
                 {savedBots.length === 0 && (
                   <Button
                     onClick={() => navigate("/create")}
-                    className="bg-gradient-primary hover:opacity-90 gap-2"
+                    className="gap-2"
                   >
                     <Plus className="w-4 h-4" />
                     Create Your First Bot

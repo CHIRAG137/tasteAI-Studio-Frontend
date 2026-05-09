@@ -491,7 +491,7 @@ export const BotCreationWizard = ({
                 <div className="flex items-center gap-3">
                   <Button
                     type="submit"
-                    className="bg-gradient-primary hover:opacity-90 shadow-medium px-6 gap-2"
+                    className="shadow-medium px-6 gap-2"
                     disabled={isCreatingBot}
                   >
                     <Bot className="w-4 h-4" />
@@ -505,7 +505,7 @@ export const BotCreationWizard = ({
                 <Button
                   type="button"
                   onClick={handleNext}
-                  className="bg-gradient-primary hover:opacity-90 shadow-medium px-6 gap-1"
+                  className="shadow-medium px-6 gap-1"
                 >
                   Next
                   <ChevronRight className="w-4 h-4" />

@@ -26,19 +26,19 @@ const features = [
     icon: Sparkles,
     title: "Smart AI Agents",
     description: "Intelligent agents that not only answer queries but take actions—automate tasks, make decisions, and drive business outcomes",
-    gradient: "from-purple-500 to-pink-500",
+    gradient: "from-purple-600 to-cyan-400",
   },
   {
     icon: Bot,
     title: "Interactive Bots",
     description: "Create bots that understand context, answer questions, and perform actions seamlessly across voice, video, and text channels",
-    gradient: "from-blue-500 to-cyan-500",
+    gradient: "from-violet-600 to-cyan-500",
   },
   {
     icon: Code2,
     title: "Powerful Workflows",
     description: "Build automated workflows for Slack, email, webhooks, and custom integrations—no coding required",
-    gradient: "from-emerald-500 to-teal-500",
+    gradient: "from-purple-500 to-teal-400",
   },
 ];
 
@@ -61,9 +61,9 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
     <section className="relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-red-500/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/3 rounded-full blur-[100px]" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px]" />
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 pt-8 pb-20">
@@ -91,11 +91,11 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
             className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6"
           >
             <span className="text-foreground">Build Smart </span>
-            <span className="bg-gradient-to-r from-purple-500 to-blue-600 bg-clip-text text-transparent">Bots & Agents</span>
+            <span className="bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent">Bots & Agents</span>
             <br />
             <span className="text-foreground">That </span>
             <motion.span
-              className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent"
+              className="bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent"
               animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
               transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
               style={{ backgroundSize: "200% 200%" }}
@@ -129,7 +129,7 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
               <Button
                 onClick={onCreateBot}
                 size="lg"
-                className="min-w-[260px] bg-gradient-to-r from-red-500 to-blue-600 hover:opacity-90 text-white px-8 py-6 text-lg rounded-xl shadow-strong transition-all group"
+                className="min-w-[260px] px-8 py-2 h-auto text-lg rounded-xl shadow-strong transition-all group"
               >
                 <Rocket className="w-5 h-5 mr-2 group-hover:animate-bounce" />
                 Create AI Bot
@@ -139,7 +139,7 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
               <Button
                 onClick={onCreateSlackWorkflow}
                 size="lg"
-                className="min-w-[260px] bg-gradient-to-r from-violet-600 to-cyan-500 hover:opacity-90 text-white px-8 py-6 text-lg rounded-xl shadow-strong transition-all group"
+                className="min-w-[260px] px-8 py-2 h-auto text-lg rounded-xl shadow-strong transition-all group"
               >
                 <Zap className="w-5 h-5 mr-2 group-hover:animate-bounce" />
                 Create Slack Workflows
@@ -153,7 +153,7 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
                 onClick={onViewBots}
                 variant="outline"
                 size="lg"
-                className="min-w-[260px] px-8 py-5 text-base rounded-xl border-purple-200 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 text-foreground"
+                className="min-w-[260px] px-8 py-2 h-auto text-base rounded-xl"
               >
                 <Bot className="w-5 h-5 mr-2" />
                 View Your Bots
@@ -163,7 +163,7 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
                 onClick={onViewWorkflows}
                 variant="outline"
                 size="lg"
-                className="min-w-[260px] px-8 py-5 text-base rounded-xl border-cyan-200 hover:bg-cyan-50 hover:border-cyan-300 hover:text-cyan-700 text-foreground"
+                className="min-w-[260px] px-8 py-2 h-auto text-base rounded-xl"
               >
                 <Code2 className="w-5 h-5 mr-2" />
                 View Your Workflows
@@ -188,9 +188,9 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
                 variants={scaleIn}
                 initial="hidden"
                 animate="visible"
-                className="text-center p-4 rounded-xl border border-red-200/50 bg-red-50/50 backdrop-blur-sm"
+                className="text-center p-4 rounded-xl border border-purple-200/70 bg-gradient-to-br from-purple-50/80 to-cyan-50/60 backdrop-blur-sm dark:border-purple-500/20 dark:from-card dark:to-card"
               >
-                <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-red-500 to-blue-600 bg-clip-text text-transparent">
+                <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent">
                   {stat.value}
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
@@ -207,7 +207,7 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
           animate="visible"
           className="max-w-5xl mx-auto mb-20"
         >
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent">
             TasteAI Studio
           </h2>
           <p className="text-muted-foreground text-center mb-8 max-w-lg mx-auto">
@@ -251,38 +251,38 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
                   scale: 1.02,
                   transition: { duration: 0.3, ease: "easeOut" }
                 }}
-                className="group relative p-6 rounded-2xl border border-red-200/50 bg-gradient-to-br from-white to-red-50/30 hover:border-red-300/70 transition-all duration-500 cursor-default overflow-hidden shadow-lg hover:shadow-2xl"
+                className="group relative p-6 rounded-2xl border border-purple-200/60 bg-gradient-to-br from-white to-purple-50/40 hover:border-purple-300/80 dark:border-purple-500/25 dark:from-card dark:to-purple-950/20 transition-all duration-500 cursor-default overflow-hidden shadow-lg hover:shadow-2xl"
               >
                 {/* Animated background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 via-blue-500/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/8 via-cyan-400/8 to-violet-500/8 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
                 {/* Pulse animation */}
-                <div className="absolute inset-0 rounded-2xl border-2 border-red-200/20 group-hover:border-red-300/40 transition-all duration-500">
-                  <div className="absolute inset-0 rounded-2xl border border-blue-200/30 animate-pulse" style={{ animationDuration: '3s' }} />
+                <div className="absolute inset-0 rounded-2xl border-2 border-purple-200/25 group-hover:border-cyan-200/35 transition-all duration-500">
+                  <div className="absolute inset-0 rounded-2xl border border-cyan-200/25 animate-pulse" style={{ animationDuration: '3s' }} />
                 </div>
 
                 <div className="relative z-10">
                   <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.gradient} mb-4 shadow-xl group-hover:shadow-2xl transition-all duration-500 group-hover:scale-110`}>
                     <feature.icon className="w-7 h-7 text-white drop-shadow-sm" />
                   </div>
-                  <h3 className="text-lg font-semibold text-foreground mb-3 group-hover:text-red-700 transition-colors duration-300">{feature.title}</h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-3 group-hover:text-purple-800 dark:group-hover:text-purple-200 transition-colors duration-300">{feature.title}</h3>
                   <p className="text-muted-foreground text-sm leading-relaxed group-hover:text-gray-700 transition-colors duration-300">{feature.description}</p>
 
                   {/* Workflow indicator */}
                   <div className="mt-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                     <div className="flex gap-1">
-                      <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-                      <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '0.2s' }} />
-                      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" style={{ animationDelay: '0.4s' }} />
+                      <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                      <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }} />
+                      <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" style={{ animationDelay: '0.4s' }} />
                     </div>
-                    <span className="text-xs text-red-600 font-medium">Active Workflow</span>
+                    <span className="text-xs text-purple-700 dark:text-purple-300 font-medium">Active Workflow</span>
                   </div>
                 </div>
 
                 {/* Decorative corner icon */}
                 <div className="absolute top-4 right-4 w-6 h-6 opacity-10 group-hover:opacity-30 transition-opacity duration-500">
-                  <div className="absolute inset-0 bg-red-500 rounded-sm rotate-45"></div>
-                  <div className="absolute inset-0 bg-red-500 rounded-sm"></div>
+                  <div className="absolute inset-0 bg-purple-500 rounded-sm rotate-45"></div>
+                  <div className="absolute inset-0 bg-cyan-500 rounded-sm"></div>
                 </div>
               </motion.div>
             ))}
@@ -344,11 +344,11 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
               >
                 {/* Connector line */}
                 {i < 2 && (
-                  <div className="hidden md:block absolute top-10 left-[60%] w-[80%] h-px bg-gradient-to-r from-red-200 to-transparent" />
+                  <div className="hidden md:block absolute top-10 left-[60%] w-[80%] h-px bg-gradient-to-r from-purple-200 to-transparent dark:from-purple-500/30" />
                 )}
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl border-2 border-red-200 bg-red-50 mb-4 relative">
-                  <item.icon className="w-8 h-8 text-red-600" />
-                  <span className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-gradient-to-r from-red-500 to-blue-600 text-white text-xs font-bold flex items-center justify-center shadow-medium">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-cyan-50 mb-4 relative dark:border-purple-500/30 dark:from-purple-950/40 dark:to-cyan-950/20">
+                  <item.icon className="w-8 h-8 text-purple-700 dark:text-purple-300" />
+                  <span className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 text-white text-xs font-bold flex items-center justify-center shadow-medium">
                     {item.step}
                   </span>
                 </div>

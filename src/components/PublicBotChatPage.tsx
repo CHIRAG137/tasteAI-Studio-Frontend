@@ -1348,7 +1348,7 @@ export const PublicBotChatPage = () => {
                             onClick={ttsEnabled ? disableTTS : enableTTS}
                             size="lg"
                             className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${ttsEnabled
-                              ? "bg-blue-500 hover:bg-blue-600"
+                              ? "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
                               : "bg-gray-400 hover:bg-gray-500"
                               }`}
                             title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
@@ -1366,7 +1366,7 @@ export const PublicBotChatPage = () => {
                             className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${!isMuted
                               ? isListening
                                 ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                                : "bg-green-500 hover:bg-green-600"
+                                : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
                               : "bg-gray-400 hover:bg-gray-500"
                               }`}
                             disabled={isLoading || isProcessing || isSpeaking}
@@ -1410,7 +1410,7 @@ export const PublicBotChatPage = () => {
                 ) : (
                   <div className="text-center p-8 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 w-full h-full flex flex-col items-center justify-center">
                     <Video className="h-20 w-20 mx-auto mb-4 text-purple-400" />
-                    <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent">
                       Video Bot
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 mb-6">
@@ -1424,7 +1424,7 @@ export const PublicBotChatPage = () => {
                             onClick={ttsEnabled ? disableTTS : enableTTS}
                             size="lg"
                             className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${ttsEnabled
-                              ? "bg-blue-500 hover:bg-blue-600"
+                              ? "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
                               : "bg-gray-400 hover:bg-gray-500"
                               }`}
                             title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
@@ -1442,7 +1442,7 @@ export const PublicBotChatPage = () => {
                             className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${!isMuted
                               ? isListening
                                 ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                                : "bg-green-500 hover:bg-green-600"
+                                : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
                               : "bg-gray-400 hover:bg-gray-500"
                               }`}
                             disabled={isLoading || isProcessing || isSpeaking}
@@ -1510,7 +1510,7 @@ export const PublicBotChatPage = () => {
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className={msg.sender === "agent"
                           ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                          : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                          : "bg-gradient-primary text-white"
                         }>
                           {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                         </AvatarFallback>
@@ -1520,7 +1520,7 @@ export const PublicBotChatPage = () => {
                       {msg.content && (
                         <div
                           className={`rounded-lg p-3 ${msg.sender === "user"
-                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                            ? "bg-gradient-primary text-white"
                             : msg.sender === "agent"
                               ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
                               : msg.isSystemMessage
@@ -1549,7 +1549,6 @@ export const PublicBotChatPage = () => {
                             <Button
                               size="sm"
                               onClick={() => handleConfirmationClick("yes")}
-                              className="bg-green-600 hover:bg-green-700"
                             >
                               Yes
                             </Button>
@@ -1571,10 +1570,9 @@ export const PublicBotChatPage = () => {
                               <Button
                                 key={idx}
                                 size="sm"
-                                variant="outline"
+                                variant={msg.selectedBranch === opt ? "default" : "outline"}
                                 onClick={() => handleBranchOptionClick(opt, msg.id)}
                                 disabled={!!msg.selectedBranch}
-                                className={msg.selectedBranch === opt ? "bg-blue-500 text-white border-blue-600" : ""}
                               >
                                 {opt}
                               </Button>
@@ -1596,7 +1594,7 @@ export const PublicBotChatPage = () => {
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className={handoffRequested
                         ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                        : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                        : "bg-gradient-primary text-white"
                       }>
                         {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                       </AvatarFallback>
@@ -1645,7 +1643,7 @@ export const PublicBotChatPage = () => {
                     <AlertDescription className="flex items-center justify-between">
                       <span className="text-amber-800">Enable voice responses from the bot?</span>
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={enableTTS} className="bg-amber-600 hover:bg-amber-700">
+                        <Button size="sm" onClick={enableTTS}>
                           Enable
                         </Button>
                         <Button size="sm" variant="outline" onClick={disableTTS}>
@@ -1737,7 +1735,7 @@ export const PublicBotChatPage = () => {
                     <Button
                       onClick={handleBringBackAvatar}
                       variant="outline"
-                      className="w-full border-2 border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+                      className="w-full"
                     >
                       <Video className="h-4 w-4 mr-2" />
                       Show Video Avatar
@@ -1789,10 +1787,6 @@ export const PublicBotChatPage = () => {
                     onClick={() => handleSendMessage()}
                     disabled={!inputMessage.trim() || isLoading || isHandoffLoading || !canSendText || isListening || isProcessing || isChatRateLimited}
                     size="icon"
-                    className={handoffRequested
-                      ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
-                      : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
-                    }
                     rateLimitKey={RATE_LIMIT_CONFIGS.CHATBOT_ASK.key}
                     maxRequests={RATE_LIMIT_CONFIGS.CHATBOT_ASK.maxRequests}
                     windowMs={RATE_LIMIT_CONFIGS.CHATBOT_ASK.windowMs}
@@ -1829,7 +1823,7 @@ export const PublicBotChatPage = () => {
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className={msg.sender === "agent"
                         ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                        : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                        : "bg-gradient-primary text-white"
                       }>
                         {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                       </AvatarFallback>
@@ -1839,7 +1833,7 @@ export const PublicBotChatPage = () => {
                     {msg.content && (
                       <div
                         className={`rounded-lg p-3 ${msg.sender === "user"
-                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                          ? "bg-gradient-primary text-white"
                           : msg.sender === "agent"
                             ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
                             : msg.isSystemMessage
@@ -1868,7 +1862,6 @@ export const PublicBotChatPage = () => {
                           <Button
                             size="sm"
                             onClick={() => handleConfirmationClick("yes")}
-                            className="bg-green-600 hover:bg-green-700"
                           >
                             Yes
                           </Button>
@@ -1890,10 +1883,9 @@ export const PublicBotChatPage = () => {
                             <Button
                               key={idx}
                               size="sm"
-                              variant="outline"
+                              variant={msg.selectedBranch === opt ? "default" : "outline"}
                               onClick={() => handleBranchOptionClick(opt, msg.id)}
                               disabled={!!msg.selectedBranch}
-                              className={msg.selectedBranch === opt ? "bg-blue-500 text-white border-blue-600" : ""}
                             >
                               {opt}
                             </Button>
@@ -1915,7 +1907,7 @@ export const PublicBotChatPage = () => {
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className={handoffRequested
                       ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                      : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                      : "bg-gradient-primary text-white"
                     }>
                       {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                     </AvatarFallback>
@@ -2001,7 +1993,7 @@ export const PublicBotChatPage = () => {
                   <AlertDescription className="flex items-center justify-between">
                     <span className="text-amber-800">Enable voice responses from the bot?</span>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={enableTTS} className="bg-amber-600 hover:bg-amber-700">
+                      <Button size="sm" onClick={enableTTS}>
                         Enable
                       </Button>
                       <Button size="sm" variant="outline" onClick={disableTTS}>
@@ -2062,7 +2054,7 @@ export const PublicBotChatPage = () => {
                   <Button
                     onClick={handleBringBackAvatar}
                     variant="outline"
-                    className="w-full border-2 border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+                    className="w-full"
                   >
                     <Video className="h-4 w-4 mr-2" />
                     Show Video Avatar
@@ -2104,10 +2096,6 @@ export const PublicBotChatPage = () => {
                   onClick={() => handleSendMessage()}
                   disabled={!inputMessage.trim() || isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing || isChatRateLimited}
                   size="icon"
-                  className={handoffRequested
-                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90"
-                    : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
-                  }
                   rateLimitKey={RATE_LIMIT_CONFIGS.CHATBOT_ASK.key}
                   maxRequests={RATE_LIMIT_CONFIGS.CHATBOT_ASK.maxRequests}
                   windowMs={RATE_LIMIT_CONFIGS.CHATBOT_ASK.windowMs}
@@ -2120,7 +2108,7 @@ export const PublicBotChatPage = () => {
               <div className="text-center py-2 border-t mt-2">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Powered by{" "}
-                  <span className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="font-semibold bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent">
                     TasteAI Studio
                   </span>
                 </p>

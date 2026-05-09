@@ -163,7 +163,7 @@ export default function SlackInstall() {
                   <Button
                     size="sm"
                     onClick={() => navigate("/workflows/create")}
-                    className="bg-gradient-primary gap-2"
+                    className="gap-2"
                   >
                     Create Workflow
                     <ArrowRight className="w-4 h-4" />

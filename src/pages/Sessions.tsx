@@ -917,7 +917,7 @@ export default function Sessions() {
                                   className={cn(
                                     "h-7 px-3 text-xs",
                                     message.confirmationResponse?.toLowerCase() === "yes" 
-                                      ? "bg-green-600 hover:bg-green-600 text-white border-green-600" 
+                                      ? "" 
                                       : "opacity-60 cursor-default bg-white/20 border-gray-300"
                                   )}
                                   disabled
@@ -926,11 +926,11 @@ export default function Sessions() {
                                 </Button>
                                 <Button
                                   size="sm"
-                                  variant={message.confirmationResponse?.toLowerCase() === "no" ? "default" : "outline"}
+                                  variant={message.confirmationResponse?.toLowerCase() === "no" ? "destructive" : "outline"}
                                   className={cn(
                                     "h-7 px-3 text-xs",
                                     message.confirmationResponse?.toLowerCase() === "no" 
-                                      ? "bg-red-600 hover:bg-red-600 text-white border-red-600" 
+                                      ? "" 
                                       : "opacity-60 cursor-default bg-white/20 border-gray-300"
                                   )}
                                   disabled

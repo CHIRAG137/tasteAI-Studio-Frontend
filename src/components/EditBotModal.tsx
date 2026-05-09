@@ -219,7 +219,7 @@ export const EditBotModal = ({ isOpen, onClose, bot, onBotUpdated }: EditBotModa
             <Button
               type="submit"
               size="lg"
-              className="bg-gradient-primary hover:opacity-90 shadow-medium px-8"
+              className="shadow-medium px-8"
             >
               <Bot className="w-5 h-5 mr-2" />
               Update Bot
