@@ -253,7 +253,7 @@ export default function Documentation() {
             </TabsTrigger>
             <TabsTrigger
               value="test-embed-bot-ui"
-              onClick={() => navigate(`/test-chat/${botId}`)}
+              onClick={() => navigate(`/test/${botId}`)}
               className="w-full justify-start text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400"
             >
               Test UI
