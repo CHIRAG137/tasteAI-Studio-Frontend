@@ -56,14 +56,11 @@ interface ChatBotProps {
     training_files?: Array<{ originalname: string; size: number; mimeType: string }>;
   };
   onClose: () => void;
-  /** Full-page “meeting” layout: stage left, chat right (used from /test-chat/:botId). */
+  /** Full-page "meeting" layout: stage left, chat right (used from /test-chat/:botId). */
   layout?: "modal" | "meet";
 }
 
 export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
-  // const getVisitorHdrs = (): Record<string, string> => ({});
-  // disabled: bot.requireVisitorAuth0Identity ? visitorHeaders(bot.id) :
-
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -158,7 +155,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     if (!bot.humanHandoffEnabled) {
       const message = "Human support is not available for this bot.";
       addSystemMessage(message);
-      // Save to flow session
       try {
         await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
@@ -180,7 +176,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     if (handoffRequested) {
       const message = "Your request for human support has already been submitted.";
       addSystemMessage(message);
-      // Save to flow session
       try {
         await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
@@ -204,7 +199,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     const connectingMessage = "Connecting you with a human agent...";
     addSystemMessage(connectingMessage);
     
-    // Save initial message to flow session
     try {
       await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
@@ -248,7 +242,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
         const agentStatusMessage = data.result.message;
         addSystemMessage(agentStatusMessage);
         
-        // Save agent status message to flow session
         try {
           await fetch(
             `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
@@ -270,7 +263,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
           const offlineMessage = "The agent is currently offline but will respond as soon as possible. You can continue asking questions or close this chat.";
           addSystemMessage(offlineMessage);
           
-          // Save offline message to flow session
           try {
             await fetch(
               `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
@@ -297,7 +289,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
       addSystemMessage(errorMessage);
       setIsHandoffLoading(false);
       
-      // Save error message to flow session
       try {
         await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
@@ -366,7 +357,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
         setHandoffStatus('resolved');
         handoffStatusRef.current = 'resolved';
         setHandoffRequested(false);
-        // show rating modal to the client after resolving
         showRatingModalWithData();
         addSystemMessage('You have ended this conversation.');
       } else {
@@ -436,7 +426,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
 
   // Show rating modal with previous rating data
   const showRatingModalWithData = async () => {
-    // Reset rating submitted when reopening modal to allow re-rating
     setRatingSubmitted(false);
     setShowRatingModal(true);
     await fetchExistingRating();
@@ -496,18 +485,15 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
               timestamp: new Date(m.timestamp),
             }));
 
-          // Append any new agent messages
           setMessages((prev) => {
             const existingIds = new Set(prev.map(m => m.id));
             const newMessages = agentMessages.filter((m: Message) => !existingIds.has(m.id));
             return [...prev, ...newMessages];
           });
 
-          // Handle session status updates (pending | active | resolved)
           const status = data.result.status;
           const assignedAgent = data.result.assignedAgent;
 
-          // When agent accepts (active)
           if (status === 'active' && handoffStatusRef.current !== 'active') {
             setHandoffStatus('active');
             handoffStatusRef.current = 'active';
@@ -515,7 +501,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
             if (assignedAgent?.email) setAssignedAgentEmail(assignedAgent.email);
             const agentMsg = `A human agent (${assignedAgent?.email || 'agent'}) has accepted your request.`;
             addSystemMessage(agentMsg);
-            // persist system message to flow session (best-effort)
             try {
               await fetch(
                 `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
@@ -534,12 +519,10 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
             }
           }
 
-          // When agent resolves
           if (status === 'resolved' && handoffStatusRef.current !== 'resolved') {
             setHandoffStatus('resolved');
             handoffStatusRef.current = 'resolved';
             setHandoffRequested(false);
-            // prompt the client to rate the agent/session
             setShowRatingModal(true);
             const resolvedMsg = 'This conversation has been marked resolved by the agent.';
             addSystemMessage(resolvedMsg);
@@ -750,7 +733,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
   const handleVoiceQuestion = async (question: string) => {
     if (!question.trim() || isLoading) return;
 
-    // Check rate limit before proceeding
     if (!chatbotRateLimit.canMakeRequest) {
       toast({
         title: "Rate Limit Exceeded",
@@ -760,7 +742,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
       return;
     }
 
-    // Check for handoff intent in voice mode too
     if (flowFinished && detectHandoffIntent(question) && bot.humanHandoffEnabled) {
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -782,7 +763,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
-    // If in handoff mode, send to agent
     if (handoffRequested && handoffSessionId) {
       await sendMessageToAgent(question);
       setIsLoading(false);
@@ -790,7 +770,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     }
 
     try {
-      // Record the request attempt
       chatbotRateLimit.recordRequest();
 
       const res = await fetch(
@@ -809,7 +788,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
         }
       );
 
-      // Handle rate limiting in response
       await handleApiResponse(res, chatbotRateLimit);
 
       const data = await res.json();
@@ -825,7 +803,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     } catch (err: any) {
       console.error(err);
 
-      // Check if this is a rate limit error
       const errorMessage = err.message || "Something went wrong";
       const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
                               errorMessage.toLowerCase().includes('too many') ||
@@ -848,7 +825,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     }
   };
 
-  // IMPROVED: Check if user is near bottom with threshold (SAME AS EMBED)
+  // IMPROVED: Check if user is near bottom with threshold
   const checkIfNearBottom = () => {
     if (!scrollAreaRef.current) return true;
     const element = scrollAreaRef.current;
@@ -862,7 +839,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     return isNear;
   };
 
-  // IMPROVED: Smooth scroll to bottom with better state management (SAME AS EMBED)
+  // IMPROVED: Smooth scroll to bottom with better state management
   const scrollToBottom = (force = false) => {
     if (isAutoScrollingRef.current && !force) return;
     
@@ -881,15 +858,13 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     }, 500);
   };
 
-  // IMPROVED: Handle scroll events with better logic (SAME AS EMBED)
+  // IMPROVED: Handle scroll events with better logic
   const handleScrollAreaScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    // Ignore scroll events triggered by auto-scroll
     if (isAutoScrollingRef.current) return;
     
     const element = e.currentTarget;
     const isNearBottom = checkIfNearBottom();
     
-    // User scrolled away from bottom
     if (!isNearBottom && element.scrollHeight > element.clientHeight) {
       userScrolledAwayRef.current = true;
       setShowJumpButton(true);
@@ -899,7 +874,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     }
   };
 
-  // IMPROVED: Auto-scroll when new messages arrive (SAME AS EMBED)
+  // IMPROVED: Auto-scroll when new messages arrive
   useEffect(() => {
     if (userScrolledAwayRef.current || isLoading || isHandoffLoading) {
       return;
@@ -908,7 +883,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     scrollToBottom();
   }, [messages.length]);
 
-  // IMPROVED: Scroll to bottom after loading completes (SAME AS EMBED)
+  // IMPROVED: Scroll to bottom after loading completes
   useEffect(() => {
     if (!isLoading && !isHandoffLoading && !userScrolledAwayRef.current) {
       setTimeout(() => {
@@ -1035,7 +1010,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
       return;
     }
 
-    // Check for handoff intent
     if (flowFinished && detectHandoffIntent(question) && bot.humanHandoffEnabled) {
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -1059,7 +1033,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     setInputMessage("");
     setIsLoading(true);
 
-    // If in handoff mode, send to agent
     if (handoffRequested && handoffSessionId) {
       await sendMessageToAgent(question);
       setIsLoading(false);
@@ -1333,7 +1306,6 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
 
   const videoBotAvatarUrl = bot.videoBotImageUrl || null;
 
-  // Get appropriate placeholder text
   const getPlaceholderText = () => {
     if (isListening) return "Listening... Speak now";
     if (isProcessing) return "Processing speech...";
@@ -1346,10 +1318,13 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
 
   const isMeet = layout === "meet";
 
+  // ─── Meet video-bot dock: now rendered BELOW the image, not overlaid ───────
+  // This is a plain flex column (no absolute positioning) so it sits beneath
+  // the video frame in the document flow.
   const meetVideoStageDock =
     flowFinished && isMeet ? (
-      <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2">
-        <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/10 bg-[#303134]/95 px-3 py-2 shadow-2xl backdrop-blur-md">
+      <div className="flex flex-col items-center gap-2 py-3">
+        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#303134]/95 px-3 py-2 shadow-2xl backdrop-blur-md">
           <Button
             onClick={ttsEnabled ? disableTTS : enableTTS}
             size="icon"
@@ -1452,21 +1427,340 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
       </div>
     ) : null;
 
+  // ─── Shared message list renderer ────────────────────────────────────────────
+  const renderMessages = () => (
+    <>
+      {messages.length === 0 && (
+        <div className="text-center text-gray-400 py-8">
+          <p className="mb-2">Start a conversation!</p>
+          <p className="text-sm">{flowFinished ? "Type a message or use voice input" : "Follow the flow to continue"}</p>
+        </div>
+      )}
+
+      {messages.map(msg => (
+        <div
+          key={msg.id}
+          className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+        >
+          {(msg.sender === "bot" || msg.sender === "agent") && (
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className={msg.sender === "agent"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                : "bg-gradient-primary text-white"
+              }>
+                {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
+              </AvatarFallback>
+            </Avatar>
+          )}
+          <div className={`flex flex-col gap-1 ${msg.sender === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
+            {msg.content && (
+              <div
+                className={`rounded-lg p-3 ${
+                  msg.sender === "user"
+                    ? "bg-gradient-primary text-white"
+                    : msg.sender === "agent"
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                    : msg.isSystemMessage
+                    ? "bg-orange-100 text-orange-900 border border-orange-200"
+                    : "bg-muted text-foreground"
+                }`}
+              >
+                {typeof msg.content === "string"
+                  ? msg.content
+                  : JSON.stringify(msg.content)}
+              </div>
+            )}
+            <span className="text-xs text-gray-500 flex items-center gap-1">
+              {msg.sender === "agent" && <Headphones className="h-3 w-3" />}
+              {msg.timestamp.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+              })}
+            </span>
+
+            {msg.showConfirmationButtons &&
+              isAwaitingInput &&
+              msg.sender === "bot" &&
+              !flowFinished && (
+                <div className="flex gap-2 mt-2">
+                  <Button size="sm" onClick={() => handleConfirmationClick("yes")}>Yes</Button>
+                  <Button size="sm" variant="outline" onClick={() => handleConfirmationClick("no")}>No</Button>
+                </div>
+              )}
+
+            {msg.showBranchOptions &&
+              msg.sender === "bot" &&
+              msg.branchOptions && (
+                <div className="flex flex-col gap-2 mt-2">
+                  {msg.branchOptions.map((opt, idx) => (
+                    <Button
+                      key={idx}
+                      size="sm"
+                      variant={msg.selectedBranch === opt ? "default" : "outline"}
+                      onClick={() => handleBranchOptionClick(opt, msg.id)}
+                      disabled={!!msg.selectedBranch}
+                    >
+                      {opt}
+                    </Button>
+                  ))}
+                </div>
+              )}
+          </div>
+          {msg.sender === "user" && (
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-gray-300">
+                <User className="h-5 w-5" />
+              </AvatarFallback>
+            </Avatar>
+          )}
+        </div>
+      ))}
+
+      {isLoading && (
+        <div className="flex gap-3 mb-4">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className={handoffRequested
+              ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+              : "bg-gradient-primary text-white"
+            }>
+              {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
+            </AvatarFallback>
+          </Avatar>
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </div>
+        </div>
+      )}
+
+      {isHandoffLoading && (
+        <div className="flex gap-3 mb-4">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white">
+              <Headphones className="h-5 w-5" />
+            </AvatarFallback>
+          </Avatar>
+          <div className="bg-blue-100 dark:bg-blue-900 rounded-lg p-3 flex items-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <span className="text-sm text-blue-700 font-medium">Connecting to an agent...</span>
+          </div>
+        </div>
+      )}
+
+      <div ref={messagesEndRef} />
+    </>
+  );
+
+  // ─── Shared chat input footer ─────────────────────────────────────────────────
+  const renderChatFooter = (isVideoVariant = false) => (
+    <div className="p-4 border-t bg-background flex-shrink-0">
+      {showJumpButton && (
+        <div className="mb-3 flex justify-center">
+          <Button
+            onClick={() => scrollToBottom(true)}
+            variant="outline"
+            className="flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+          >
+            <ArrowDown className="h-4 w-4" />
+            Jump to Latest Message
+          </Button>
+        </div>
+      )}
+
+      {handoffRequested && !isConnectedToAgent && (
+        <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
+          {isHandoffLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+              <AlertDescription className="text-blue-800">
+                Searching for an available agent...
+              </AlertDescription>
+            </>
+          ) : (
+            <>
+              <Clock className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800">
+                Waiting for an agent to respond. You can continue sending messages.
+              </AlertDescription>
+            </>
+          )}
+          {!isHandoffLoading && (
+            <div className="mt-2">
+              <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
+            </div>
+          )}
+        </Alert>
+      )}
+
+      {handoffRequested && isConnectedToAgent && (
+        <Alert className="mb-2 bg-green-50 border-green-200">
+          <Headphones className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            Connected to agent: {assignedAgentEmail}
+          </AlertDescription>
+          <div className="mt-2">
+            <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
+          </div>
+        </Alert>
+      )}
+
+      {isVideoVariant && showTtsPrompt && bot.isVideoBot && (
+        <Alert className="mb-2 bg-amber-50 border-amber-200">
+          <Volume2 className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="flex items-center justify-between">
+            <span className="text-amber-800">Enable voice responses from the bot?</span>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={enableTTS}>Enable</Button>
+              <Button size="sm" variant="outline" onClick={disableTTS}>No thanks</Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {handoffStatus === 'resolved' && (
+        <Alert className="mb-2 bg-gray-50 border-gray-200">
+          <AlertDescription className="text-gray-800">
+            This conversation has been resolved. You cannot send messages.
+          </AlertDescription>
+          <div className="mt-2">
+            <Button size="sm" onClick={clientReopenHandoff} disabled={isReopenLoading}>
+              {isReopenLoading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Reopening...</>
+              ) : (
+                'Reopen chat'
+              )}
+            </Button>
+          </div>
+        </Alert>
+      )}
+
+      {isVideoVariant && flowFinished && isListening && (
+        <Alert className="mb-2 bg-blue-50 border-blue-200">
+          <Mic className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">Listening... Speak now</AlertDescription>
+        </Alert>
+      )}
+
+      {!isVideoVariant && isListening && (
+        <Alert className="mb-2 bg-blue-50 border-blue-200">
+          <Mic className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">Listening... Speak now</AlertDescription>
+        </Alert>
+      )}
+
+      {isProcessing && !isHandoffLoading && (
+        <Alert className="mb-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertDescription>Processing your speech...</AlertDescription>
+        </Alert>
+      )}
+
+      {isChatRateLimited && (
+        <Alert className="mb-2 border-amber-200 bg-amber-50">
+          <Clock className="h-4 w-4 text-amber-700" />
+          <AlertDescription className="text-sm text-amber-800">
+            Too many attempts. Try again in{" "}
+            <span className="rounded border border-amber-300 bg-white px-1.5 py-0.5">
+              {chatbotRateLimit.formatTimeRemaining(chatbotRateLimit.remainingTime)}
+            </span>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isVideoVariant && !showVideoAvatar && (
+        <div className="mb-3">
+          <Button
+            onClick={handleBringBackAvatar}
+            variant="outline"
+            className="w-full border-2 border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+          >
+            <Video className="h-4 w-4 mr-2" />
+            Show Video Avatar
+          </Button>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Input
+            ref={inputRef}
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder={getPlaceholderText()}
+            disabled={isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing || isChatRateLimited}
+            className="pr-12"
+          />
+          {(isVideoVariant ? (shouldShowMicButton && !handoffRequested) : (bot.voiceEnabled && canSendText && !handoffRequested)) && (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={handleVoiceInput}
+              className="absolute right-1 top-1/2 -translate-y-1/2"
+              disabled={isLoading || isProcessing}
+            >
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isListening ? (
+                <MicOff className="h-4 w-4 text-red-500" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+        </div>
+        <RateLimitedButton
+          onClick={() => handleSendMessage()}
+          disabled={!inputMessage.trim() || isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing || isChatRateLimited}
+          size="icon"
+          rateLimitKey={RATE_LIMIT_CONFIGS.CHATBOT_ASK.key}
+          maxRequests={RATE_LIMIT_CONFIGS.CHATBOT_ASK.maxRequests}
+          windowMs={RATE_LIMIT_CONFIGS.CHATBOT_ASK.windowMs}
+          showCountdown={false}
+          countdownMessage="Rate limit exceeded. Try again in"
+        >
+          <Send className="h-4 w-4" />
+        </RateLimitedButton>
+      </div>
+
+      <div className="text-center py-2 border-t mt-2">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Powered by{" "}
+          <span className="font-semibold bg-gradient-primary bg-clip-text text-transparent">
+            TasteAI Studio
+          </span>
+        </p>
+      </div>
+    </div>
+  );
+
   const conversationBody = (
     <>
-        {bot.isVideoBot ? (
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            {showVideoAvatar && (
-              <div
-                className={cn(
-                  "relative flex min-h-0 items-center justify-center overflow-hidden",
-                  isMeet ? "min-w-0 flex-[3] bg-[#141414] px-4 py-8" : "w-1/2"
-                )}
-              >
-                {videoBotAvatarUrl ? (
+      {bot.isVideoBot ? (
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          {showVideoAvatar && (
+            // ── Left/top: video stage ──────────────────────────────────────────
+            <div
+              className={cn(
+                "flex min-h-0 flex-col overflow-hidden",
+                isMeet
+                  ? "min-w-0 flex-[3] bg-[#141414]"
+                  : "w-1/2"
+              )}
+            >
+              {videoBotAvatarUrl ? (
+                // ── Has avatar image ───────────────────────────────────────────
+                <div
+                  className={cn(
+                    "flex flex-col items-center",
+                    isMeet
+                      ? "h-full justify-between px-4 py-6"   // fill the dark panel, dock at bottom
+                      : "relative h-full w-full"
+                  )}
+                >
+                  {/* Image frame */}
                   <div
                     className={cn(
-                      "flex items-center justify-center",
                       isMeet
                         ? "relative aspect-video w-full max-w-5xl overflow-hidden rounded-2xl bg-black shadow-[0_20px_50px_rgba(0,0,0,0.55)] ring-1 ring-white/10"
                         : "relative h-full w-full"
@@ -1481,112 +1775,18 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
                       )}
                     />
 
+                    {/* Speaking/thinking overlay badge — always inside image */}
                     {(isLoading || isSpeaking) && (
-                      <div
-                        className={cn(
-                          "absolute left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/55 px-4 py-2 text-white backdrop-blur-sm",
-                          isMeet ? "bottom-24" : "bottom-32"
-                        )}
-                      >
+                      <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/55 px-4 py-2 text-white backdrop-blur-sm">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         <span className="text-sm">{isSpeaking ? "Speaking..." : "Thinking..."}</span>
                       </div>
                     )}
 
-                    {meetVideoStageDock}
+                    {/* Non-meet controls stay overlaid on the image (original behaviour) */}
                     {flowFinished && !isMeet && (
-                        <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2">
-                          <div className="pointer-events-auto flex gap-3">
-                            <Button
-                              onClick={ttsEnabled ? disableTTS : enableTTS}
-                              size="lg"
-                              className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${
-                                ttsEnabled
-                                  ? "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
-                                  : "bg-gray-400 hover:bg-gray-500"
-                              }`}
-                              title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
-                            >
-                              {ttsEnabled ? (
-                                <Volume2 className="h-6 w-6 text-white" />
-                              ) : (
-                                <VolumeX className="h-6 w-6 text-white" />
-                              )}
-                            </Button>
-
-                            <Button
-                              onClick={handleMicToggle}
-                              size="lg"
-                              className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${!isMuted
-                                ? isListening
-                                  ? "animate-pulse bg-red-500 hover:bg-red-600"
-                                  : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
-                                : "bg-gray-400 hover:bg-gray-500"
-                                }`}
-                              disabled={isLoading || isProcessing || isSpeaking}
-                              title={isMuted ? "Click to unmute and start speaking" : isListening ? "Listening..." : "Click to speak"}
-                            >
-                              {isProcessing ? (
-                                <Loader2 className="h-6 w-6 animate-spin text-white" />
-                              ) : isMuted ? (
-                                <MicOff className="h-6 w-6 text-white" />
-                              ) : (
-                                <Mic className="h-6 w-6 text-white" />
-                              )}
-                            </Button>
-
-                            <Button
-                              onClick={handleEndCall}
-                              size="lg"
-                              className="h-14 w-14 rounded-full bg-red-600 shadow-xl transition-all hover:scale-110 hover:bg-red-700"
-                              title="End call and hide avatar"
-                            >
-                              <PhoneOff className="h-6 w-6 text-white" />
-                            </Button>
-                          </div>
-
-                          <p className="rounded-full bg-black/50 px-3 py-1 text-center text-xs text-white backdrop-blur">
-                            {isSpeaking
-                              ? "Bot speaking..."
-                              : isProcessing
-                                ? "Processing..."
-                                : isMuted
-                                  ? "Microphone muted"
-                                  : isListening
-                                    ? "Listening..."
-                                    : "Microphone active"}
-                            {" • "}
-                            {ttsEnabled ? "Voice on" : "Voice off"}
-                          </p>
-                        </div>
-                      )}
-                  </div>
-                ) : (
-                  <div
-                    className={cn(
-                      "relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br p-8 text-center",
-                      isMeet
-                        ? "rounded-2xl bg-gradient-to-b from-zinc-800 to-zinc-950 text-white ring-1 ring-white/10"
-                        : "from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800"
-                    )}
-                  >
-                    <Video className={cn("mx-auto mb-4 h-20 w-20", isMeet ? "text-white/80" : "text-purple-400")} />
-                    <h3
-                      className={cn(
-                        "mb-2 text-2xl font-bold",
-                        isMeet ? "text-white" : "bg-gradient-primary bg-clip-text text-transparent"
-                      )}
-                    >
-                      Video Bot
-                    </h3>
-                    <p className={cn("mb-6", isMeet ? "text-white/60" : "text-gray-600 dark:text-gray-400")}>
-                      No avatar configured for this video bot
-                    </p>
-
-                    {meetVideoStageDock}
-                    {flowFinished && !isMeet && (
-                      <>
-                        <div className="flex justify-center gap-3">
+                      <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2">
+                        <div className="pointer-events-auto flex gap-3">
                           <Button
                             onClick={ttsEnabled ? disableTTS : enableTTS}
                             size="lg"
@@ -1597,11 +1797,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
                             }`}
                             title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
                           >
-                            {ttsEnabled ? (
-                              <Volume2 className="h-6 w-6 text-white" />
-                            ) : (
-                              <VolumeX className="h-6 w-6 text-white" />
-                            )}
+                            {ttsEnabled ? <Volume2 className="h-6 w-6 text-white" /> : <VolumeX className="h-6 w-6 text-white" />}
                           </Button>
 
                           <Button
@@ -1609,7 +1805,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
                             size="lg"
                             className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${!isMuted
                               ? isListening
-                                ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                                ? "animate-pulse bg-red-500 hover:bg-red-600"
                                 : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
                               : "bg-gray-400 hover:bg-gray-500"
                               }`}
@@ -1627,823 +1823,321 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
                           <Button
                             onClick={handleEndCall}
                             size="lg"
-                            className="h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 bg-red-600 hover:bg-red-700"
+                            className="h-14 w-14 rounded-full bg-red-600 shadow-xl transition-all hover:scale-110 hover:bg-red-700"
                             title="End call and hide avatar"
                           >
                             <PhoneOff className="h-6 w-6 text-white" />
                           </Button>
                         </div>
 
+                        <p className="rounded-full bg-black/50 px-3 py-1 text-center text-xs text-white backdrop-blur">
+                          {isSpeaking ? "Bot speaking..." : isProcessing ? "Processing..." : isMuted ? "Microphone muted" : isListening ? "Listening..." : "Microphone active"}
+                          {" • "}
+                          {ttsEnabled ? "Voice on" : "Voice off"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Meet dock rendered BELOW the image, not on top ── */}
+                  {isMeet && meetVideoStageDock}
+                </div>
+              ) : (
+                // ── No avatar image fallback ───────────────────────────────────
+                <div
+                  className={cn(
+                    "flex flex-col items-center",
+                    isMeet
+                      ? "h-full justify-between px-4 py-6 bg-[#141414]"
+                      : "relative h-full w-full items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 p-8 text-center dark:from-gray-900 dark:to-gray-800"
+                  )}
+                >
+                  {/* Placeholder card */}
+                  <div
+                    className={cn(
+                      isMeet
+                        ? "relative flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-zinc-800 to-zinc-950 text-white ring-1 ring-white/10"
+                        : "flex flex-col items-center"
+                    )}
+                  >
+                    <Video className={cn("mx-auto mb-4 h-20 w-20", isMeet ? "text-white/80" : "text-purple-400")} />
+                    <h3 className={cn("mb-2 text-2xl font-bold", isMeet ? "text-white" : "bg-gradient-primary bg-clip-text text-transparent")}>
+                      Video Bot
+                    </h3>
+                    <p className={cn("mb-6", isMeet ? "text-white/60" : "text-gray-600 dark:text-gray-400")}>
+                      No avatar configured for this video bot
+                    </p>
+
+                    {/* Non-meet inline controls (original behaviour) */}
+                    {flowFinished && !isMeet && (
+                      <>
+                        <div className="flex justify-center gap-3">
+                          <Button
+                            onClick={ttsEnabled ? disableTTS : enableTTS}
+                            size="lg"
+                            className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${
+                              ttsEnabled
+                                ? "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
+                                : "bg-gray-400 hover:bg-gray-500"
+                            }`}
+                          >
+                            {ttsEnabled ? <Volume2 className="h-6 w-6 text-white" /> : <VolumeX className="h-6 w-6 text-white" />}
+                          </Button>
+
+                          <Button
+                            onClick={handleMicToggle}
+                            size="lg"
+                            className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${!isMuted
+                              ? isListening
+                                ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                                : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
+                              : "bg-gray-400 hover:bg-gray-500"
+                              }`}
+                            disabled={isLoading || isProcessing || isSpeaking}
+                          >
+                            {isProcessing ? <Loader2 className="h-6 w-6 animate-spin text-white" /> : isMuted ? <MicOff className="h-6 w-6 text-white" /> : <Mic className="h-6 w-6 text-white" />}
+                          </Button>
+
+                          <Button
+                            onClick={handleEndCall}
+                            size="lg"
+                            className="h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 bg-red-600 hover:bg-red-700"
+                          >
+                            <PhoneOff className="h-6 w-6 text-white" />
+                          </Button>
+                        </div>
+
                         <p className="mt-4 text-center text-xs text-muted-foreground">
-                          {isSpeaking
-                            ? "Bot speaking..."
-                            : isProcessing
-                              ? "Processing..."
-                              : isMuted
-                                ? "Click to unmute and speak"
-                                : isListening
-                                  ? "Listening..."
-                                  : "Click to speak"}
+                          {isSpeaking ? "Bot speaking..." : isProcessing ? "Processing..." : isMuted ? "Click to unmute and speak" : isListening ? "Listening..." : "Click to speak"}
                           {" • "}
                           {ttsEnabled ? "Voice on" : "Voice off"}
                         </p>
                       </>
                     )}
                   </div>
-                )}
-              </div>
-            )}
 
-            <div
-              className={cn(
-                "relative flex min-h-0 flex-col bg-background transition-all duration-300",
-                showVideoAvatar
-                  ? isMeet
-                    ? "min-w-0 max-w-xl flex-[2] shrink-0 border-l border-white/10"
-                    : "w-1/2"
-                  : "w-full",
-                isMeet && "overflow-hidden shadow-[inset_1px_0_0_rgba(255,255,255,.06)]"
+                  {/* ── Meet dock rendered BELOW the placeholder, not on top ── */}
+                  {isMeet && meetVideoStageDock}
+                </div>
               )}
-            >
-              <div 
-                ref={scrollAreaRef}
-                onScroll={handleScrollAreaScroll}
-                className="flex-1 overflow-y-auto overflow-x-hidden p-4"
-              >
-                <div className="space-y-4">
-                  {messages.length === 0 && (
-                    <div className="text-center text-gray-400 py-8">
-                      <p className="mb-2">Start a conversation!</p>
-                      <p className="text-sm">{flowFinished ? "Type a message or use voice input" : "Follow the flow to continue"}</p>
-                    </div>
-                  )}
-                  
-                  {messages.map(msg => (
-                  <div
-                    key={msg.id}
-                    className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    {(msg.sender === "bot" || msg.sender === "agent") && (
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className={msg.sender === "agent" 
-                          ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                          : "bg-gradient-primary text-white"
-                        }>
-                          {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    <div className={`flex flex-col gap-1 ${msg.sender === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
-                      {msg.content && (
-                        <div
-                          className={`rounded-lg p-3 ${
-                            msg.sender === "user"
-                              ? "bg-gradient-primary text-white"
-                              : msg.sender === "agent"
-                              ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                              : msg.isSystemMessage
-                              ? "bg-orange-100 text-orange-900 border border-orange-200"
-                              : "bg-muted text-foreground"
-                          }`}
-                        >
-                          {typeof msg.content === "string"
-                            ? msg.content
-                            : JSON.stringify(msg.content)}
-                        </div>
-                      )}
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
-                        {msg.sender === "agent" && <Headphones className="h-3 w-3" />}
-                        {msg.timestamp.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        })}
-                      </span>
-
-                      {msg.showConfirmationButtons &&
-                        isAwaitingInput &&
-                        msg.sender === "bot" &&
-                        !flowFinished && (
-                          <div className="flex gap-2 mt-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleConfirmationClick("yes")}
-                            >
-                              Yes
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleConfirmationClick("no")}
-                            >
-                              No
-                            </Button>
-                          </div>
-                        )}
-
-                      {msg.showBranchOptions &&
-                        msg.sender === "bot" &&
-                        msg.branchOptions && (
-                          <div className="flex flex-col gap-2 mt-2">
-                            {msg.branchOptions.map((opt, idx) => (
-                              <Button
-                                key={idx}
-                                size="sm"
-                                variant={msg.selectedBranch === opt ? "default" : "outline"}
-                                onClick={() => handleBranchOptionClick(opt, msg.id)}
-                                disabled={!!msg.selectedBranch}
-                              >
-                                {opt}
-                              </Button>
-                            ))}
-                          </div>
-                        )}
-                    </div>
-                    {msg.sender === "user" && (
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-gray-300">
-                          <User className="h-5 w-5" />
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                  </div>
-                ))}
-                {isLoading && (
-                  <div className="flex gap-3 mb-4">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className={handoffRequested 
-                        ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                        : "bg-gradient-primary text-white"
-                      }>
-                        {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    </div>
-                  </div>
-                )}
-                {isHandoffLoading && (
-                  <div className="flex gap-3 mb-4">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white">
-                        <Headphones className="h-5 w-5" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="bg-blue-100 dark:bg-blue-900 rounded-lg p-3 flex items-center gap-2">
-                      <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                      <span className="text-sm text-blue-700 font-medium">Connecting to an agent...</span>
-                    </div>
-                  </div>
-                )}
-                
-                <div ref={messagesEndRef} />
-                </div>
-              </div>
-
-              <div className="p-4 border-t bg-background flex-shrink-0">
-                {/* IMPROVED: Jump to Latest Button - only shown when stable */}
-                {showJumpButton && (
-                  <div className="mb-3 flex justify-center">
-                    <Button
-                      onClick={() => scrollToBottom(true)}
-                      variant="outline"
-                      className="flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
-                    >
-                      <ArrowDown className="h-4 w-4" />
-                      Jump to Latest Message
-                    </Button>
-                  </div>
-                )}
-
-                {handoffRequested && !isConnectedToAgent && (
-                <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
-                  {isHandoffLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
-                      <AlertDescription className="text-blue-800">
-                        Searching for an available agent...
-                      </AlertDescription>
-                    </>
-                  ) : (
-                    <>
-                      <Clock className="h-4 w-4 text-yellow-600" />
-                      <AlertDescription className="text-yellow-800">
-                        Waiting for an agent to respond. You can continue sending messages.
-                      </AlertDescription>
-                    </>
-                  )}
-                  {!isHandoffLoading && (
-                    <div className="mt-2">
-                      <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
-                    </div>
-                  )}
-                </Alert>
-              )}
-
-                {handoffRequested && isConnectedToAgent && (
-                  <Alert className="mb-2 bg-green-50 border-green-200">
-                    <Headphones className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-800">
-                      Connected to agent: {assignedAgentEmail}
-                    </AlertDescription>
-                    <div className="mt-2">
-                      <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
-                    </div>
-                  </Alert>
-                )}
-
-                {showTtsPrompt && bot.isVideoBot && (
-                  <Alert className="mb-2 bg-amber-50 border-amber-200">
-                    <Volume2 className="h-4 w-4 text-amber-600" />
-                    <AlertDescription className="flex items-center justify-between">
-                      <span className="text-amber-800">Enable voice responses from the bot?</span>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={enableTTS}>
-                          Enable
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={disableTTS}>
-                          No thanks
-                        </Button>
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {handoffStatus === 'resolved' && (
-                  <Alert className="mb-2 bg-gray-50 border-gray-200">
-                    <AlertDescription className="text-gray-800">
-                      This conversation has been resolved. You cannot send messages.
-                    </AlertDescription>
-                    <div className="mt-2">
-                      <Button size="sm" onClick={clientReopenHandoff} disabled={isReopenLoading}>
-                        {isReopenLoading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Reopening...
-                          </>
-                        ) : (
-                          'Reopen chat'
-                        )}
-                      </Button>
-                    </div>
-                  </Alert>
-                )}
-
-                {flowFinished && isListening && (
-                  <Alert className="mb-2 bg-blue-50 border-blue-200">
-                    <Mic className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-800">Listening... Speak now</AlertDescription>
-                  </Alert>
-                )}
-
-                {isProcessing && !isHandoffLoading && (
-                  <Alert className="mb-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <AlertDescription>Processing your speech...</AlertDescription>
-                  </Alert>
-                )}
-                {isChatRateLimited && (
-                  <Alert className="mb-2 border-amber-200 bg-amber-50">
-                    <Clock className="h-4 w-4 text-amber-700" />
-                    <AlertDescription className="text-sm text-amber-800">
-                      Too many attempts. Try again in{" "}
-                      <span className="rounded border border-amber-300 bg-white px-1.5 py-0.5">
-                        {chatbotRateLimit.formatTimeRemaining(chatbotRateLimit.remainingTime)}
-                      </span>
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {!showVideoAvatar && (
-                  <div className="mb-3">
-                    <Button
-                      onClick={handleBringBackAvatar}
-                      variant="outline"
-                      className="w-full border-2 border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
-                    >
-                      <Video className="h-4 w-4 mr-2" />
-                      Show Video Avatar
-                    </Button>
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      ref={inputRef}
-                      value={inputMessage}
-                      onChange={(e) => setInputMessage(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder={getPlaceholderText()}
-                      disabled={isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing || isChatRateLimited}
-                      className="pr-12"
-                    />
-                    {shouldShowMicButton && !handoffRequested && (
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        onClick={handleVoiceInput}
-                        className="absolute right-1 top-1/2 -translate-y-1/2"
-                        disabled={isLoading || isProcessing}
-                      >
-                        {isProcessing ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : isListening ? (
-                          <MicOff className="h-4 w-4 text-red-500" />
-                        ) : (
-                          <Mic className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                  <RateLimitedButton
-                    onClick={() => handleSendMessage()}
-                    disabled={!inputMessage.trim() || isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing || isChatRateLimited}
-                    size="icon"
-                    rateLimitKey={RATE_LIMIT_CONFIGS.CHATBOT_ASK.key}
-                    maxRequests={RATE_LIMIT_CONFIGS.CHATBOT_ASK.maxRequests}
-                    windowMs={RATE_LIMIT_CONFIGS.CHATBOT_ASK.windowMs}
-                    showCountdown={false}
-                    countdownMessage="Rate limit exceeded. Try again in"
-                  >
-                    <Send className="h-4 w-4" />
-                  </RateLimitedButton>
-                </div>
-
-                <div className="text-center py-2 border-t mt-2">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Powered by{" "}
-                    <span className="font-semibold bg-gradient-primary bg-clip-text text-transparent">
-                      TasteAI Studio
-                    </span>
-                  </p>
-                </div>
-              </div>
             </div>
-          </div>
-        ) : (
+          )}
+
+          {/* ── Right: chat panel ─────────────────────────────────────────────── */}
           <div
             className={cn(
-              "flex min-h-0 flex-1 overflow-hidden",
-              isMeet ? "flex-col md:flex-row" : "flex-col"
+              "relative flex min-h-0 flex-col bg-background transition-all duration-300",
+              showVideoAvatar
+                ? isMeet
+                  ? "min-w-0 max-w-xl flex-[2] shrink-0 border-l border-white/10"
+                  : "w-1/2"
+                : "w-full",
+              isMeet && "overflow-hidden shadow-[inset_1px_0_0_rgba(255,255,255,.06)]"
             )}
           >
-            {isMeet && (
-              <div className="relative flex min-h-[220px] shrink-0 flex-col items-center justify-center bg-[#141414] px-6 py-8 text-white md:min-h-0 md:flex-[3] md:py-12">
-                <div className="flex aspect-video w-full max-w-lg flex-col items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-zinc-800 to-zinc-950 p-8 text-center shadow-2xl ring-1 ring-white/10 md:max-w-xl">
-                  <Avatar className="h-14 w-14 ring-2 ring-white/25">
-                    <AvatarFallback className="bg-gradient-to-r from-purple-600 to-cyan-500">
-                      <Bot className="h-7 w-7 text-white" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <p className="text-base font-semibold">{bot.name}</p>
-                  <p className="text-[11px] text-white/50">Meeting · Chat on the right</p>
-                </div>
-                {meetNonVideoDock}
-              </div>
-            )}
             <div
-              className={cn(
-                "flex min-h-0 flex-1 flex-col bg-background",
-                isMeet &&
-                  "max-h-full shrink-0 border-white/10 md:max-w-lg md:flex-[2] md:border-l md:border-white/10"
-              )}
+              ref={scrollAreaRef}
+              onScroll={handleScrollAreaScroll}
+              className="flex-1 overflow-y-auto overflow-x-hidden p-4"
             >
-            <div 
+              <div className="space-y-4">
+                {renderMessages()}
+              </div>
+            </div>
+
+            {renderChatFooter(true)}
+          </div>
+        </div>
+      ) : (
+        // ── Non-video bot ──────────────────────────────────────────────────────
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 overflow-hidden",
+            isMeet ? "flex-col md:flex-row" : "flex-col"
+          )}
+        >
+          {isMeet && (
+            <div className="relative flex min-h-[220px] shrink-0 flex-col items-center justify-center bg-[#141414] px-6 py-8 text-white md:min-h-0 md:flex-[3] md:py-12">
+              <div className="flex aspect-video w-full max-w-lg flex-col items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-zinc-800 to-zinc-950 p-8 text-center shadow-2xl ring-1 ring-white/10 md:max-w-xl">
+                <Avatar className="h-14 w-14 ring-2 ring-white/25">
+                  <AvatarFallback className="bg-gradient-to-r from-purple-600 to-cyan-500">
+                    <Bot className="h-7 w-7 text-white" />
+                  </AvatarFallback>
+                </Avatar>
+                <p className="text-base font-semibold">{bot.name}</p>
+                <p className="text-[11px] text-white/50">Meeting · Chat on the right</p>
+              </div>
+              {meetNonVideoDock}
+            </div>
+          )}
+          <div
+            className={cn(
+              "flex min-h-0 flex-1 flex-col bg-background",
+              isMeet && "max-h-full shrink-0 border-white/10 md:max-w-lg md:flex-[2] md:border-l md:border-white/10"
+            )}
+          >
+            <div
               ref={scrollAreaRef}
               onScroll={handleScrollAreaScroll}
               className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-h-0"
             >
               <div className="space-y-4">
-                {messages.length === 0 && (
-                  <div className="text-center text-gray-400 py-8">
-                    <p className="mb-2">Start a conversation!</p>
-                    <p className="text-sm">{flowFinished ? "Type a message or use voice input" : "Follow the flow to continue"}</p>
-                  </div>
-                )}
-                
-                {messages.map(msg => (
-                <div
-                  key={msg.id}
-                  className={`flex gap-3 mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+                {renderMessages()}
+              </div>
+            </div>
+
+            {renderChatFooter(false)}
+          </div>
+        </div>
+      )}
+
+      {/* Rating modal */}
+      {showRatingModal && (
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-2">Rate your experience</h3>
+            <p className="text-sm text-gray-500 mb-4">How would you rate the support you received?</p>
+            {isLoadingRating && (
+              <p className="text-sm text-gray-500 mb-4">Loading your previous rating...</p>
+            )}
+            {previousRatingValue && !isLoadingRating && (
+              <p className="text-sm text-blue-600 mb-4">
+                Your previous rating: <span className="font-semibold">{previousRatingValue} ★</span>
+                {previousRatingFeedback && <span className="block text-xs mt-1">Feedback: {previousRatingFeedback}</span>}
+              </p>
+            )}
+            <div className="flex justify-center gap-2 mb-4">
+              {[1, 2, 3, 4, 5].map(i => (
+                <button
+                  key={i}
+                  onClick={() => setRatingValue(i)}
+                  className={`text-3xl ${ratingValue >= i ? 'text-yellow-400' : 'text-gray-300'}`}
+                  aria-label={`Rate ${i}`}
                 >
-                  {(msg.sender === "bot" || msg.sender === "agent") && (
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className={msg.sender === "agent" 
-                        ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                        : "bg-gradient-primary text-white"
-                      }>
-                        {msg.sender === "agent" ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div className={`flex flex-col gap-1 ${msg.sender === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
-                    {msg.content && (
-                      <div
-                        className={`rounded-lg p-3 ${
-                          msg.sender === "user"
-                            ? "bg-gradient-primary text-white"
-                            : msg.sender === "agent"
-                            ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                            : msg.isSystemMessage
-                            ? "bg-orange-100 text-orange-900 border border-orange-200"
-                            : "bg-muted text-foreground"
-                        }`}
-                      >
-                        {typeof msg.content === "string"
-                          ? msg.content
-                          : JSON.stringify(msg.content)}
-                      </div>
-                    )}
-                    <span className="text-xs text-gray-500 flex items-center gap-1">
-                      {msg.sender === "agent" && <Headphones className="h-3 w-3" />}
-                      {msg.timestamp.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit"
-                      })}
-                    </span>
-
-                    {msg.showConfirmationButtons &&
-                      isAwaitingInput &&
-                      msg.sender === "bot" &&
-                      !flowFinished && (
-                        <div className="flex gap-2 mt-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleConfirmationClick("yes")}
-                          >
-                            Yes
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleConfirmationClick("no")}
-                          >
-                            No
-                          </Button>
-                        </div>
-                      )}
-
-                    {msg.showBranchOptions &&
-                      msg.sender === "bot" &&
-                      msg.branchOptions && (
-                        <div className="flex flex-col gap-2 mt-2">
-                          {msg.branchOptions.map((opt, idx) => (
-                            <Button
-                              key={idx}
-                              size="sm"
-                              variant={msg.selectedBranch === opt ? "default" : "outline"}
-                              onClick={() => handleBranchOptionClick(opt, msg.id)}
-                              disabled={!!msg.selectedBranch}
-                            >
-                              {opt}
-                            </Button>
-                          ))}
-                        </div>
-                      )}
-                  </div>
-                  {msg.sender === "user" && (
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-gray-300">
-                        <User className="h-5 w-5" />
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                </div>
+                  ★
+                </button>
               ))}
-              {isLoading && (
-                <div className="flex gap-3 mb-4">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className={handoffRequested 
-                      ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
-                      : "bg-gradient-primary text-white"
-                    }>
-                      {handoffRequested ? <Headphones className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  </div>
-                </div>
-              )}
-              {isHandoffLoading && (
-                <div className="flex gap-3 mb-4">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white">
-                      <Headphones className="h-5 w-5" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="bg-blue-100 dark:bg-blue-900 rounded-lg p-3 flex items-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                    <span className="text-sm text-blue-700 font-medium">Connecting to an agent...</span>
-                  </div>
-                </div>
-              )}
-              
-              <div ref={messagesEndRef} />
-              </div>
             </div>
-
-            <div className="p-4 border-t bg-background flex-shrink-0">
-              {/* IMPROVED: Jump to Latest Button */}
-              {showJumpButton && (
-                <div className="mb-3 flex justify-center">
-                  <Button
-                    onClick={() => scrollToBottom(true)}
-                    variant="outline"
-                    className="flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                    Jump to Latest Message
-                  </Button>
-                </div>
-              )}
-
-              {handoffRequested && !isConnectedToAgent && (
-                <Alert className={`mb-2 ${isHandoffLoading ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
-                  {isHandoffLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
-                      <AlertDescription className="text-blue-800">
-                        Searching for an available agent...
-                      </AlertDescription>
-                    </>
-                  ) : (
-                    <>
-                      <Clock className="h-4 w-4 text-yellow-600" />
-                      <AlertDescription className="text-yellow-800">
-                        Waiting for an agent to respond. You can continue sending messages.
-                      </AlertDescription>
-                    </>
-                  )}
-                  {!isHandoffLoading && (
-                    <div className="mt-2">
-                      <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
-                    </div>
-                  )}
-                </Alert>
-              )}
-
-              {handoffRequested && isConnectedToAgent && (
-                <Alert className="mb-2 bg-green-50 border-green-200">
-                  <Headphones className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-800">
-                    Connected to agent: {assignedAgentEmail}
-                  </AlertDescription>
-                  <div className="mt-2">
-                    <Button size="sm" variant="outline" onClick={clientResolveHandoff}>End chat</Button>
-                  </div>
-                </Alert>
-              )}
-
-              {isListening && (
-                <Alert className="mb-2 bg-blue-50 border-blue-200">
-                  <Mic className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-800">Listening... Speak now</AlertDescription>
-                </Alert>
-              )}
-
-              {isProcessing && !isHandoffLoading && (
-                <Alert className="mb-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <AlertDescription>Processing your speech...</AlertDescription>
-                </Alert>
-              )}
-              {isChatRateLimited && (
-                <Alert className="mb-2 border-amber-200 bg-amber-50">
-                  <Clock className="h-4 w-4 text-amber-700" />
-                  <AlertDescription className="text-sm text-amber-800">
-                    Too many attempts. Try again in{" "}
-                    <span className="rounded border border-amber-300 bg-white px-1.5 py-0.5">
-                      {chatbotRateLimit.formatTimeRemaining(chatbotRateLimit.remainingTime)}
-                    </span>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {handoffStatus === 'resolved' && (
-                <Alert className="mb-2 bg-gray-50 border-gray-200">
-                  <AlertDescription className="text-gray-800">
-                    This conversation has been resolved. You cannot send messages.
-                  </AlertDescription>
-                  <div className="mt-2">
-                    <Button size="sm" onClick={clientReopenHandoff} disabled={isReopenLoading}>
-                      {isReopenLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Reopening...
-                        </>
-                      ) : (
-                        'Reopen chat'
-                      )}
-                    </Button>
-                  </div>
-                </Alert>
-              )}
-
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    ref={inputRef}
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder={getPlaceholderText()}
-                    disabled={isLoading || isHandoffLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isProcessing || isChatRateLimited}
-                    className="pr-12"
-                  />
-                  {bot.voiceEnabled && canSendText && !handoffRequested && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={handleVoiceInput}
-                      className="absolute right-1 top-1/2 -translate-y-1/2"
-                      disabled={isLoading || isProcessing}
-                    >
-                      {isProcessing ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : isListening ? (
-                        <MicOff className="h-4 w-4 text-red-500" />
-                      ) : (
-                        <Mic className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
-                </div>
-                <RateLimitedButton
-                  onClick={() => handleSendMessage()}
-                  disabled={!inputMessage.trim() || isLoading || (!canSendText && !handoffRequested) || handoffStatus === 'resolved' || isListening || isProcessing || isChatRateLimited}
-                  size="icon"
-                  rateLimitKey={RATE_LIMIT_CONFIGS.CHATBOT_ASK.key}
-                  maxRequests={RATE_LIMIT_CONFIGS.CHATBOT_ASK.maxRequests}
-                  windowMs={RATE_LIMIT_CONFIGS.CHATBOT_ASK.windowMs}
-                  showCountdown={false}
-                  countdownMessage="Rate limit exceeded. Try again in"
-                >
-                  <Send className="h-4 w-4" />
-                </RateLimitedButton>
-              </div>
-              <div className="text-center py-2 border-t mt-2">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Powered by{" "}
-                  <span className="font-semibold bg-gradient-primary bg-clip-text text-transparent">
-                    TasteAI Studio
-                  </span>
-                </p>
-              </div>
+            <textarea
+              value={ratingFeedback}
+              onChange={(e) => setRatingFeedback(e.target.value)}
+              className="w-full p-2 border rounded mb-4 bg-white dark:bg-gray-800 text-sm"
+              rows={4}
+              placeholder="Optional feedback (what went well, what could improve)"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowRatingModal(false)}>Cancel</Button>
+              <Button onClick={submitRating} disabled={submittingRating || ratingValue < 1}>
+                {submittingRating ? 'Updating...' : previousRatingValue ? 'Update Rating' : 'Submit Rating'}
+              </Button>
             </div>
           </div>
-          </div>
-        )}
-        {showRatingModal && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4">
-              <h3 className="text-lg font-semibold mb-2">Rate your experience</h3>
-              <p className="text-sm text-gray-500 mb-4">How would you rate the support you received?</p>
-              {isLoadingRating && (
-                <p className="text-sm text-gray-500 mb-4">Loading your previous rating...</p>
-              )}
-              {previousRatingValue && !isLoadingRating && (
-                <p className="text-sm text-blue-600 mb-4">
-                  Your previous rating: <span className="font-semibold">{previousRatingValue} ★</span> 
-                  {previousRatingFeedback && <span className="block text-xs mt-1">Feedback: {previousRatingFeedback}</span>}
-                </p>
-              )}
-              <div className="flex justify-center gap-2 mb-4">
-                {[1,2,3,4,5].map(i => (
-                  <button
-                    key={i}
-                    onClick={() => setRatingValue(i)}
-                    className={`text-3xl ${ratingValue >= i ? 'text-yellow-400' : 'text-gray-300'}`}
-                    aria-label={`Rate ${i}`}
-                  >
-                    ★
-                  </button>
-                ))}
-              </div>
-              <textarea
-                value={ratingFeedback}
-                onChange={(e) => setRatingFeedback(e.target.value)}
-                className="w-full p-2 border rounded mb-4 bg-white dark:bg-gray-800 text-sm"
-                rows={4}
-                placeholder="Optional feedback (what went well, what could improve)"
-              />
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowRatingModal(false)}>Cancel</Button>
-                <Button onClick={submitRating} disabled={submittingRating || ratingValue < 1}>
-                  {submittingRating ? 'Updating...' : previousRatingValue ? 'Update Rating' : 'Submit Rating'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* End Auth0 visitor enforcement disabled */}
+        </div>
+      )}
     </>
   );
 
   const modalHeader = (
-        <DialogHeader className="relative flex-shrink-0 space-y-0 p-0 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-accent" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_hsl(var(--primary-glow)/0.45),transparent_55%)]" />
-          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-accent/30 blur-3xl" />
+    <DialogHeader className="relative flex-shrink-0 space-y-0 p-0 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-accent" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_hsl(var(--primary-glow)/0.45),transparent_55%)]" />
+      <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/10 blur-3xl" />
+      <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-accent/30 blur-3xl" />
 
-          <div className="relative px-5 py-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <div className="relative flex-shrink-0">
-                  <div className="absolute inset-0 rounded-full bg-white/30 blur-md" />
-                  <Avatar className="relative h-12 w-12 ring-2 ring-white/60 shadow-lg">
-                    <AvatarFallback className="bg-white text-primary">
-                      {handoffRequested ? <Headphones className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white ${handoffRequested ? (isConnectedToAgent ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse') : 'bg-emerald-400'}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <DialogTitle className="text-xl text-white font-semibold tracking-tight truncate" title={bot.name}>
-                      {bot.name}
-                    </DialogTitle>
-                  </div>
-                  {bot.description && (
-                    <p className="text-sm text-white/85 mt-1 line-clamp-2">{bot.description}</p>
-                  )}
-                  {handoffRequested && assignedAgentEmail && (
-                    <p className="text-xs text-white/80 mt-1.5 flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Agent: {assignedAgentEmail}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                className="text-white hover:bg-white/20 flex-shrink-0 rounded-full"
-              >
-                <X className="h-5 w-5" />
-              </Button>
+      <div className="relative px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="relative flex-shrink-0">
+              <div className="absolute inset-0 rounded-full bg-white/30 blur-md" />
+              <Avatar className="relative h-12 w-12 ring-2 ring-white/60 shadow-lg">
+                <AvatarFallback className="bg-white text-primary">
+                  {handoffRequested ? <Headphones className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
+                </AvatarFallback>
+              </Avatar>
+              <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white ${handoffRequested ? (isConnectedToAgent ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse') : 'bg-emerald-400'}`} />
             </div>
-
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {handoffRequested && (
-                <Badge className="text-[11px] bg-amber-400/95 text-amber-950 border-0 hover:bg-amber-400 animate-pulse">
-                  <Headphones className="h-3 w-3 mr-1" />
-                  {isConnectedToAgent ? "Agent Connected" : "Waiting for Agent"}
-                </Badge>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <DialogTitle className="text-xl text-white font-semibold tracking-tight truncate" title={bot.name}>
+                  {bot.name}
+                </DialogTitle>
+              </div>
+              {bot.description && (
+                <p className="text-sm text-white/85 mt-1 line-clamp-2">{bot.description}</p>
               )}
-              <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
-                {bot.isVideoBot ? <><Video className="h-3 w-3 mr-1" />Video Bot</> : <><Bot className="h-3 w-3 mr-1" />Chat Bot</>}
-              </Badge>
-              <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
-                {(bot.isVideoBot || bot.voiceEnabled) ? <><Volume2 className="h-3 w-3 mr-1" />Voice Enabled</> : <><VolumeX className="h-3 w-3 mr-1" />Voice Disabled</>}
-              </Badge>
-              <Badge className={`text-[11px] border-0 ${flowFinished ? 'bg-teal-400/90 text-teal-950 hover:bg-teal-400' : 'bg-cyan-400/90 text-cyan-950 hover:bg-cyan-400'}`}>
-                {flowFinished ? "Q&A Mode" : "Flow Mode"}
-              </Badge>
-              {bot.primaryPurpose && (
-                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎯 {bot.primaryPurpose}</Badge>
-              )}
-              {bot.conversationalTone && (
-                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎭 {bot.conversationalTone}</Badge>
-              )}
-              {bot.targetAudience && (
-                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👥 {bot.targetAudience}</Badge>
-              )}
-              {(bot.conversationalStyle || bot.responseStyle) && (
-                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🧭 {bot.conversationalStyle || bot.responseStyle}</Badge>
-              )}
-              {bot.languages?.map((lang) => (
-                <Badge key={lang} className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 {lang}</Badge>
-              ))}
-              {bot.training_files && bot.training_files.length > 0 && (
-                <Badge
-                  className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm"
-                  title={bot.training_files.map((f) => f.originalname).join("\n")}
-                >
-                  📁 Training data ({bot.training_files.length})
-                </Badge>
-              )}
-              {bot.websiteUrl && (
-                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 Website training</Badge>
-              )}
-              <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
-                🤖 {bot.customLLMProvider ? `Custom LLM (${bot.customLLMProvider})` : "Platform LLM"}
-              </Badge>
-              {bot.isSlackEnabled && (
-                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">💬 Slack</Badge>
-              )}
-              {bot.humanHandoffEnabled && (
-                <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👤 Human handoff</Badge>
+              {handoffRequested && assignedAgentEmail && (
+                <p className="text-xs text-white/80 mt-1.5 flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Agent: {assignedAgentEmail}
+                </p>
               )}
             </div>
           </div>
-        </DialogHeader>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="text-white hover:bg-white/20 flex-shrink-0 rounded-full"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {handoffRequested && (
+            <Badge className="text-[11px] bg-amber-400/95 text-amber-950 border-0 hover:bg-amber-400 animate-pulse">
+              <Headphones className="h-3 w-3 mr-1" />
+              {isConnectedToAgent ? "Agent Connected" : "Waiting for Agent"}
+            </Badge>
+          )}
+          <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+            {bot.isVideoBot ? <><Video className="h-3 w-3 mr-1" />Video Bot</> : <><Bot className="h-3 w-3 mr-1" />Chat Bot</>}
+          </Badge>
+          <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+            {(bot.isVideoBot || bot.voiceEnabled) ? <><Volume2 className="h-3 w-3 mr-1" />Voice Enabled</> : <><VolumeX className="h-3 w-3 mr-1" />Voice Disabled</>}
+          </Badge>
+          <Badge className={`text-[11px] border-0 ${flowFinished ? 'bg-teal-400/90 text-teal-950 hover:bg-teal-400' : 'bg-cyan-400/90 text-cyan-950 hover:bg-cyan-400'}`}>
+            {flowFinished ? "Q&A Mode" : "Flow Mode"}
+          </Badge>
+          {bot.primaryPurpose && (
+            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎯 {bot.primaryPurpose}</Badge>
+          )}
+          {bot.conversationalTone && (
+            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎭 {bot.conversationalTone}</Badge>
+          )}
+          {bot.targetAudience && (
+            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👥 {bot.targetAudience}</Badge>
+          )}
+          {(bot.conversationalStyle || bot.responseStyle) && (
+            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🧭 {bot.conversationalStyle || bot.responseStyle}</Badge>
+          )}
+          {bot.languages?.map((lang) => (
+            <Badge key={lang} className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 {lang}</Badge>
+          ))}
+          {bot.training_files && bot.training_files.length > 0 && (
+            <Badge
+              className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm"
+              title={bot.training_files.map((f) => f.originalname).join("\n")}
+            >
+              📁 Training data ({bot.training_files.length})
+            </Badge>
+          )}
+          {bot.websiteUrl && (
+            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 Website training</Badge>
+          )}
+          <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+            🤖 {bot.customLLMProvider ? `Custom LLM (${bot.customLLMProvider})` : "Platform LLM"}
+          </Badge>
+          {bot.isSlackEnabled && (
+            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">💬 Slack</Badge>
+          )}
+          {bot.humanHandoffEnabled && (
+            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👤 Human handoff</Badge>
+          )}
+        </div>
+      </div>
+    </DialogHeader>
   );
 
   const meetTopBar = (
