@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { PageHeader } from "@/components/PageHeader";
+import { Navbar } from "@/components/Navbar";
 import { getAuthHeaders, getAuthToken, isAuthenticated } from "@/utils/auth";
 import { API_BASE_URL } from "@/api/auth";
 import {
-  ArrowLeft,
   Slack,
   CheckCircle2,
   Shield,
@@ -64,9 +63,6 @@ export default function SlackInstall() {
     return params.get("from");
   }, []);
 
-  const backTo = fromPage === "profile" ? "/profile" : "/workflows";
-  const backLabel = fromPage === "profile" ? "Back to Profile" : "Back to Workflows";
-
   useEffect(() => {
     const fetchStatus = async () => {
       setIsLoading(true);
@@ -113,14 +109,7 @@ export default function SlackInstall() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <PageHeader
-        backTo={backTo}
-        backLabel={backLabel}
-        icon={Slack}
-        title="Manage Slack Workspace"
-        subtitle="Connect and manage your Slack workspace in one place"
-        container="max-w-4xl"
-      />
+      <Navbar pageTitle="Manage Slack Workspace" />
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {/* Connection Status */}

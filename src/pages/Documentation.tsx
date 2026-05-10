@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import {
-  ArrowLeft,
   Code2,
   Copy,
   ExternalLink,
@@ -22,7 +21,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { EmbedCustomization } from "@/components/EmbedCustomizer";
-import { PageHeader } from "@/components/PageHeader";
+import { Navbar } from "@/components/Navbar";
 import axios from "axios";
 import { getAuthHeaders } from "@/utils/auth";
 
@@ -235,13 +234,7 @@ export default function Documentation() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader
-        backTo="/bots"
-        backLabel="Back to My Bots"
-        icon={Code2}
-        title="Integration Guide"
-        subtitle={bot?.name || "Loading..."}
-      />
+      <Navbar pageTitle={bot?.name ? `Integration Guide - ${bot.name}` : "Integration Guide"} />
 
       {/* Main Content */}
       <div className="container mx-auto p-6 max-w-5xl">

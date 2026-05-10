@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
-  ArrowLeft, BarChart3, Users, MessageSquare, TrendingUp, Clock, 
+  Users, MessageSquare, TrendingUp, Clock, 
   AlertCircle, Phone, Activity, Calendar, RefreshCw, Star,
   CheckCircle2, XCircle, UserCheck, Timer, Shield
 } from "lucide-react";
@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getAgentAnalytics, type AgentStats, type AnalyticsSummary } from "@/api/analytics";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
-import { PageHeader } from "@/components/PageHeader";
+import { Navbar } from "@/components/Navbar";
 import { getAuthHeaders } from "@/utils/auth";
 
 const BotAnalytics = () => {
@@ -254,13 +254,7 @@ const BotAnalytics = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-background">
-        <PageHeader
-          backTo="/bots"
-          backLabel="Back to My Bots"
-          icon={BarChart3}
-          title="Analytics"
-          subtitle={botName || "Loading..."}
-        />
+        <Navbar pageTitle={botName ? `Analytics - ${botName}` : "Analytics"} />
 
         <div className="container mx-auto px-6 py-6">
           <Card className="border-destructive/50">
@@ -281,25 +275,7 @@ const BotAnalytics = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader
-        backTo="/bots"
-        backLabel="Back to My Bots"
-        icon={BarChart3}
-        title="Analytics"
-        subtitle={botName || "Loading..."}
-        actions={
-          <Button
-            onClick={fetchAnalytics}
-            disabled={loading}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-        }
-      />
+      <Navbar pageTitle={botName ? `Analytics - ${botName}` : "Analytics"} />
 
       {/* Main Content */}
       <div className="container mx-auto px-6 py-6 space-y-6">

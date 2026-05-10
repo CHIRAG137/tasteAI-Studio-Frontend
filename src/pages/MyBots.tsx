@@ -1,14 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Bot, Plus } from "lucide-react";
+import { Bot, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
-import { Navbar } from "@/components/Navbar";
 import { BotCard } from "@/components/BotCard";
 import { BotCardSkeleton } from "@/components/BotCardSkeleton";
 import { BotFilters, BotFilterState } from "@/components/BotFilters";
-import { PageHeader } from "@/components/PageHeader";
+import { Navbar } from "@/components/Navbar";
 import { ChatBot } from "@/components/ChatBot";
 import { motion } from "framer-motion";
 import { useBotCreation } from "@/contexts/BotCreationContext";
@@ -207,22 +206,7 @@ const MyBots = () => {
   return (
     <>
       <div className="min-h-screen bg-background">
-        <PageHeader
-          backTo="/"
-          backLabel="Back to Home"
-          icon={Bot}
-          title="Your Bots"
-          subtitle="Manage your AI chatbots"
-          actions={
-            <Button
-              onClick={() => navigate("/create")}
-              className="gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Create Bot
-            </Button>
-          }
-        />
+        <Navbar pageTitle="Your Bots" />
 
         {/* Content */}
         <motion.div

@@ -8,11 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { PageHeader } from "@/components/PageHeader";
+import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
-  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   GitBranch,
@@ -177,51 +176,48 @@ export default function CreateWorkflow() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <PageHeader
-        backTo="/workflows"
-        backLabel="Back"
-        icon={Zap}
-        title="Create Workflow"
-        subtitle={`Step ${step} of 4`}
-        container="max-w-4xl"
-        actions={
-          <>
-            {step > 1 && (
-              <Button variant="outline" size="sm" onClick={() => setStep((s) => (s - 1) as Step)}>
-                Previous
-              </Button>
-            )}
-            {step < 4 ? (
-              <Button
-                size="sm"
-                onClick={() => setStep((s) => (s + 1) as Step)}
-                disabled={!canProceed()}
-                className="gap-2"
-              >
-                Next
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                onClick={handleCreate}
-                disabled={isSubmitting}
-                className="gap-2"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                {isSubmitting
-                  ? "Saving..."
-                  : selectedType === "custom"
-                  ? "Open Flow Builder"
-                  : "Create Workflow"}
-              </Button>
-            )}
-          </>
-        }
-      />
+      <Navbar pageTitle={`Create Workflow - Step ${step} of 4`} />
+
       {/* Progress */}
       <div className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-16 z-30">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/workflows")}>
+              Back
+            </Button>
+            <div className="flex items-center gap-2">
+              {step > 1 && (
+                <Button variant="outline" size="sm" onClick={() => setStep((s) => (s - 1) as Step)}>
+                  Previous
+                </Button>
+              )}
+              {step < 4 ? (
+                <Button
+                  size="sm"
+                  onClick={() => setStep((s) => (s + 1) as Step)}
+                  disabled={!canProceed()}
+                  className="gap-2"
+                >
+                  Next
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={handleCreate}
+                  disabled={isSubmitting}
+                  className="gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {isSubmitting
+                    ? "Saving..."
+                    : selectedType === "custom"
+                    ? "Open Flow Builder"
+                    : "Create Workflow"}
+                </Button>
+              )}
+            </div>
+          </div>
           <div className="flex gap-2">
             {[1, 2, 3, 4].map((s) => (
               <div

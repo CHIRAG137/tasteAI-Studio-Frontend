@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Plus, Bot, LogOut, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,12 @@ import {
 import { logoutBotUser } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
 
-export const Navbar = () => {
+interface NavbarProps {
+  pageTitle?: string;
+  leftSlot?: ReactNode;
+}
+
+export const Navbar = ({ pageTitle, leftSlot }: NavbarProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -66,14 +72,23 @@ export const Navbar = () => {
   return (
     <nav className="w-full border-b border-purple-100/60 bg-background/90 px-4 py-3 sticky top-0 z-50 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 dark:border-border dark:bg-background/95">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 min-w-0">
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="text-xl font-bold bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent hover:opacity-90 transition-opacity"
+            className="text-xl font-bold bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent hover:opacity-90 transition-opacity whitespace-nowrap"
           >
-            TasteAI Studio
+            tasteAI Studio
           </button>
+          {pageTitle ? (
+            <>
+              <div className="h-5 w-px bg-border/70 flex-shrink-0" />
+              <span className="text-base font-semibold text-foreground/90 truncate max-w-[320px]">
+                {pageTitle}
+              </span>
+            </>
+          ) : null}
+          {leftSlot}
         </div>
 
         <div className="flex items-center gap-3">

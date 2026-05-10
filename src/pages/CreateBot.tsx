@@ -1,13 +1,10 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Bot } from "lucide-react";
 import { BotCreationWizard } from "@/components/BotBuilder/BotCreationWizard";
 import { Node, Edge } from "@xyflow/react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders, isAuthenticated } from "@/utils/auth";
 import { Navbar } from "@/components/Navbar";
-import { PageHeader } from "@/components/PageHeader";
 import { motion } from "framer-motion";
 import { useBotCreation } from "@/contexts/BotCreationContext";
 
@@ -272,14 +269,7 @@ const CreateBot = () => {
   return (
     <>
       <div className="h-screen flex flex-col bg-background overflow-hidden">
-        <PageHeader
-          backTo="/"
-          backLabel="Back to Home"
-          icon={Bot}
-          title="Create New Bot"
-          subtitle="Configure your AI chatbot step by step"
-          sticky={false}
-        />
+        <Navbar pageTitle="Create New Bot" />
 
         {/* Wizard */}
         <motion.div

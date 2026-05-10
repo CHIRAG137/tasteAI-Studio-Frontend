@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Bot } from "lucide-react";
 import { BotCreationWizard } from "@/components/BotBuilder/BotCreationWizard";
 import { Node, Edge } from "@xyflow/react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/utils/auth";
 import { motion } from "framer-motion";
-import { PageHeader } from "@/components/PageHeader";
+import { Navbar } from "@/components/Navbar";
 import { useBotCreation } from "@/contexts/BotCreationContext";
 import { BrandLoader } from "@/components/BrandLoader";
 
@@ -336,14 +334,7 @@ const EditBot = () => {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
-      <PageHeader
-        backTo="/bots"
-        backLabel="Back to My Bots"
-        icon={Bot}
-        title="Edit Bot"
-        subtitle={botConfig.name || "Loading..."}
-        sticky={false}
-      />
+      <Navbar pageTitle={botConfig.name ? `Edit Bot - ${botConfig.name}` : "Edit Bot"} />
 
       {/* Wizard */}
       <motion.div

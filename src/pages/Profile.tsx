@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { User, ExternalLink, Settings } from "lucide-react";
+import { User, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isAuthenticated, getAuthHeaders } from "@/utils/auth";
 import { API_BASE_URL } from "@/api/auth";
 import { BrandLoader } from "@/components/BrandLoader";
-import { PageHeader } from "@/components/PageHeader";
+import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -238,14 +238,7 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader
-        backTo="/"
-        backLabel="Back to Home"
-        icon={Settings}
-        title="Profile Settings"
-        subtitle="Manage your account and integrations"
-        container="max-w-4xl"
-      />
+      <Navbar pageTitle="Profile Settings" />
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">

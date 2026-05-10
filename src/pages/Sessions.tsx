@@ -7,14 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X, Filter, Sparkles, Loader2, ArrowLeft, MapPin, Monitor, Bot, Headphones } from "lucide-react";
+import { Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X, Filter, Sparkles, Loader2, MapPin, Monitor, Bot, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getAuthHeaders } from "@/utils/auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { PageHeader } from "@/components/PageHeader";
+import { Navbar } from "@/components/Navbar";
 
 interface Message {
   role: "user" | "assistant";
@@ -589,13 +589,7 @@ export default function Sessions() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader
-        backTo="/bots"
-        backLabel="Back to My Bots"
-        icon={MessageSquare}
-        title="Sessions"
-        subtitle={botName}
-      />
+      <Navbar pageTitle={botName ? `Sessions - ${botName}` : "Sessions"} />
 
       {/* Main Content */}
       <div className="container mx-auto px-6 py-6">

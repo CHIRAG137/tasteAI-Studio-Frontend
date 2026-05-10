@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Palette } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { Navbar } from "@/components/Navbar";
 import { useToast } from "@/hooks/use-toast";
 import { EmbedCustomizer, EmbedCustomization } from "@/components/EmbedCustomizer";
 import axios from "axios";
@@ -30,14 +28,7 @@ export default function CustomizeEmbed() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-muted/30">
-      <PageHeader
-        backTo={`/docs/${botId}`}
-        backLabel="Back"
-        icon={Palette}
-        title="Customize Widget"
-        subtitle={botName || "Loading..."}
-        sticky={false}
-      />
+      <Navbar pageTitle={botName ? `Customize Widget - ${botName}` : "Customize Widget"} />
 
       {/* Full page customizer - takes remaining height */}
       <div className="flex-1 min-h-0">

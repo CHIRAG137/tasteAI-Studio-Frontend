@@ -19,11 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { PageHeader } from "@/components/PageHeader";
+import { Navbar } from "@/components/Navbar";
 import {
-  ArrowLeft,
-  Save,
-  Play,
   Zap,
   MessageSquare,
   CheckCircle2,
@@ -324,27 +321,7 @@ export default function WorkflowBuilder() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
-      <PageHeader
-        backTo="/workflows"
-        backLabel="Back"
-        icon={GitBranch}
-        title="Visual Flow Builder"
-        subtitle="Drag nodes from the sidebar to build your workflow"
-        container="full"
-        sticky={false}
-        actions={
-          <>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Play className="w-4 h-4" />
-              Test
-            </Button>
-            <Button size="sm" className="gap-2">
-              <Save className="w-4 h-4" />
-              Save
-            </Button>
-          </>
-        }
-      />
+      <Navbar pageTitle="Visual Flow Builder" />
 
       {/* Main area */}
       <div className="flex-1 flex min-h-0">
