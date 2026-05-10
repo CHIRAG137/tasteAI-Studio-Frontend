@@ -8,7 +8,6 @@ import { BotCard } from "@/components/BotCard";
 import { BotCardSkeleton } from "@/components/BotCardSkeleton";
 import { BotFilters, BotFilterState } from "@/components/BotFilters";
 import { Navbar } from "@/components/Navbar";
-import { ChatBot } from "@/components/ChatBot";
 import { motion } from "framer-motion";
 import { useBotCreation } from "@/contexts/BotCreationContext";
 
@@ -17,7 +16,6 @@ const MyBots = () => {
   const { toast } = useToast();
   const { botsInProgress, newlyCreatedBots, clearNewlyCreatedBots } = useBotCreation();
   const [savedBots, setSavedBots] = useState<any[]>([]);
-  const [selectedBotForTest, setSelectedBotForTest] = useState<any | null>(null);
   const [page, setPage] = useState(1);
   const [limit] = useState(9);
   const [hasNextPage, setHasNextPage] = useState(true);
@@ -266,10 +264,7 @@ const MyBots = () => {
                   <BotCard
                     key={bot.id}
                     bot={bot}
-                    onTest={(id) => {
-                      const b = savedBots.find((b) => b.id === id);
-                      if (b) setSelectedBotForTest(b);
-                    }}
+                    onTest={(id) => navigate(`/test-chat/${id}`)}
                     onShare={(botId) => {
                       const shareUrl = `${window.location.origin}/bot/${botId}`;
                       navigator.clipboard.writeText(shareUrl);
@@ -310,9 +305,6 @@ const MyBots = () => {
         </motion.div>
       </div>
 
-      {selectedBotForTest && (
-        <ChatBot bot={selectedBotForTest} onClose={() => setSelectedBotForTest(null)} />
-      )}
     </>
   );
 };

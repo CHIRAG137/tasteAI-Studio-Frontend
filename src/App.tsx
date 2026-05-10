@@ -30,6 +30,7 @@ import AgentProfile from "./pages/agent/AgentProfile";
 import AgentAuthCallback from "./pages/agent/AgentAuthCallback";
 import AuthCallback from "./pages/AuthCallback";
 import TestEmbed from "./pages/TestEmbed";
+import TestBotChat from "./pages/TestBotChat";
 import Workflows from "./pages/Workflows";
 import CreateWorkflow from "./pages/CreateWorkflow";
 import WorkflowBuilder from "./pages/WorkflowBuilder";
@@ -157,6 +158,14 @@ const App = () => (
                 <TestEmbed />
               </ProtectedRoute>
             } 
+          />
+          <Route
+            path="/test-chat/:botId"
+            element={
+              <ProtectedRoute>
+                <TestBotChat />
+              </ProtectedRoute>
+            }
           />
 
           {/* Workflow Routes */}
