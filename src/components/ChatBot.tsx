@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { createPortal } from "react-dom";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,7 @@ import { Send, Bot, User, X, Mic, MicOff, Loader2, Video, VideoOff, PhoneOff, Vo
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { VisitorEmailOtpGate } from "@/components/visitor/VisitorEmailOtpGate";
-import { visitorEmailOtpHeaders } from "@/utils/visitorEmailOtp";
+import { visitorEmailOtpHeaders, getVisitorEmailVerificationToken } from "@/utils/visitorEmailOtp";
 import { useRateLimit } from "@/hooks/useRateLimit";
 import { handleApiResponse, RATE_LIMIT_CONFIGS, extractRetryAfterSeconds } from "@/utils/rateLimit";
 import { RateLimitedButton } from "@/components/RateLimitedButton";
@@ -71,7 +72,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
   const [isMuted, setIsMuted] = useState(true);
   const [showVideoAvatar, setShowVideoAvatar] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  
+
   // Human handoff state
   const [handoffRequested, setHandoffRequested] = useState(false);
   const [handoffSessionId, setHandoffSessionId] = useState<string | null>(null);
@@ -101,7 +102,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
   const isAutoScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userScrolledAwayRef = useRef(false);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const flowStartedRef = useRef(false);
@@ -160,7 +161,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json"},
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               message,
               messageType: "handoff_unavailable",
@@ -181,7 +182,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json"},
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               message,
               messageType: "handoff_duplicate_request",
@@ -198,13 +199,13 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     setIsHandoffLoading(true);
     const connectingMessage = "Connecting you with a human agent...";
     addSystemMessage(connectingMessage);
-    
+
     try {
       await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json"},
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message: connectingMessage,
             messageType: "handoff_connecting",
@@ -220,7 +221,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/request`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json"},
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             botId: bot.id,
             flowSessionId: sessionId,
@@ -241,13 +242,13 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
 
         const agentStatusMessage = data.result.message;
         addSystemMessage(agentStatusMessage);
-        
+
         try {
           await fetch(
             `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
             {
               method: "POST",
-              headers: { "Content-Type": "application/json"},
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 message: agentStatusMessage,
                 messageType: "handoff_agent_assigned",
@@ -258,17 +259,17 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
         } catch (error) {
           console.error("Error saving agent status message to flow session:", error);
         }
-        
+
         if (!data.result.agent.isOnline) {
           const offlineMessage = "The agent is currently offline but will respond as soon as possible. You can continue asking questions or close this chat.";
           addSystemMessage(offlineMessage);
-          
+
           try {
             await fetch(
               `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
               {
                 method: "POST",
-                headers: { "Content-Type": "application/json"},
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   message: offlineMessage,
                   messageType: "handoff_agent_offline",
@@ -288,13 +289,13 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
       const errorMessage = "Failed to connect with a human agent. Please try again later.";
       addSystemMessage(errorMessage);
       setIsHandoffLoading(false);
-      
+
       try {
         await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json"},
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               message: errorMessage,
               messageType: "handoff_error",
@@ -304,7 +305,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
       } catch (saveError) {
         console.error("Error saving error message to flow session:", saveError);
       }
-      
+
       setHandoffRequested(false);
     }
   };
@@ -323,10 +324,10 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-message`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json"},
-          body: JSON.stringify({ 
-            message, 
-            flowSessionId: sessionId 
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message,
+            flowSessionId: sessionId
           }),
         }
       );
@@ -348,7 +349,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-resolve`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ flowSessionId: sessionId }),
         }
       );
@@ -377,7 +378,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/client-reopen`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ flowSessionId: sessionId }),
         }
       );
@@ -447,7 +448,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/handoff/${handoffSessionId}/rate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ flowSessionId: sessionId, rating: ratingValue, feedback: ratingFeedback }),
       });
       const data = await res.json();
@@ -506,7 +507,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
                 `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
                 {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json'},
+                  headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     message: agentMsg,
                     messageType: 'handoff_accepted',
@@ -531,7 +532,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
                 `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/system-message`,
                 {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json'},
+                  headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     message: resolvedMsg,
                     messageType: 'handoff_resolved',
@@ -776,7 +777,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json"},
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             question,
             botId: bot.id,
@@ -805,8 +806,8 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
 
       const errorMessage = err.message || "Something went wrong";
       const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
-                              errorMessage.toLowerCase().includes('too many') ||
-                              errorMessage.toLowerCase().includes('try again later');
+        errorMessage.toLowerCase().includes('too many') ||
+        errorMessage.toLowerCase().includes('try again later');
       if (isRateLimitError) {
         chatbotRateLimit.handleRateLimitError(extractRetryAfterSeconds(errorMessage, 900));
       }
@@ -834,7 +835,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     const scrollHeight = element.scrollHeight;
     const clientHeight = element.clientHeight;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    
+
     const isNear = distanceFromBottom < threshold;
     return isNear;
   };
@@ -842,17 +843,17 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
   // IMPROVED: Smooth scroll to bottom with better state management
   const scrollToBottom = (force = false) => {
     if (isAutoScrollingRef.current && !force) return;
-    
+
     isAutoScrollingRef.current = true;
     userScrolledAwayRef.current = false;
     setShowJumpButton(false);
-    
+
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    
+
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
     }
-    
+
     scrollTimeoutRef.current = setTimeout(() => {
       isAutoScrollingRef.current = false;
     }, 500);
@@ -861,10 +862,10 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
   // IMPROVED: Handle scroll events with better logic
   const handleScrollAreaScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (isAutoScrollingRef.current) return;
-    
+
     const element = e.currentTarget;
     const isNearBottom = checkIfNearBottom();
-    
+
     if (!isNearBottom && element.scrollHeight > element.clientHeight) {
       userScrolledAwayRef.current = true;
       setShowJumpButton(true);
@@ -879,7 +880,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     if (userScrolledAwayRef.current || isLoading || isHandoffLoading) {
       return;
     }
-    
+
     scrollToBottom();
   }, [messages.length]);
 
@@ -919,8 +920,21 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
           { method: "POST", headers: { ...visitorEmailOtpHeaders(bot.id) } }
         );
         const data = await res.json();
+
+        // Handle visitor email verification requirement
         if (!res.ok && data?.result?.code === "visitor_email_verification_required") {
+          console.log("[ChatBot] Visitor verification required for bot:", bot.id);
           setNeedsVisitorVerification(true);
+          return;
+        }
+
+        if (!res.ok) {
+          console.error("[ChatBot] Flow start failed:", res.status, data);
+          toast({
+            title: "Error",
+            description: data?.message || "Failed to start conversation",
+            variant: "destructive"
+          });
           return;
         }
 
@@ -997,7 +1011,10 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     initFlow();
     const onVisitorReady = (e: Event) => {
       const d = (e as CustomEvent<{ botId?: string }>).detail;
-      if (d?.botId === bot.id) initFlow();
+      if (d?.botId === bot.id) {
+        flowStartedRef.current = false; // reset guard so initFlow re-runs after verification
+        initFlow();
+      }
     };
     window.addEventListener("visitor-auth-ready", onVisitorReady);
     return () => window.removeEventListener("visitor-auth-ready", onVisitorReady);
@@ -1044,7 +1061,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/bots/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...visitorEmailOtpHeaders(bot.id)},
+          headers: { "Content-Type": "application/json", ...visitorEmailOtpHeaders(bot.id) },
           body: JSON.stringify({
             question,
             botId: bot.id,
@@ -1062,8 +1079,11 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
       }
 
       const data = await res.json();
+
       if (!res.ok && data?.result?.code === "visitor_email_verification_required") {
+        console.log("[ChatBot] Visitor verification required during ask for bot:", bot.id);
         setNeedsVisitorVerification(true);
+        setMessages((prev) => prev.slice(0, -1)); // Remove pending message
         return;
       }
 
@@ -1142,7 +1162,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/flow/session/${sessionId}/respond`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...visitorEmailOtpHeaders(bot.id)},
+          headers: { "Content-Type": "application/json", ...visitorEmailOtpHeaders(bot.id) },
           body: JSON.stringify(requestBody),
         }
       );
@@ -1154,6 +1174,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
 
       const data = await res.json();
       if (!res.ok && data?.result?.code === "visitor_email_verification_required") {
+        console.log("[ChatBot] Visitor verification required during respond for bot:", bot.id);
         setNeedsVisitorVerification(true);
         return;
       }
@@ -1455,15 +1476,14 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
           <div className={`flex flex-col gap-1 ${msg.sender === "user" ? "items-end" : "items-start"} max-w-[75%]`}>
             {msg.content && (
               <div
-                className={`rounded-lg p-3 ${
-                  msg.sender === "user"
-                    ? "bg-gradient-primary text-white"
-                    : msg.sender === "agent"
+                className={`rounded-lg p-3 ${msg.sender === "user"
+                  ? "bg-gradient-primary text-white"
+                  : msg.sender === "agent"
                     ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
                     : msg.isSystemMessage
-                    ? "bg-orange-100 text-orange-900 border border-orange-200"
-                    : "bg-muted text-foreground"
-                }`}
+                      ? "bg-orange-100 text-orange-900 border border-orange-200"
+                      : "bg-muted text-foreground"
+                  }`}
               >
                 {typeof msg.content === "string"
                   ? msg.content
@@ -1790,11 +1810,10 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
                           <Button
                             onClick={ttsEnabled ? disableTTS : enableTTS}
                             size="lg"
-                            className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${
-                              ttsEnabled
-                                ? "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
-                                : "bg-gray-400 hover:bg-gray-500"
-                            }`}
+                            className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${ttsEnabled
+                              ? "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
+                              : "bg-gray-400 hover:bg-gray-500"
+                              }`}
                             title={ttsEnabled ? "Disable voice responses" : "Enable voice responses"}
                           >
                             {ttsEnabled ? <Volume2 className="h-6 w-6 text-white" /> : <VolumeX className="h-6 w-6 text-white" />}
@@ -1875,11 +1894,10 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
                           <Button
                             onClick={ttsEnabled ? disableTTS : enableTTS}
                             size="lg"
-                            className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${
-                              ttsEnabled
-                                ? "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
-                                : "bg-gray-400 hover:bg-gray-500"
-                            }`}
+                            className={`h-14 w-14 rounded-full shadow-xl transition-all hover:scale-110 ${ttsEnabled
+                              ? "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
+                              : "bg-gray-400 hover:bg-gray-500"
+                              }`}
                           >
                             {ttsEnabled ? <Volume2 className="h-6 w-6 text-white" /> : <VolumeX className="h-6 w-6 text-white" />}
                           </Button>
@@ -2037,6 +2055,61 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     </>
   );
 
+  const renderTopBarTags = () => (
+    <>
+      {handoffRequested && (
+        <Badge className="text-[11px] bg-amber-400/95 text-amber-950 border-0 hover:bg-amber-400 animate-pulse">
+          <Headphones className="h-3 w-3 mr-1" />
+          {isConnectedToAgent ? "Agent Connected" : "Waiting for Agent"}
+        </Badge>
+      )}
+      <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+        {bot.isVideoBot ? <><Video className="h-3 w-3 mr-1" />Video Bot</> : <><Bot className="h-3 w-3 mr-1" />Chat Bot</>}
+      </Badge>
+      <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+        {(bot.isVideoBot || bot.voiceEnabled) ? <><Volume2 className="h-3 w-3 mr-1" />Voice Enabled</> : <><VolumeX className="h-3 w-3 mr-1" />Voice Disabled</>}
+      </Badge>
+      <Badge className={`text-[11px] border-0 ${flowFinished ? 'bg-teal-400/90 text-teal-950 hover:bg-teal-400' : 'bg-cyan-400/90 text-cyan-950 hover:bg-cyan-400'}`}>
+        {flowFinished ? "Q&A Mode" : "Flow Mode"}
+      </Badge>
+      {bot.primaryPurpose && (
+        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎯 {bot.primaryPurpose}</Badge>
+      )}
+      {bot.conversationalTone && (
+        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎭 {bot.conversationalTone}</Badge>
+      )}
+      {bot.targetAudience && (
+        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👥 {bot.targetAudience}</Badge>
+      )}
+      {(bot.conversationalStyle || bot.responseStyle) && (
+        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🧭 {bot.conversationalStyle || bot.responseStyle}</Badge>
+      )}
+      {bot.languages?.map((lang) => (
+        <Badge key={lang} className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 {lang}</Badge>
+      ))}
+      {bot.training_files && bot.training_files.length > 0 && (
+        <Badge
+          className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm"
+          title={bot.training_files.map((f) => f.originalname).join("\n")}
+        >
+          📁 Training data ({bot.training_files.length})
+        </Badge>
+      )}
+      {bot.websiteUrl && (
+        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 Website training</Badge>
+      )}
+      <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+        🤖 {bot.customLLMProvider ? `Custom LLM (${bot.customLLMProvider})` : "Platform LLM"}
+      </Badge>
+      {bot.isSlackEnabled && (
+        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">💬 Slack</Badge>
+      )}
+      {bot.humanHandoffEnabled && (
+        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👤 Human handoff</Badge>
+      )}
+    </>
+  );
+
   const modalHeader = (
     <DialogHeader className="relative flex-shrink-0 space-y-0 p-0 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-accent" />
@@ -2045,104 +2118,56 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
       <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-accent/30 blur-3xl" />
 
       <div className="relative px-5 py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className="relative flex-shrink-0">
-              <div className="absolute inset-0 rounded-full bg-white/30 blur-md" />
-              <Avatar className="relative h-12 w-12 ring-2 ring-white/60 shadow-lg">
-                <AvatarFallback className="bg-white text-primary">
-                  {handoffRequested ? <Headphones className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
-                </AvatarFallback>
-              </Avatar>
-              <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white ${handoffRequested ? (isConnectedToAgent ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse') : 'bg-emerald-400'}`} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <DialogTitle className="text-xl text-white font-semibold tracking-tight truncate" title={bot.name}>
-                  {bot.name}
-                </DialogTitle>
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="flex items-start justify-between gap-3 flex-1 min-w-0">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <div className="relative flex-shrink-0">
+                <div className="absolute inset-0 rounded-full bg-white/30 blur-md" />
+                <Avatar className="relative h-12 w-12 ring-2 ring-white/60 shadow-lg">
+                  <AvatarFallback className="bg-white text-primary">
+                    {handoffRequested ? <Headphones className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
+                  </AvatarFallback>
+                </Avatar>
+                <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white ${handoffRequested ? (isConnectedToAgent ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse') : 'bg-emerald-400'}`} />
               </div>
-              {bot.description && (
-                <p className="text-sm text-white/85 mt-1 line-clamp-2">{bot.description}</p>
-              )}
-              {handoffRequested && assignedAgentEmail && (
-                <p className="text-xs text-white/80 mt-1.5 flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  Agent: {assignedAgentEmail}
-                </p>
-              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <DialogTitle className="text-xl text-white font-semibold tracking-tight truncate" title={bot.name}>
+                    {bot.name}
+                  </DialogTitle>
+                </div>
+                {bot.description && (
+                  <p className="text-sm text-white/85 mt-1 line-clamp-2">{bot.description}</p>
+                )}
+                {handoffRequested && assignedAgentEmail && (
+                  <p className="text-xs text-white/80 mt-1.5 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Agent: {assignedAgentEmail}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="text-white hover:bg-white/20 flex-shrink-0 rounded-full"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {handoffRequested && (
-            <Badge className="text-[11px] bg-amber-400/95 text-amber-950 border-0 hover:bg-amber-400 animate-pulse">
-              <Headphones className="h-3 w-3 mr-1" />
-              {isConnectedToAgent ? "Agent Connected" : "Waiting for Agent"}
-            </Badge>
-          )}
-          <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
-            {bot.isVideoBot ? <><Video className="h-3 w-3 mr-1" />Video Bot</> : <><Bot className="h-3 w-3 mr-1" />Chat Bot</>}
-          </Badge>
-          <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
-            {(bot.isVideoBot || bot.voiceEnabled) ? <><Volume2 className="h-3 w-3 mr-1" />Voice Enabled</> : <><VolumeX className="h-3 w-3 mr-1" />Voice Disabled</>}
-          </Badge>
-          <Badge className={`text-[11px] border-0 ${flowFinished ? 'bg-teal-400/90 text-teal-950 hover:bg-teal-400' : 'bg-cyan-400/90 text-cyan-950 hover:bg-cyan-400'}`}>
-            {flowFinished ? "Q&A Mode" : "Flow Mode"}
-          </Badge>
-          {bot.primaryPurpose && (
-            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎯 {bot.primaryPurpose}</Badge>
-          )}
-          {bot.conversationalTone && (
-            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎭 {bot.conversationalTone}</Badge>
-          )}
-          {bot.targetAudience && (
-            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👥 {bot.targetAudience}</Badge>
-          )}
-          {(bot.conversationalStyle || bot.responseStyle) && (
-            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🧭 {bot.conversationalStyle || bot.responseStyle}</Badge>
-          )}
-          {bot.languages?.map((lang) => (
-            <Badge key={lang} className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 {lang}</Badge>
-          ))}
-          {bot.training_files && bot.training_files.length > 0 && (
-            <Badge
-              className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm"
-              title={bot.training_files.map((f) => f.originalname).join("\n")}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="text-white hover:bg-white/20 flex-shrink-0 rounded-full"
             >
-              📁 Training data ({bot.training_files.length})
-            </Badge>
-          )}
-          {bot.websiteUrl && (
-            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 Website training</Badge>
-          )}
-          <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
-            🤖 {bot.customLLMProvider ? `Custom LLM (${bot.customLLMProvider})` : "Platform LLM"}
-          </Badge>
-          {bot.isSlackEnabled && (
-            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">💬 Slack</Badge>
-          )}
-          {bot.humanHandoffEnabled && (
-            <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👤 Human handoff</Badge>
-          )}
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {renderTopBarTags()}
+          </div>
         </div>
       </div>
     </DialogHeader>
   );
 
   const meetTopBar = (
-    <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-white/10 bg-neutral-950 px-4 text-white">
-      <div className="flex min-w-0 items-center gap-3">
+    <div className="flex flex-col gap-3 border-b border-white/10 bg-neutral-950 px-4 py-3 text-white md:flex-row md:items-center md:justify-between">
+      <div className="flex min-w-0 items-center gap-3 flex-1">
         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 shadow-md">
           {bot.isVideoBot ? <Video className="h-5 w-5 text-white" /> : <Bot className="h-5 w-5 text-white" />}
         </div>
@@ -2160,6 +2185,9 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
                 : "Interactive session"}
           </p>
         </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-1.5">
+        {renderTopBarTags()}
       </div>
       <Button
         type="button"
@@ -2193,12 +2221,24 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
           </div>
         </div>
       )}
-      {needsVisitorVerification && (
-        <VisitorEmailOtpGate
-          botId={bot.id}
-          open={true}
-          onVerified={() => setNeedsVisitorVerification(false)}
-        />
+      {needsVisitorVerification && createPortal(
+        <>
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.6)",
+              zIndex: 9998,
+              animation: "fadeIn 150ms ease",
+            }}
+          />
+          <VisitorEmailOtpGate
+            botId={bot.id}
+            open={true}
+            onVerified={() => setNeedsVisitorVerification(false)}
+          />
+        </>,
+        document.body
       )}
     </>
   );

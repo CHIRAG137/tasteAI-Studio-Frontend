@@ -91,8 +91,11 @@ export function VisitorEmailOtpGate({
   };
 
   return (
-    <Dialog open={open}>
-      <DialogContent className="w-[calc(100%-2rem)] sm:w-full max-w-md sm:max-w-md rounded-xl p-6">
+    <Dialog open={open} modal={true}>
+      <DialogContent
+        className="w-[calc(100%-2rem)] sm:w-full max-w-md sm:max-w-md rounded-xl p-6"
+        style={{ zIndex: 9999 }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-primary" />

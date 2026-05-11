@@ -2,6 +2,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { BrandLoader } from "@/components/BrandLoader";
 import { ChatBot } from "./ChatBot";
+import { getVisitorEmailVerificationToken } from "@/utils/visitorEmailOtp";
 
 export const PublicBotChatPage = () => {
   const { botId } = useParams<{ botId: string }>();
@@ -9,6 +10,19 @@ export const PublicBotChatPage = () => {
   const [bot, setBot] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  /**
+   * Visitor Email Verification Flow:
+   * 1. When the ChatBot tries to start a flow, it checks if visitor identity verification is enabled
+   * 2. If enabled and no verification token exists in localStorage, the API returns an error
+   * 3. ChatBot then shows the VisitorEmailOtpGate
+   * 4. User enters email and receives OTP, then verifies
+   * 5. Verification token is saved to localStorage with botId as key
+   * 6. Next visit from same device automatically uses the saved token
+   * 7. Device ID is auto-generated and persisted per browser, so repeat visitors are identified
+   * 
+   * Result: Users only verify once per bot per device - no repeated OTP requests
+   */
 
   useEffect(() => {
     if (!botId) {
