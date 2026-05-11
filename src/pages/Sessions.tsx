@@ -593,7 +593,7 @@ export default function Sessions() {
 
       {/* Main Content */}
       <div className="container mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-180px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(109vh-180px)]">
           {/* Sessions List */}
           <Card className="lg:col-span-1 flex flex-col overflow-hidden">
             <CardHeader className="pb-4 space-y-4 shrink-0">
