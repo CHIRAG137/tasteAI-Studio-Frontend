@@ -40,7 +40,7 @@ export function CustomLLMSection({
   const [testMessage, setTestMessage] = useState('');
   const [selectedProvider, setSelectedProvider] = useState(customLLMProvider || "none");
   const [apiKeySource, setApiKeySource] = useState<"bot" | "user">(customApiKeySource || "bot");
-  const [savedKeyStatus, setSavedKeyStatus] = useState<{ openai?: boolean; gemini?: boolean }>({});
+  const [savedKeyStatus, setSavedKeyStatus] = useState<{ openai?: boolean; gemini?: boolean; gemma?: boolean }>({});
 
   const extractErrorMessage = (data: any) => {
     if (!data) return 'Unable to validate API key.';
@@ -87,6 +87,7 @@ export function CustomLLMSection({
       setSavedKeyStatus({
         openai: !!mapped.openai,
         gemini: !!mapped.gemini,
+        gemma: !!mapped.gemma,
       });
     } catch {
       // non-fatal
@@ -103,6 +104,7 @@ export function CustomLLMSection({
   const defaultModels: Record<string, string[]> = {
     openai: ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
     gemini: ["gemini-3-pro-preview", "gemini-pro"],
+    gemma: ["google/gemma-4-31b-it", "google/gemma-4-26b-it", "google/gemma-4-31b", "google/gemma-4-26b"],
   };
 
   const availableModels = selectedProvider && selectedProvider !== "none" 
@@ -131,6 +133,7 @@ export function CustomLLMSection({
               <SelectItem value="none">Use Default (Backend LLM)</SelectItem>
               <SelectItem value="openai">OpenAI</SelectItem>
               <SelectItem value="gemini">Google Gemini</SelectItem>
+              <SelectItem value="gemma">Gemma via OpenRouter</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
@@ -176,10 +179,12 @@ export function CustomLLMSection({
               {apiKeySource === "user" ? (
                 <Alert>
                   <AlertDescription>
-                    Using your saved {selectedProvider === "openai" ? "OpenAI" : "Gemini"} key from Profile.{" "}
+                    Using your saved {selectedProvider === "openai" ? "OpenAI" : selectedProvider === "gemini" ? "Gemini" : "OpenRouter"} key from Profile.{" "}
                     {selectedProvider === "openai"
                       ? (savedKeyStatus.openai ? "A key is saved." : "No key saved yet.")
-                      : (savedKeyStatus.gemini ? "A key is saved." : "No key saved yet.")}
+                      : selectedProvider === "gemini"
+                      ? (savedKeyStatus.gemini ? "A key is saved." : "No key saved yet.")
+                      : (savedKeyStatus.gemma ? "A key is saved." : "No key saved yet.")}
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -187,7 +192,7 @@ export function CustomLLMSection({
                   <Input
                     id="api-key"
                     type={showApiKey ? "text" : "password"}
-                    placeholder={`Enter your ${selectedProvider === 'openai' ? 'OpenAI' : 'Google Gemini'} API key`}
+                    placeholder={`Enter your ${selectedProvider === 'openai' ? 'OpenAI' : selectedProvider === 'gemini' ? 'Google Gemini' : 'OpenRouter'} API key`}
                     value={apiKeyInput}
                     onChange={(e) => handleApiKeyChange(e.target.value)}
                     className="pr-10"
@@ -208,7 +213,9 @@ export function CustomLLMSection({
               <p className="text-xs text-muted-foreground">
                 {selectedProvider === 'openai' 
                   ? 'Get your API key from https://platform.openai.com/api-keys'
-                  : 'Get your API key from Google AI Studio or Google Cloud Console'}
+                  : selectedProvider === 'gemini'
+                  ? 'Get your API key from Google AI Studio or Google Cloud Console'
+                  : 'Get your API key from https://openrouter.ai/keys'}
               </p>
             </div>
 
@@ -296,7 +303,8 @@ export function CustomLLMSection({
                   (apiKeySource === "bot" && !apiKeyInput.trim()) ||
                   (apiKeySource === "user" &&
                     ((selectedProvider === "openai" && !savedKeyStatus.openai) ||
-                      (selectedProvider === "gemini" && !savedKeyStatus.gemini)))
+                      (selectedProvider === "gemini" && !savedKeyStatus.gemini) ||
+                      (selectedProvider === "gemma" && !savedKeyStatus.gemma)))
                 }
               >
                 {isTesting ? 'Testing...' : 'Test API Key'}

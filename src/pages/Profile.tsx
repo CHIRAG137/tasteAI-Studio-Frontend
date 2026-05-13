@@ -24,10 +24,12 @@ const Profile = () => {
   const [apiKeys, setApiKeys] = useState<Record<string, { hasKey: boolean; masked?: string | null }>>({});
   const [openAiKeyDraft, setOpenAiKeyDraft] = useState("");
   const [geminiKeyDraft, setGeminiKeyDraft] = useState("");
+  const [openRouterKeyDraft, setOpenRouterKeyDraft] = useState("");
   const [showOpenAiKey, setShowOpenAiKey] = useState(false);
   const [showGeminiKey, setShowGeminiKey] = useState(false);
-  const [isSavingProvider, setIsSavingProvider] = useState<null | "openai" | "gemini">(null);
-  const [isTestingProvider, setIsTestingProvider] = useState<null | "openai" | "gemini">(null);
+  const [showOpenRouterKey, setShowOpenRouterKey] = useState(false);
+  const [isSavingProvider, setIsSavingProvider] = useState<null | "openai" | "gemini" | "openrouter">(null);
+  const [isTestingProvider, setIsTestingProvider] = useState<null | "openai" | "gemini" | "openrouter">(null);
   const [userDetails, setUserDetails] = useState<{
     name?: string;
     email?: string;
@@ -93,16 +95,16 @@ const Profile = () => {
     }
   };
 
-  const saveProviderKey = async (provider: "openai" | "gemini") => {
+  const saveProviderKey = async (provider: "openai" | "gemini" | "openrouter") => {
     if (!isAuthenticated()) {
       navigate("/login");
       return;
     }
-    const draft = provider === "openai" ? openAiKeyDraft : geminiKeyDraft;
+    const draft = provider === "openai" ? openAiKeyDraft : provider === "gemini" ? geminiKeyDraft : openRouterKeyDraft;
     if (!draft.trim()) {
       toast({
         title: "Missing API key",
-        description: `Paste your ${provider === "openai" ? "OpenAI" : "Gemini"} key first.`,
+        description: `Paste your ${provider === "openai" ? "OpenAI" : provider === "gemini" ? "Gemini" : "OpenRouter"} key first.`,
         variant: "destructive",
       });
       return;
@@ -126,11 +128,12 @@ const Profile = () => {
 
       toast({
         title: "Saved",
-        description: `${provider === "openai" ? "OpenAI" : "Gemini"} key saved securely.`,
+        description: `${provider === "openai" ? "OpenAI" : provider === "gemini" ? "Gemini" : "OpenRouter"} key saved securely.`,
       });
 
       if (provider === "openai") setOpenAiKeyDraft("");
-      else setGeminiKeyDraft("");
+      else if (provider === "gemini") setGeminiKeyDraft("");
+      else setOpenRouterKeyDraft("");
 
       await fetchApiKeys();
     } catch (error) {
@@ -144,7 +147,7 @@ const Profile = () => {
     }
   };
 
-  const testSavedProviderKey = async (provider: "openai" | "gemini") => {
+  const testSavedProviderKey = async (provider: "openai" | "gemini" | "openrouter") => {
     if (!isAuthenticated()) {
       navigate("/login");
       return;
@@ -167,7 +170,7 @@ const Profile = () => {
 
       toast({
         title: "API key valid",
-        description: `${provider === "openai" ? "OpenAI" : "Gemini"} key validated successfully.`,
+        description: `${provider === "openai" ? "OpenAI" : provider === "gemini" ? "Gemini" : "OpenRouter"} key validated successfully.`,
       });
     } catch (error) {
       toast({
@@ -308,7 +311,7 @@ const Profile = () => {
                   LLM API Keys
                 </CardTitle>
                 <CardDescription>
-                  Save your OpenAI/Gemini keys once, test them here, and reuse them in Custom LLM settings.
+                  Save your OpenAI/Gemini/OpenRouter keys once, test them here, and reuse them in Custom LLM settings.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -402,6 +405,51 @@ const Profile = () => {
                       disabled={!apiKeys.gemini?.hasKey || isTestingProvider === "gemini"}
                     >
                       {isTestingProvider === "gemini" ? "Testing..." : "Test saved key"}
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* OpenRouter */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <Label>OpenRouter (Gemma)</Label>
+                    <span className="text-xs text-muted-foreground">
+                      Saved: {apiKeys.openrouter?.hasKey ? (apiKeys.openrouter?.masked || "Yes") : "No"}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type={showOpenRouterKey ? "text" : "password"}
+                      placeholder="Paste OpenRouter API key (stored encrypted)"
+                      value={openRouterKeyDraft}
+                      onChange={(e) => setOpenRouterKeyDraft(e.target.value)}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOpenRouterKey((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showOpenRouterKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      type="button"
+                      onClick={() => saveProviderKey("openrouter")}
+                      disabled={isSavingProvider === "openrouter"}
+                    >
+                      {isSavingProvider === "openrouter" ? "Saving..." : "Save"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => testSavedProviderKey("openrouter")}
+                      disabled={!apiKeys.openrouter?.hasKey || isTestingProvider === "openrouter"}
+                    >
+                      {isTestingProvider === "openrouter" ? "Testing..." : "Test saved key"}
                     </Button>
                   </div>
                 </div>
