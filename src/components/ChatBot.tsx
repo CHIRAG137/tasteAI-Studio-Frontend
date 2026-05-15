@@ -115,6 +115,7 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   const ttsQueueRef = useRef<string[]>([]);
   const isProcessingTTSRef = useRef(false);
+  const [showTagsPopover, setShowTagsPopover] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [showTtsPrompt, setShowTtsPrompt] = useState(false);
 
@@ -2055,60 +2056,94 @@ export const ChatBot = ({ bot, onClose, layout = "modal" }: ChatBotProps) => {
     </>
   );
 
-  const renderTopBarTags = () => (
-    <>
-      {handoffRequested && (
-        <Badge className="text-[11px] bg-amber-400/95 text-amber-950 border-0 hover:bg-amber-400 animate-pulse">
+  const renderTopBarTags = () => {
+    const tags: JSX.Element[] = [];
+
+    if (handoffRequested) {
+      tags.push(
+        <Badge key="handoff" className="text-[11px] bg-amber-400/95 text-amber-950 border-0 hover:bg-amber-400 animate-pulse">
           <Headphones className="h-3 w-3 mr-1" />
           {isConnectedToAgent ? "Agent Connected" : "Waiting for Agent"}
         </Badge>
-      )}
-      <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+      );
+    }
+
+    tags.push(
+      <Badge key="bot-type" className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
         {bot.isVideoBot ? <><Video className="h-3 w-3 mr-1" />Video Bot</> : <><Bot className="h-3 w-3 mr-1" />Chat Bot</>}
       </Badge>
-      <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
+    );
+
+    tags.push(
+      <Badge key="voice" className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
         {(bot.isVideoBot || bot.voiceEnabled) ? <><Volume2 className="h-3 w-3 mr-1" />Voice Enabled</> : <><VolumeX className="h-3 w-3 mr-1" />Voice Disabled</>}
       </Badge>
-      <Badge className={`text-[11px] border-0 ${flowFinished ? 'bg-teal-400/90 text-teal-950 hover:bg-teal-400' : 'bg-cyan-400/90 text-cyan-950 hover:bg-cyan-400'}`}>
+    );
+
+    tags.push(
+      <Badge key="mode" className={`text-[11px] border-0 ${flowFinished ? 'bg-teal-400/90 text-teal-950 hover:bg-teal-400' : 'bg-cyan-400/90 text-cyan-950 hover:bg-cyan-400'}`}>
         {flowFinished ? "Q&A Mode" : "Flow Mode"}
       </Badge>
-      {bot.primaryPurpose && (
-        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎯 {bot.primaryPurpose}</Badge>
-      )}
-      {bot.conversationalTone && (
-        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎭 {bot.conversationalTone}</Badge>
-      )}
-      {bot.targetAudience && (
-        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👥 {bot.targetAudience}</Badge>
-      )}
-      {(bot.conversationalStyle || bot.responseStyle) && (
-        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🧭 {bot.conversationalStyle || bot.responseStyle}</Badge>
-      )}
-      {bot.languages?.map((lang) => (
-        <Badge key={lang} className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 {lang}</Badge>
-      ))}
-      {bot.training_files && bot.training_files.length > 0 && (
+    );
+
+    if (bot.primaryPurpose) tags.push(<Badge key="purpose" className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎯 {bot.primaryPurpose}</Badge>);
+    if (bot.conversationalTone) tags.push(<Badge key="tone" className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🎭 {bot.conversationalTone}</Badge>);
+    if (bot.targetAudience) tags.push(<Badge key="audience" className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👥 {bot.targetAudience}</Badge>);
+    if (bot.conversationalStyle || bot.responseStyle) tags.push(<Badge key="style" className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🧭 {bot.conversationalStyle || bot.responseStyle}</Badge>);
+
+    if (bot.languages) {
+      bot.languages.forEach((lang: string, i: number) => tags.push(<Badge key={`lang-${lang}-${i}`} className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 {lang}</Badge>));
+    }
+
+    if (bot.training_files && bot.training_files.length > 0) {
+      tags.push(
         <Badge
+          key="training"
           className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm"
-          title={bot.training_files.map((f) => f.originalname).join("\n")}
+          title={bot.training_files.map((f: any) => f.originalname).join("\n")}
         >
           📁 Training data ({bot.training_files.length})
         </Badge>
-      )}
-      {bot.websiteUrl && (
-        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 Website training</Badge>
-      )}
-      <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">
-        🤖 {bot.customLLMProvider ? `Custom LLM (${bot.customLLMProvider})` : "Platform LLM"}
-      </Badge>
-      {bot.isSlackEnabled && (
-        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">💬 Slack</Badge>
-      )}
-      {bot.humanHandoffEnabled && (
-        <Badge className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👤 Human handoff</Badge>
-      )}
-    </>
-  );
+      );
+    }
+
+    if (bot.websiteUrl) tags.push(<Badge key="website" className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🌐 Website training</Badge>);
+
+    tags.push(<Badge key="llm" className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">🤖 {bot.customLLMProvider ? `Custom LLM (${bot.customLLMProvider})` : "Platform LLM"}</Badge>);
+
+    if (bot.isSlackEnabled) tags.push(<Badge key="slack" className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">💬 Slack</Badge>);
+    if (bot.humanHandoffEnabled) tags.push(<Badge key="humanhandoff" className="text-[11px] bg-white/15 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm">👤 Human handoff</Badge>);
+
+    const maxVisible = 10;
+    const visible = tags.slice(0, maxVisible);
+    const hidden = tags.slice(maxVisible);
+
+    return (
+      <>
+        {visible.map((t, i) => (
+          <span key={`visible-${i}`} className="inline-block mr-1 mb-1">{t}</span>
+        ))}
+
+        {hidden.length > 0 && (
+          <div
+            className="relative inline-block mr-1 mb-1"
+            onMouseEnter={() => setShowTagsPopover(true)}
+            onMouseLeave={() => setShowTagsPopover(false)}
+          >
+            <Badge className="text-[11px] bg-white/10 text-white border border-white/25 hover:bg-white/25 backdrop-blur-sm cursor-default">+{hidden.length} more</Badge>
+
+            {showTagsPopover && (
+              <div className="absolute right-0 mt-2 z-50 w-max max-w-xs bg-background/95 p-2 rounded shadow-lg border border-white/10 flex flex-wrap gap-1">
+                {hidden.map((h, idx) => (
+                  <div key={`hidden-${idx}`} className="inline-block">{h}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </>
+    );
+  };
 
   const modalHeader = (
     <DialogHeader className="relative flex-shrink-0 space-y-0 p-0 overflow-hidden">
