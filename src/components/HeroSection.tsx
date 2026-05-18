@@ -39,6 +39,8 @@ const stats = [
   { value: "24/7", label: "Automation" },
 ];
 
+const playbookVideoId = "1512rUJu8Ok";
+
 const bandInset = "max-w-7xl mx-auto px-4";
 
 interface HeroSectionProps {
@@ -242,64 +244,68 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
             your web property, quantify results, then mine session history when you refine the roadmap.
           </motion.p>
 
-          <div className="max-w-6xl mx-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                step: "01",
-                icon: Bot,
-                title: "Compose the bot experience",
-                description: "Layer documents, scraped site pages, avatars, voice, languages, flows, and automations.",
-              },
-              {
-                step: "02",
-                icon: FlaskConical,
-                title: "Test and evaluate aggressively",
-                description: "Run realistic conversations internally until answers, tone, and safety meet your bar.",
-              },
-              {
-                step: "03",
-                icon: Link2,
-                title: "Stand up a public URL",
-                description: "Let stakeholders chat on a branded page while you tighten prompts behind the scenes.",
-              },
-              {
-                step: "04",
-                icon: MousePointerClick,
-                title: "Embed in seconds",
-                description: "Add a floating chat launcher with colours and layout that mirror your UI system.",
-              },
-              {
-                step: "05",
-                icon: BarChart3,
-                title: "Understand performance",
-                description: "Use analytics to see throughput, intents, escalation patterns, and product gaps.",
-              },
-              {
-                step: "06",
-                icon: MessagesSquare,
-                title: "Review conversations",
-                description: "Read transcripts, skim AI summaries of sessions, and track what visitors really ask.",
-              },
-            ].map((item) => (
-              <motion.div
-                key={item.step}
-                custom={parseInt(item.step, 10)}
-                variants={fadeUp}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                className="relative rounded-2xl border border-white/70 bg-white/85 p-5 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/90 text-center sm:text-left"
-              >
-                <div className="inline-flex mx-auto sm:mx-0 items-center justify-center w-16 h-16 rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-cyan-50 mb-4 relative dark:border-purple-500/30 dark:from-purple-950/40 dark:to-cyan-950/20">
-                  <item.icon className="w-7 h-7 text-purple-700 dark:text-purple-300" strokeWidth={1.75} />
-                  <span className="absolute -top-2 -right-2 min-w-[1.75rem] h-7 px-1 rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 text-white text-xs font-bold flex items-center justify-center shadow-medium">
-                    {item.step}
-                  </span>
+          <div className="max-w-6xl mx-auto grid gap-8 lg:grid-cols-[1.4fr_0.95fr]">
+            <div className="space-y-6">
+              <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/90">
+                <h3 className="text-xl font-semibold text-foreground mb-3">Playbook essentials</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Follow six simple moves to design, launch, and refine your AI workflow with confidence.
+                </p>
+              </div>
+
+              <div className="grid gap-4">
+                {[
+                  { step: "01", title: "Compose the bot experience" },
+                  { step: "02", title: "Test and evaluate aggressively" },
+                  { step: "03", title: "Stand up a public URL" },
+                  { step: "04", title: "Embed in seconds" },
+                  { step: "05", title: "Understand performance" },
+                  { step: "06", title: "Review conversations" },
+                ].map((item) => (
+                  <motion.div
+                    key={item.step}
+                    custom={parseInt(item.step, 10)}
+                    variants={fadeUp}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    className="rounded-2xl border border-white/70 bg-white/95 p-5 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/90"
+                  >
+                    <div className="flex items-center justify-between gap-4 mb-3">
+                      <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-purple-600/10 text-purple-700 font-semibold">
+                        {item.step}
+                      </span>
+                      <span className="text-sm font-semibold text-foreground">{item.title}</span>
+                    </div>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {item.title} helps keep your workflow moving quickly from build to launch.
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-slate-950 shadow-lg">
+                <div className="relative pb-[56.25%]">
+                  <iframe
+                    className="absolute inset-0 w-full h-full"
+                    src={`https://www.youtube.com/embed/${playbookVideoId}`}
+                    title="Playbook walkthrough"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
                 </div>
-                <h3 className="text-base font-semibold text-foreground mb-2">{item.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{item.description}</p>
-              </motion.div>
-            ))}
+              </div>
+
+              <div className="rounded-3xl border border-white/70 bg-white/90 p-6 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/90">
+                <h3 className="text-lg font-semibold text-foreground mb-2">What you’ll see</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  A short video guide to the playbook flow, the key milestones, and how to move from creation to insights.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

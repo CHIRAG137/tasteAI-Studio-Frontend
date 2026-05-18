@@ -107,8 +107,21 @@ export default function Workflows() {
     <div className="min-h-screen bg-muted/30">
       <Navbar pageTitle="Slack Workflows" />
 
+      <div className="max-w-4xl mx-auto px-4 py-24">
+        <div className="rounded-3xl border border-border/50 bg-card/90 p-10 text-center shadow-sm">
+          <h1 className="text-4xl font-bold mb-4">Slack Workflows</h1>
+          <p className="text-lg text-muted-foreground mb-6">
+            Coming soon — Slack workflow builder is temporarily paused while we improve the experience.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            The current workflow UI is commented out below and will be brought back later.
+          </p>
+        </div>
+      </div>
+
+      {/* Current workflow screen temporarily disabled. We'll bring this layout back later. */}
+      {/*
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground tracking-tight">
@@ -137,7 +150,6 @@ export default function Workflows() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <Card className="border-border/50">
             <CardContent className="p-4 flex items-center gap-4">
@@ -178,7 +190,6 @@ export default function Workflows() {
           </Card>
         </div>
 
-        {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -204,7 +215,6 @@ export default function Workflows() {
           </div>
         </div>
 
-        {/* Workflow List */}
         <div className="space-y-3">
           {isLoading ? (
             <BrandLoader fullScreen={false} label="Loading workflows" />
@@ -287,6 +297,7 @@ export default function Workflows() {
           )}
         </div>
       </div>
+      */}
     </div>
   );
 }
