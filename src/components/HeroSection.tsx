@@ -244,48 +244,39 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
             your web property, quantify results, then mine session history when you refine the roadmap.
           </motion.p>
 
-          <div className="max-w-6xl mx-auto grid gap-8 lg:grid-cols-[1.4fr_0.95fr]">
-            <div className="space-y-6">
-              <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/90">
-                <h3 className="text-xl font-semibold text-foreground mb-3">Playbook essentials</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Follow six simple moves to design, launch, and refine your AI workflow with confidence.
-                </p>
-              </div>
-
-              <div className="grid gap-4">
-                {[
-                  { step: "01", title: "Compose the bot experience" },
-                  { step: "02", title: "Test and evaluate aggressively" },
-                  { step: "03", title: "Stand up a public URL" },
-                  { step: "04", title: "Embed in seconds" },
-                  { step: "05", title: "Understand performance" },
-                  { step: "06", title: "Review conversations" },
-                ].map((item) => (
-                  <motion.div
-                    key={item.step}
-                    custom={parseInt(item.step, 10)}
-                    variants={fadeUp}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true }}
-                    className="rounded-2xl border border-white/70 bg-white/95 p-5 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/90"
-                  >
-                    <div className="flex items-center justify-between gap-4 mb-3">
-                      <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-purple-600/10 text-purple-700 font-semibold">
-                        {item.step}
-                      </span>
-                      <span className="text-sm font-semibold text-foreground">{item.title}</span>
-                    </div>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      {item.title} helps keep your workflow moving quickly from build to launch.
-                    </p>
-                  </motion.div>
-                ))}
-              </div>
+          <div className="max-w-6xl mx-auto grid gap-8 lg:grid-cols-[1.4fr_0.95fr] items-start">
+            {/* Left: 3×2 compact grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { step: "01", title: "Compose the bot experience", desc: "Define personality, knowledge sources, and response style." },
+                { step: "02", title: "Test and evaluate aggressively", desc: "Run test suites and iterate until quality meets your bar." },
+                { step: "03", title: "Stand up a public URL", desc: "Generate a shareable hosted preview link in one click." },
+                { step: "04", title: "Embed in seconds", desc: "Drop the widget snippet into any web property instantly." },
+                { step: "05", title: "Understand performance", desc: "Track engagement, resolution rates, and key metrics." },
+                { step: "06", title: "Review conversations", desc: "Mine session history to spot gaps and refine the roadmap." },
+              ].map((item, idx) => (
+                <motion.div
+                  key={item.step}
+                  custom={idx}
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="rounded-2xl border border-white/70 bg-white/95 p-4 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/90"
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-purple-600/10 text-purple-700 text-xs font-bold shrink-0">
+                      {item.step}
+                    </span>
+                    <span className="text-sm font-semibold text-foreground leading-tight">{item.title}</span>
+                  </div>
+                  <p className="text-muted-foreground text-xs leading-relaxed pl-9">{item.desc}</p>
+                </motion.div>
+              ))}
             </div>
 
-            <div className="space-y-6">
+            {/* Right: video + caption */}
+            <div className="space-y-4">
               <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-slate-950 shadow-lg">
                 <div className="relative pb-[56.25%]">
                   <iframe
@@ -299,9 +290,9 @@ export const HeroSection = ({ onCreateBot, onCreateSlackWorkflow, onViewBots, on
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-white/70 bg-white/90 p-6 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/90">
-                <h3 className="text-lg font-semibold text-foreground mb-2">What you’ll see</h3>
-                <p className="text-muted-foreground leading-relaxed">
+              <div className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/90">
+                <h3 className="text-base font-semibold text-foreground mb-1.5">What you'll see</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
                   A short video guide to the playbook flow, the key milestones, and how to move from creation to insights.
                 </p>
               </div>
