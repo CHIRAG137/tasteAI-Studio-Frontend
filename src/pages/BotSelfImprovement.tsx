@@ -5,6 +5,8 @@ import {
   BrainCircuit,
   CheckCircle2,
   Database,
+  FileStack,
+  Gavel,
   LifeBuoy,
   MessageSquarePlus,
   RefreshCw,
@@ -19,8 +21,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   applyBotImprovementAction,
+  buildBotEvalDataset,
+  getBotEvalDatasets,
   getBotSelfImprovementDashboard,
+  runBotLLMJudge,
   type BotSelfImprovementDashboard,
+  type BotEvalDatasetsResponse,
+  type EvalDatasetSourceType,
   type ImprovementAction,
   type ImprovementItem,
 } from "@/api/analytics";
@@ -47,6 +54,33 @@ const typeLabels: Record<ImprovementItem["type"], string> = {
   repeated_unknown_intent: "Repeated intent",
 };
 
+const datasetSources: Array<{
+  sourceType: EvalDatasetSourceType;
+  title: string;
+  description: string;
+}> = [
+  {
+    sourceType: "low_confidence_traces",
+    title: "Low-confidence traces",
+    description: "Questions where retrieval confidence was weak or missing.",
+  },
+  {
+    sourceType: "handoff_sessions",
+    title: "Handoff sessions",
+    description: "Conversations that needed human support or escalation.",
+  },
+  {
+    sourceType: "negative_feedback",
+    title: "Negative feedback",
+    description: "Rated or commented sessions that need regression coverage.",
+  },
+  {
+    sourceType: "unanswered_questions",
+    title: "Unanswered questions",
+    description: "Fallbacks and source=none production answers.",
+  },
+];
+
 const formatPercent = (value: number | null | undefined) => {
   if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
   return `${Math.round(value * 100)}%`;
@@ -58,7 +92,10 @@ const BotSelfImprovement = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [datasetLoading, setDatasetLoading] = useState<string | null>(null);
+  const [judgeLoading, setJudgeLoading] = useState(false);
   const [dashboard, setDashboard] = useState<BotSelfImprovementDashboard | null>(null);
+  const [evalData, setEvalData] = useState<BotEvalDatasetsResponse | null>(null);
   const [filter, setFilter] = useState<ImprovementItem["type"] | "all">("all");
 
   const fetchDashboard = async () => {
@@ -79,8 +116,15 @@ const BotSelfImprovement = () => {
     }
   };
 
+  const fetchEvalData = async () => {
+    if (!botId) return;
+    const response = await getBotEvalDatasets(botId);
+    setEvalData(response.result || null);
+  };
+
   useEffect(() => {
     fetchDashboard();
+    fetchEvalData().catch(() => null);
   }, [botId]);
 
   const filteredItems = useMemo(() => {
@@ -115,6 +159,50 @@ const BotSelfImprovement = () => {
       });
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const buildDataset = async (sourceType: EvalDatasetSourceType) => {
+    if (!botId) return;
+
+    try {
+      setDatasetLoading(sourceType);
+      const response = await buildBotEvalDataset(botId, sourceType);
+      toast({
+        title: "Eval dataset created",
+        description: `${response.result?.createdCount || 0} examples added to ${response.result?.datasetName}.`,
+      });
+      await fetchEvalData();
+    } catch (error) {
+      toast({
+        title: "Dataset build failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDatasetLoading(null);
+    }
+  };
+
+  const runJudge = async (datasetName: string) => {
+    if (!botId) return;
+
+    try {
+      setJudgeLoading(true);
+      const response = await runBotLLMJudge(botId, datasetName);
+      toast({
+        title: "LLM-as-a-Judge completed",
+        description: `Overall score: ${formatPercent(response.result?.overallScore)}`,
+      });
+      await fetchEvalData();
+    } catch (error) {
+      toast({
+        title: "Judge run failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setJudgeLoading(false);
     }
   };
 
@@ -188,6 +276,119 @@ const BotSelfImprovement = () => {
             </div>
           </CardContent>
         </Card>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileStack className="w-5 h-5 text-primary" />
+                One-Click Eval Dataset Builder
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {datasetSources.map((source) => (
+                <div
+                  key={source.sourceType}
+                  className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="font-medium text-sm">{source.title}</p>
+                    <p className="text-sm text-muted-foreground">{source.description}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={datasetLoading === source.sourceType}
+                    onClick={() => buildDataset(source.sourceType)}
+                  >
+                    <Database className="w-4 h-4 mr-2" />
+                    {datasetLoading === source.sourceType ? "Creating..." : "Create dataset"}
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gavel className="w-5 h-5 text-primary" />
+                LLM-as-a-Judge Bot Grader
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(evalData?.datasets || []).map((dataset) => (
+                  <div key={dataset.datasetName} className="rounded-lg border p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-sm">{dataset.datasetName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {dataset.itemCount} examples
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={judgeLoading}
+                        onClick={() => runJudge(dataset.datasetName)}
+                      >
+                        Grade
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {(evalData?.datasets?.length || 0) > 0 && (
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  disabled={judgeLoading}
+                  onClick={() => runJudge("all")}
+                >
+                  <Gavel className="w-4 h-4 mr-2" />
+                  {judgeLoading ? "Running judge..." : "Grade all datasets"}
+                </Button>
+              )}
+
+              {(evalData?.runs || []).slice(0, 1).map((run) => (
+                <div key={run._id} className="rounded-lg bg-muted/50 p-4 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">Latest judge run</p>
+                      <p className="text-sm text-muted-foreground">{run.datasetName}</p>
+                    </div>
+                    <Badge>{formatPercent(run.overallScore)}</Badge>
+                  </div>
+                  {run.criteria && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {Object.entries(run.criteria).map(([key, value]) => (
+                        <Score
+                          key={key}
+                          label={key.replace(/([A-Z])/g, " $1")}
+                          value={value}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {run.explanations?.[0] && (
+                    <p className="text-sm text-muted-foreground">
+                      {run.explanations[0].explanation}
+                    </p>
+                  )}
+                </div>
+              ))}
+
+              {(evalData?.datasets?.length || 0) === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Create an eval dataset first, then run the judge to score relevance,
+                  helpfulness, groundedness, tone, instruction following, handoff
+                  correctness, refusal correctness, and response length fit.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="flex flex-wrap gap-2">
           {(["all", ...Object.keys(typeLabels)] as Array<typeof filter>).map((itemType) => (

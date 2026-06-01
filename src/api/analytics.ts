@@ -69,6 +69,63 @@ export const applyBotImprovementAction = async (
   return data;
 };
 
+export type EvalDatasetSourceType =
+  | "low_confidence_traces"
+  | "handoff_sessions"
+  | "negative_feedback"
+  | "unanswered_questions";
+
+export const getBotEvalDatasets = async (botId: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/eval-datasets`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch eval datasets");
+  }
+
+  return res.json();
+};
+
+export const buildBotEvalDataset = async (
+  botId: string,
+  sourceType: EvalDatasetSourceType
+) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/eval-datasets/build`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ sourceType }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to build eval dataset");
+  }
+
+  return data;
+};
+
+export const runBotLLMJudge = async (botId: string, datasetName: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/evals/judge`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ datasetName }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to run LLM-as-a-Judge eval");
+  }
+
+  return data;
+};
+
 export interface AgentStats {
   agentId: string;
   email: string;
@@ -230,4 +287,35 @@ export interface BotSelfImprovementDashboard {
   };
   healthScore: BotHealthScore;
   items: ImprovementItem[];
+}
+
+export interface EvalDatasetSummary {
+  datasetName: string;
+  sourceTypes: string[];
+  itemCount: number;
+  latestItemAt: string;
+}
+
+export interface EvalRun {
+  _id: string;
+  datasetName: string;
+  status: "running" | "completed" | "failed";
+  judgeModel: string;
+  criteria?: Record<string, number>;
+  overallScore: number | null;
+  explanations: Array<{
+    itemId: string;
+    question: string;
+    scores: Record<string, number>;
+    explanation: string;
+  }>;
+  error?: string | null;
+  createdAt: string;
+  completedAt?: string | null;
+}
+
+export interface BotEvalDatasetsResponse {
+  datasets: EvalDatasetSummary[];
+  items: Array<Record<string, unknown>>;
+  runs: EvalRun[];
 }
