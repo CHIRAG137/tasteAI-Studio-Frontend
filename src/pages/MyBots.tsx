@@ -275,6 +275,7 @@ const MyBots = () => {
                     onDelete={handleDelete}
                     onSessions={(id) => navigate(`/sessions/${id}`)}
                     onAnalytics={(id) => navigate(`/analytics/${id}`)}
+                    onImprove={(id) => navigate(`/improve/${id}`)}
                   />
                 ))}
               </>

@@ -345,7 +345,7 @@ const BotAnalytics = () => {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <BrainCircuit className="w-5 h-5 text-primary" />
-                Arize Phoenix Observability
+                Bot Health & Arize Phoenix Observability
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 {observability.phoenix.projectName} · {observability.bot.llmProvider} · {observability.bot.model}
@@ -374,6 +374,53 @@ const BotAnalytics = () => {
         </CardHeader>
 
         <CardContent className="space-y-6">
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="pt-6">
+              <div className="grid gap-5 lg:grid-cols-[220px_1fr] lg:items-center">
+                <div>
+                  <p className="text-sm text-muted-foreground">Bot Health Score</p>
+                  <div className="flex items-end gap-2 mt-1">
+                    <span className="text-5xl font-bold">
+                      {observability.healthScore?.score ?? 0}
+                    </span>
+                    <span className="text-lg text-muted-foreground mb-1">/100</span>
+                  </div>
+                  <Badge className="mt-3 capitalize" variant={
+                    observability.healthScore?.status === "healthy"
+                      ? "default"
+                      : observability.healthScore?.status === "watch"
+                        ? "secondary"
+                        : "destructive"
+                  }>
+                    {(observability.healthScore?.status || "watch").replace("_", " ")}
+                  </Badge>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Based on {observability.healthScore?.sampleSize || 0} recent interactions
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {[
+                    ["Answer confidence", observability.healthScore?.components.answerConfidence.score],
+                    ["Low-confidence rate", observability.healthScore?.components.lowConfidenceRate.score],
+                    ["Groundedness", observability.healthScore?.components.groundedness.score],
+                    ["Latency", observability.healthScore?.components.latency.score],
+                    ["Fallback rate", observability.healthScore?.components.fallbackRate.score],
+                    ["Handoff escalation", observability.healthScore?.components.handoffEscalationRate.score],
+                  ].map(([label, score]) => (
+                    <div key={label} className="rounded-lg bg-background/80 p-3">
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className="font-semibold">{score ?? 0}</span>
+                      </div>
+                      <Progress value={Number(score || 0)} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               icon={MessageSquare}

@@ -29,6 +29,46 @@ export const getBotObservabilityInsights = async (botId: string) => {
   return res.json();
 };
 
+export const getBotSelfImprovementDashboard = async (botId: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/improvements`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch bot self-improvement dashboard");
+  }
+
+  return res.json();
+};
+
+export const applyBotImprovementAction = async (
+  botId: string,
+  payload: {
+    itemKey: string;
+    action: ImprovementAction;
+    item: ImprovementItem;
+  }
+) => {
+  const res = await fetch(
+    `${API_BASE_URL}/api/bots/${botId}/improvements/actions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to apply improvement action");
+  }
+
+  return data;
+};
+
 export interface AgentStats {
   agentId: string;
   email: string;
@@ -100,6 +140,21 @@ export interface ArizeRecommendation {
   detail: string;
 }
 
+export interface BotHealthScore {
+  score: number;
+  status: "healthy" | "watch" | "needs_attention";
+  trend: "up" | "down" | "stable" | string;
+  sampleSize: number;
+  components: {
+    answerConfidence: { value: number | null; score: number };
+    lowConfidenceRate: { value: number; score: number };
+    groundedness: { value: number | null; score: number };
+    latency: { valueMs: number | null; score: number };
+    fallbackRate: { value: number; score: number };
+    handoffEscalationRate: { value: number; score: number };
+  };
+}
+
 export interface BotObservabilityInsights {
   bot: {
     id: string;
@@ -121,7 +176,58 @@ export interface BotObservabilityInsights {
     lowConfidenceCount: number;
     sourceBreakdown: Record<string, number>;
   };
+  healthScore: BotHealthScore;
   lowConfidenceQuestions: LowConfidenceQuestion[];
   recommendations: ArizeRecommendation[];
   selfImprovementLoop: string[];
+}
+
+export type ImprovementAction =
+  | "add_to_eval_dataset"
+  | "create_training_qa"
+  | "mark_expected"
+  | "send_to_human_review";
+
+export interface ImprovementItem {
+  key: string;
+  type:
+    | "weak_answer"
+    | "unanswered_question"
+    | "low_confidence_session"
+    | "hallucination_risk"
+    | "repeated_unknown_intent";
+  priority: "high" | "medium" | "low";
+  title: string;
+  description: string;
+  question: string;
+  answer: string;
+  source: string;
+  confidence: number | null;
+  hallucinationRisk: number | null;
+  sessionId: string | null;
+  createdAt: string;
+  suggestedActions: ImprovementAction[];
+  actionState: Array<{
+    action: ImprovementAction;
+    status: string;
+    createdAt: string;
+  }>;
+}
+
+export interface BotSelfImprovementDashboard {
+  bot: {
+    id: string;
+    name: string;
+  };
+  summary: {
+    totalItems: number;
+    highPriority: number;
+    weakAnswers: number;
+    unanswered: number;
+    hallucinationRisk: number;
+    repeatedIntents: number;
+    handoffReview: number;
+  };
+  healthScore: BotHealthScore;
+  items: ImprovementItem[];
 }

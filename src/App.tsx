@@ -14,6 +14,7 @@ import Sessions from "./pages/Sessions";
 import EditBot from "./pages/EditBot";
 import Profile from "./pages/Profile";
 import BotAnalytics from "./pages/BotAnalytics";
+import BotSelfImprovement from "./pages/BotSelfImprovement";
 import CreateBot from "./pages/CreateBot";
 import CustomizeEmbed from "./pages/CustomizeEmbed";
 import MyBots from "./pages/MyBots";
@@ -110,6 +111,14 @@ const App = () => (
                 <BotAnalytics />
               </ProtectedRoute>
             } 
+          />
+          <Route
+            path="/improve/:botId"
+            element={
+              <ProtectedRoute>
+                <BotSelfImprovement />
+              </ProtectedRoute>
+            }
           />
           <Route 
             path="/customize/:botId" 
