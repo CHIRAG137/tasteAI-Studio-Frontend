@@ -17,6 +17,18 @@ export const getAgentAnalytics = async (botId: string) => {
   return res.json();
 };
 
+export const getBotObservabilityInsights = async (botId: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/observability`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch Arize observability insights");
+  }
+
+  return res.json();
+};
+
 export interface AgentStats {
   agentId: string;
   email: string;
@@ -72,4 +84,44 @@ export interface AnalyticsSummary {
   totalEscalations: number;
   overallResolutionRate: number;
   avgResponseTimeInSeconds: number;
+}
+
+export interface LowConfidenceQuestion {
+  sessionId: string;
+  question: string;
+  answer: string;
+  score: number | null;
+  timestamp: string;
+}
+
+export interface ArizeRecommendation {
+  priority: "high" | "medium" | "low";
+  title: string;
+  detail: string;
+}
+
+export interface BotObservabilityInsights {
+  bot: {
+    id: string;
+    name: string;
+    llmProvider: string;
+    model: string;
+  };
+  phoenix: {
+    projectName: string;
+    tracingEnabled: boolean;
+    mcpServer: string;
+    mcpConfig: Record<string, unknown>;
+  };
+  metrics: {
+    totalQa: number;
+    sampledSessions: number;
+    sampledSessionMessages: number;
+    averageConfidence: number | null;
+    lowConfidenceCount: number;
+    sourceBreakdown: Record<string, number>;
+  };
+  lowConfidenceQuestions: LowConfidenceQuestion[];
+  recommendations: ArizeRecommendation[];
+  selfImprovementLoop: string[];
 }

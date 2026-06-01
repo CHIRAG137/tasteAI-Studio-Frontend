@@ -103,7 +103,7 @@ export function CustomLLMSection({
 
   const defaultModels: Record<string, string[]> = {
     openai: ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
-    gemini: ["gemini-3-pro-preview", "gemini-pro"],
+    gemini: ["gemini-3.1-pro-preview", "gemini-pro"],
     gemma: ["google/gemma-4-31b-it", "google/gemma-4-26b-it", "google/gemma-4-31b", "google/gemma-4-26b"],
   };
 

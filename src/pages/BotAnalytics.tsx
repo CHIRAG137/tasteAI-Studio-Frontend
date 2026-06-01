@@ -1,15 +1,23 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { 
   Users, MessageSquare, TrendingUp, Clock, 
-  AlertCircle, Phone, Activity, Calendar, RefreshCw, Star,
-  CheckCircle2, XCircle, UserCheck, Timer, Shield
+  AlertCircle, Phone, Activity, Calendar, Star,
+  CheckCircle2, XCircle, UserCheck, Timer, Shield,
+  BrainCircuit, Gauge, Sparkles, Copy, ExternalLink, Layers3,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getAgentAnalytics, type AgentStats, type AnalyticsSummary } from "@/api/analytics";
+import {
+  getAgentAnalytics,
+  getBotObservabilityInsights,
+  type AgentStats,
+  type AnalyticsSummary,
+  type BotObservabilityInsights,
+} from "@/api/analytics";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Navbar } from "@/components/Navbar";
@@ -17,18 +25,20 @@ import { getAuthHeaders } from "@/utils/auth";
 
 const BotAnalytics = () => {
   const { botId } = useParams<{ botId: string }>();
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [agents, setAgents] = useState<AgentStats[]>([]);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [observability, setObservability] = useState<BotObservabilityInsights | null>(null);
+  const [observabilityLoading, setObservabilityLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [botName, setBotName] = useState<string>("");
 
   useEffect(() => {
     fetchBotDetails();
     fetchAnalytics();
+    fetchObservability();
   }, [botId]);
 
   const fetchBotDetails = async () => {
@@ -75,13 +85,56 @@ const BotAnalytics = () => {
     }
   };
 
+  const fetchObservability = async () => {
+    try {
+      setObservabilityLoading(true);
+
+      if (!botId) {
+        throw new Error("Bot ID is required");
+      }
+
+      const response = await getBotObservabilityInsights(botId);
+      setObservability(response.result || null);
+    } catch (err) {
+      console.error("Error fetching Arize observability insights:", err);
+      setObservability(null);
+    } finally {
+      setObservabilityLoading(false);
+    }
+  };
+
+  const formatPercent = (value: number | null | undefined) => {
+    if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
+    return `${Math.round(value * 100)}%`;
+  };
+
+  const copyMcpConfig = async () => {
+    if (!observability?.phoenix.mcpConfig) return;
+
+    try {
+      await navigator.clipboard.writeText(
+        JSON.stringify(observability.phoenix.mcpConfig, null, 2)
+      );
+      toast({
+        title: "MCP config copied",
+        description: "Phoenix MCP server config is ready for your agent runtime.",
+      });
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy the MCP config from this browser.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const StatCard = ({ 
     icon: Icon, 
     title, 
     value, 
     subtitle,
   }: { 
-    icon: any; 
+    icon: LucideIcon; 
     title: string; 
     value: string | number; 
     subtitle?: string;
@@ -251,6 +304,176 @@ const BotAnalytics = () => {
     </Card>
   );
 
+  const ArizeObservabilityPanel = () => {
+    if (observabilityLoading) {
+      return (
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-56" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 w-full" />
+              ))}
+            </div>
+            <Skeleton className="h-32 w-full" />
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (!observability) {
+      return (
+        <Card>
+          <CardContent className="py-8">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <AlertCircle className="w-5 h-5" />
+              <p className="text-sm">Arize observability insights are unavailable right now.</p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    const sourceEntries = Object.entries(observability.metrics.sourceBreakdown || {});
+
+    return (
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <BrainCircuit className="w-5 h-5 text-primary" />
+                Arize Phoenix Observability
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {observability.phoenix.projectName} · {observability.bot.llmProvider} · {observability.bot.model}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={observability.phoenix.tracingEnabled ? "default" : "secondary"}>
+                {observability.phoenix.tracingEnabled ? "Tracing enabled" : "Env not connected"}
+              </Badge>
+              <Button variant="outline" size="sm" onClick={copyMcpConfig}>
+                <Copy className="w-4 h-4 mr-2" />
+                MCP Config
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <a
+                  href="https://app.phoenix.arize.com"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Phoenix
+                </a>
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={MessageSquare}
+              title="Traced Q&A"
+              value={observability.metrics.totalQa}
+              subtitle={`${observability.metrics.sampledSessions} sampled sessions`}
+            />
+            <StatCard
+              icon={Gauge}
+              title="Avg Confidence"
+              value={formatPercent(observability.metrics.averageConfidence)}
+              subtitle={`${observability.metrics.lowConfidenceCount} low-confidence`}
+            />
+            <StatCard
+              icon={Layers3}
+              title="Sources"
+              value={sourceEntries.length || 0}
+              subtitle={sourceEntries.map(([key, value]) => `${key}: ${value}`).join(" · ") || "No source data"}
+            />
+            <StatCard
+              icon={Sparkles}
+              title="MCP Server"
+              value={observability.phoenix.mcpServer}
+              subtitle="Runtime self-inspection"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Self-Improvement Queue</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {observability.recommendations.map((item) => (
+                  <div key={item.title} className="p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-medium text-sm">{item.title}</p>
+                      <Badge
+                        variant={item.priority === "high" ? "destructive" : "secondary"}
+                        className="capitalize"
+                      >
+                        {item.priority}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{item.detail}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Phoenix MCP Loop</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {observability.selfImprovementLoop.map((step, index) => (
+                    <div key={step} className="flex gap-3">
+                      <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
+                        {index + 1}
+                      </div>
+                      <p className="text-sm text-muted-foreground pt-1">{step}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {observability.lowConfidenceQuestions.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Low-Confidence Trace Samples</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {observability.lowConfidenceQuestions.slice(0, 5).map((item) => (
+                  <div key={`${item.sessionId}-${item.timestamp}`} className="p-3 rounded-lg border">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-medium">{item.question || "Untitled question"}</p>
+                      <Badge variant="outline">{formatPercent(item.score)}</Badge>
+                    </div>
+                    {item.answer && (
+                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                        {item.answer}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          <pre className="max-h-56 overflow-auto rounded-lg bg-muted p-4 text-xs">
+            {JSON.stringify(observability.phoenix.mcpConfig, null, 2)}
+          </pre>
+        </CardContent>
+      </Card>
+    );
+  };
+
   if (error) {
     return (
       <div className="min-h-screen bg-background">
@@ -279,6 +502,8 @@ const BotAnalytics = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-6 py-6 space-y-6">
+        <ArizeObservabilityPanel />
+
         {/* Summary Stats */}
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
