@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getAgentAnalytics,
   getBotObservabilityInsights,
@@ -548,114 +549,151 @@ const BotAnalytics = () => {
       <Navbar pageTitle={botName ? `Analytics - ${botName}` : "Analytics"} />
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-6 space-y-6">
-        <ArizeObservabilityPanel />
-
-        {/* Summary Stats */}
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Card key={i}>
-                <CardContent className="pt-6">
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-7 w-16" />
-                    <Skeleton className="h-3 w-20" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : summary ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <StatCard
-              icon={Users}
-              title="Total Agents"
-              value={summary.totalAgents}
-              subtitle={`${summary.activeAgents} active`}
-            />
-            <StatCard
-              icon={UserCheck}
-              title="Online Now"
-              value={summary.onlineAgents}
-              subtitle={`${summary.passwordSetAgents} verified`}
-            />
-            <StatCard
-              icon={MessageSquare}
-              title="Total Handoffs"
-              value={summary.totalHandoffs}
-              subtitle={`${summary.totalResolved} resolved`}
-            />
-            <StatCard
-              icon={TrendingUp}
-              title="Resolution Rate"
-              value={`${summary.overallResolutionRate}%`}
-              subtitle="All agents"
-            />
-            <StatCard
-              icon={Clock}
-              title="Avg Response"
-              value={`${summary.avgResponseTimeInSeconds}s`}
-              subtitle={`${summary.totalEscalations} escalations`}
-            />
-          </div>
-        ) : null}
-
-        {/* Agents Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Users className="w-5 h-5 text-muted-foreground" />
-              Agent Performance ({agents.length})
-            </h2>
-            {agents.length > 0 && (
-              <Badge variant="secondary">
-                {agents.filter(a => a.isOnline).length} online
-              </Badge>
-            )}
-          </div>
-
-          {loading ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i}>
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="w-10 h-10 rounded-full" />
-                      <div className="space-y-2 flex-1">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-3 w-48" />
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Skeleton className="h-16 w-full" />
-                    <div className="grid grid-cols-2 gap-3">
-                      <Skeleton className="h-20 w-full" />
-                      <Skeleton className="h-20 w-full" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : agents.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {agents.map((agent) => (
-                <AgentCard key={agent.agentId} agent={agent} />
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Users className="w-12 h-12 mx-auto text-muted-foreground mb-3 opacity-50" />
-                <p className="text-lg font-semibold text-muted-foreground">No Agents Found</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  This bot doesn't have any assigned agents yet.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+      <div className="container mx-auto px-6 py-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Activity className="w-6 h-6 text-primary" />
+            Analytics
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Monitor bot health and human handoff performance.
+          </p>
         </div>
+
+        <Tabs defaultValue="observability" orientation="vertical">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+            <TabsList className="h-auto w-full md:w-64 md:flex-col md:items-stretch md:justify-start rounded-lg p-1 bg-muted/60">
+              <TabsTrigger
+                value="observability"
+                className="w-full justify-start text-left gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <BrainCircuit className="w-4 h-4" />
+                Observability (Arize)
+              </TabsTrigger>
+              <TabsTrigger
+                value="handoff"
+                className="w-full justify-start text-left gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <UserCheck className="w-4 h-4" />
+                Human Handoff
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex-1 min-w-0">
+              <TabsContent value="observability" className="mt-0 space-y-6">
+                <ArizeObservabilityPanel />
+              </TabsContent>
+
+              <TabsContent value="handoff" className="mt-0 space-y-6">
+                {/* Summary Stats */}
+                {loading ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Card key={i}>
+                        <CardContent className="pt-6">
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-7 w-16" />
+                            <Skeleton className="h-3 w-20" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : summary ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <StatCard
+                      icon={Users}
+                      title="Total Agents"
+                      value={summary.totalAgents}
+                      subtitle={`${summary.activeAgents} active`}
+                    />
+                    <StatCard
+                      icon={UserCheck}
+                      title="Online Now"
+                      value={summary.onlineAgents}
+                      subtitle={`${summary.passwordSetAgents} verified`}
+                    />
+                    <StatCard
+                      icon={MessageSquare}
+                      title="Total Handoffs"
+                      value={summary.totalHandoffs}
+                      subtitle={`${summary.totalResolved} resolved`}
+                    />
+                    <StatCard
+                      icon={TrendingUp}
+                      title="Resolution Rate"
+                      value={`${summary.overallResolutionRate}%`}
+                      subtitle="All agents"
+                    />
+                    <StatCard
+                      icon={Clock}
+                      title="Avg Response"
+                      value={`${summary.avgResponseTimeInSeconds}s`}
+                      subtitle={`${summary.totalEscalations} escalations`}
+                    />
+                  </div>
+                ) : null}
+
+                {/* Agents Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      <Users className="w-5 h-5 text-muted-foreground" />
+                      Agent Performance ({agents.length})
+                    </h2>
+                    {agents.length > 0 && (
+                      <Badge variant="secondary">
+                        {agents.filter((a) => a.isOnline).length} online
+                      </Badge>
+                    )}
+                  </div>
+
+                  {loading ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <Card key={i}>
+                          <CardHeader className="pb-4">
+                            <div className="flex items-center gap-3">
+                              <Skeleton className="w-10 h-10 rounded-full" />
+                              <div className="space-y-2 flex-1">
+                                <Skeleton className="h-4 w-32" />
+                                <Skeleton className="h-3 w-48" />
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <Skeleton className="h-16 w-full" />
+                            <div className="grid grid-cols-2 gap-3">
+                              <Skeleton className="h-20 w-full" />
+                              <Skeleton className="h-20 w-full" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : agents.length > 0 ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {agents.map((agent) => (
+                        <AgentCard key={agent.agentId} agent={agent} />
+                      ))}
+                    </div>
+                  ) : (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <Users className="w-12 h-12 mx-auto text-muted-foreground mb-3 opacity-50" />
+                        <p className="text-lg font-semibold text-muted-foreground">No Agents Found</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          This bot doesn't have any assigned agents yet.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </TabsContent>
+            </div>
+          </div>
+        </Tabs>
       </div>
     </div>
   );
