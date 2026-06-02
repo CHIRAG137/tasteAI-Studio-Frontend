@@ -550,15 +550,6 @@ const BotAnalytics = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-6 py-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Activity className="w-6 h-6 text-primary" />
-            Analytics
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Monitor bot health and human handoff performance.
-          </p>
-        </div>
 
         <Tabs defaultValue="observability" orientation="vertical">
           <div className="flex flex-col md:flex-row gap-4 md:gap-6 md:h-[calc(100vh-13rem)]">
