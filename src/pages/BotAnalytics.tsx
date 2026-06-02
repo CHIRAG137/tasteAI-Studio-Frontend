@@ -561,25 +561,25 @@ const BotAnalytics = () => {
         </div>
 
         <Tabs defaultValue="observability" orientation="vertical">
-          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
-            <TabsList className="h-auto w-full md:w-64 md:flex-col md:items-stretch md:justify-start rounded-lg p-1 bg-muted/60">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-6 md:h-[calc(100vh-13rem)]">
+            <TabsList className="h-auto md:self-start w-full md:w-64 md:flex-col md:items-stretch md:justify-start rounded-lg p-1 md:sticky md:top-0">
               <TabsTrigger
                 value="observability"
-                className="w-full justify-start text-left gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="w-full justify-start text-left gap-2"
               >
                 <BrainCircuit className="w-4 h-4" />
                 Observability (Arize)
               </TabsTrigger>
               <TabsTrigger
                 value="handoff"
-                className="w-full justify-start text-left gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="w-full justify-start text-left gap-2"
               >
                 <UserCheck className="w-4 h-4" />
                 Human Handoff
               </TabsTrigger>
             </TabsList>
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 md:overflow-y-auto md:pr-1">
               <TabsContent value="observability" className="mt-0 space-y-6">
                 <ArizeObservabilityPanel />
               </TabsContent>
