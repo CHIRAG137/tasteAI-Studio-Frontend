@@ -553,14 +553,14 @@ const BotAnalytics = () => {
             <TabsList className="h-auto w-full md:w-72 md:h-full md:flex-col md:items-stretch md:justify-start rounded-none p-3 gap-1 border-b md:border-b-0 md:border-r border-border/60 bg-muted/30 shrink-0">
               <TabsTrigger
                 value="observability"
-                className="w-full justify-start text-left gap-2"
+                className="w-full justify-start text-left gap-2 rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400"
               >
                 <BrainCircuit className="w-4 h-4" />
                 Observability (Arize)
               </TabsTrigger>
               <TabsTrigger
                 value="handoff"
-                className="w-full justify-start text-left gap-2"
+                className="w-full justify-start text-left gap-2 rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400"
               >
                 <UserCheck className="w-4 h-4" />
                 Human Handoff
