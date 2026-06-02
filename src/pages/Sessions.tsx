@@ -15,6 +15,21 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { getAuthHeaders } from "@/utils/auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Navbar } from "@/components/Navbar";
+import TraceTimelineViewer from "@/components/TraceTimelineViewer";
+
+type TraceData = Parameters<typeof TraceTimelineViewer>[0]["trace"];
+
+interface TraceMetric {
+  id: string;
+  question: string;
+  answer: string;
+  source: string;
+  confidence?: number | null;
+  latencyMs?: number | null;
+  usedFallback?: boolean;
+  trace?: TraceData;
+  createdAt?: string;
+}
 
 interface Message {
   role: "user" | "assistant";
@@ -26,6 +41,7 @@ interface Message {
   confirmationResponse?: string; // The selected confirmation value
   isSystemMessage?: boolean; // For handoff system messages
   isAgentMessage?: boolean; // For agent messages in handoff
+  traceMetric?: TraceMetric | null;
 }
 
 interface Session {
@@ -37,6 +53,7 @@ interface Session {
   messages: Message[];
   duration?: string;
   currentMode?: "flow" | "qa" | "handoff" | "idle";
+  traceMetrics?: TraceMetric[];
 }
 
 export default function Sessions() {
@@ -51,6 +68,8 @@ export default function Sessions() {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [minMessages, setMinMessages] = useState<number | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedTrace, setSelectedTrace] = useState<TraceMetric | null>(null);
+  const [traceViewerOpen, setTraceViewerOpen] = useState(false);
 
   // Summarizer states
   const [summary, setSummary] = useState<string>("");
@@ -103,6 +122,22 @@ export default function Sessions() {
       default:
         return 'Unknown';
     }
+  };
+
+  const openTraceViewer = (traceMetric: TraceMetric) => {
+    setSelectedTrace(traceMetric);
+    setTraceViewerOpen(true);
+  };
+
+  const formatLatency = (latency?: number | null) => {
+    if (latency === null || latency === undefined) return "n/a";
+    if (latency >= 1000) return `${(latency / 1000).toFixed(2)}s`;
+    return `${latency}ms`;
+  };
+
+  const formatConfidence = (confidence?: number | null) => {
+    if (confidence === null || confidence === undefined) return "n/a";
+    return `${Math.round(confidence * 100)}%`;
   };
 
   // Helper function to format history entry into readable message
@@ -299,6 +334,7 @@ export default function Sessions() {
       
       // Handle QA mode - split into question (user) and answer (assistant)
       if (h.mode === "qa") {
+        const traceMetric = h.traceMetric || null;
         // Add question as user message (right side)
         if (h.question) {
           messages.push({
@@ -307,16 +343,18 @@ export default function Sessions() {
             timestamp: h.timestamp,
             mode: "qa",
             type: "question",
+            traceMetric,
           });
         }
         // Add answer as assistant message (left side)
         if (h.answer) {
           messages.push({
             role: "assistant",
-            content: h.answer,
+            content: traceMetric?.answer || h.answer,
             timestamp: h.timestamp,
             mode: "qa",
             type: "answer",
+            traceMetric,
           });
         }
         continue;
@@ -434,6 +472,7 @@ export default function Sessions() {
           duration: s.duration,
           currentMode: s.currentMode,
           messages: mapHistoryToMessages(s.history),
+          traceMetrics: s.traceMetrics || [],
         }));
         setSessions(mappedSessions);
       }
@@ -464,6 +503,8 @@ export default function Sessions() {
           userAgent: s.userAgent,
           timestamp: s.createdAt,
           messages: mapHistoryToMessages(s.history),
+          currentMode: s.currentMode,
+          traceMetrics: s.traceMetrics || [],
         };
         setSelectedSession(mappedSession);
         // Load cached summary from database if available
@@ -720,6 +761,11 @@ export default function Sessions() {
                           <Badge variant="secondary" className="text-xs">
                             {session.messages.length} msgs
                           </Badge>
+                          {!!session.traceMetrics?.length && (
+                            <Badge variant="outline" className="text-xs h-5">
+                              {session.traceMetrics.length} traces
+                            </Badge>
+                          )}
                           {session.currentMode && (
                             <Badge className={cn("text-xs h-5", getModeColor(session.currentMode))}>
                               {getModeLabel(session.currentMode)}
@@ -802,7 +848,64 @@ export default function Sessions() {
 
                   <div className="text-xs text-muted-foreground">
                     Showing all {selectedSession.messages.length} entries from session history
+                    {!!selectedSession.traceMetrics?.length && ` with ${selectedSession.traceMetrics.length} Phoenix traces`}
                   </div>
+
+                  {!!selectedSession.traceMetrics?.length && (
+                    <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h4 className="text-sm font-semibold">Phoenix Trace Timeline</h4>
+                          <p className="text-xs text-muted-foreground">
+                            Product-friendly view of embedding, retrieval, source, prompt, answer, and latency.
+                          </p>
+                        </div>
+                        <Badge variant="secondary">
+                          {formatLatency(
+                            selectedSession.traceMetrics.reduce(
+                              (total, trace) => total + (trace.latencyMs || 0),
+                              0
+                            )
+                          )}
+                        </Badge>
+                      </div>
+
+                      <div className="grid gap-2">
+                        {selectedSession.traceMetrics.map((traceMetric, index) => (
+                          <button
+                            key={traceMetric.id}
+                            type="button"
+                            onClick={() => openTraceViewer(traceMetric)}
+                            className="w-full rounded-md border bg-background p-3 text-left transition-colors hover:border-primary/60 hover:bg-primary/5"
+                          >
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="h-5 text-[11px]">
+                                    Q{index + 1}
+                                  </Badge>
+                                  <p className="truncate text-sm font-medium">
+                                    {traceMetric.question || "Untitled question"}
+                                  </p>
+                                </div>
+                                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                                  Match {formatConfidence(traceMetric.confidence)} - {traceMetric.source || "unknown"} - {formatLatency(traceMetric.latencyMs)}
+                                </p>
+                              </div>
+                              <Badge className={cn(
+                                "capitalize",
+                                traceMetric.usedFallback
+                                  ? "bg-yellow-600 text-white"
+                                  : "bg-green-600 text-white"
+                              )}>
+                                {traceMetric.usedFallback ? "Fallback" : "Grounded"}
+                              </Badge>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Summarizer Button */}
                   <div className="flex gap-2">
@@ -933,6 +1036,17 @@ export default function Sessions() {
                                 </Button>
                               </div>
                             )}
+                            {message.role === "assistant" && message.traceMetric && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                className="mt-3 h-7 text-xs"
+                                onClick={() => openTraceViewer(message.traceMetric as TraceMetric)}
+                              >
+                                View Trace
+                              </Button>
+                            )}
                           </div>
                           <span className="text-xs text-gray-500 flex items-center gap-1">
                             {message.isAgentMessage && <Headphones className="h-3 w-3" />}
@@ -965,6 +1079,16 @@ export default function Sessions() {
           </Card>
         </div>
       </div>
+
+      <TraceTimelineViewer
+        isOpen={traceViewerOpen}
+        onOpenChange={setTraceViewerOpen}
+        trace={selectedTrace?.trace}
+        question={selectedTrace?.question}
+        answer={selectedTrace?.answer}
+        confidence={selectedTrace?.confidence ?? undefined}
+        source={selectedTrace?.source}
+      />
     </div>
   );
 }
