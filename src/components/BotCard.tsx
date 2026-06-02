@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Bot, MoreHorizontal, Play, Share, Code, Trash2, Edit, MessageSquare, Video, BarChart3, BrainCircuit } from "lucide-react";
+import { Bot, MoreHorizontal, Play, Share, Code, Trash2, Edit, MessageSquare, Video, BarChart3, BrainCircuit, FlaskConical } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface BotCardProps {
@@ -37,9 +37,10 @@ interface BotCardProps {
   onSessions: (id: string) => void;
   onAnalytics: (id: string) => void;
   onImprove: (id: string) => void;
+  onExperiments: (id: string) => void;
 }
 
-export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, onSessions, onAnalytics, onImprove }: BotCardProps) => {
+export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, onSessions, onAnalytics, onImprove, onExperiments }: BotCardProps) => {
   const isLoading = (bot as any).isLoading;
   const progress = (bot as any).progress || 0;
   const isVoiceEnabledForUI = bot.isVideoBot || bot.voiceEnabled;
@@ -133,6 +134,10 @@ export const BotCard = ({ bot, onTest, onShare, onIntegrate, onEdit, onDelete, o
             <DropdownMenuItem onClick={() => onImprove(bot.id)} className="cursor-pointer">
               <BrainCircuit className="mr-2 h-4 w-4" />
               Self Improvement
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onExperiments(bot.id)} className="cursor-pointer">
+              <FlaskConical className="mr-2 h-4 w-4" />
+              Experiment Lab
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onEdit(bot.id)} className="cursor-pointer">
               <Edit className="mr-2 h-4 w-4" />

@@ -126,6 +126,124 @@ export const runBotLLMJudge = async (botId: string, datasetName: string) => {
   return data;
 };
 
+export interface ExperimentVariantConfig {
+  label: string;
+  description: string;
+  trafficAllocation: number;
+  config: Record<string, unknown>;
+}
+
+export interface BotExperiment {
+  _id: string;
+  name: string;
+  hypothesis: string;
+  datasetName: string;
+  primaryMetric?: string;
+  guardrailMetric?: string;
+  targetingRules?: Record<string, unknown>;
+  control: ExperimentVariantConfig;
+  treatment: ExperimentVariantConfig;
+  status: "draft" | "running" | "completed" | "failed";
+  metrics?: {
+    controlWins: number;
+    treatmentWins: number;
+    ties: number;
+    treatmentWinRate: number | null;
+    controlAverageJudgeScore: number | null;
+    treatmentAverageJudgeScore: number | null;
+    controlAverageLatencyMs: number | null;
+    treatmentAverageLatencyMs: number | null;
+    controlEstimatedCost: number | null;
+    treatmentEstimatedCost: number | null;
+  };
+  samples?: Array<{
+    question: string;
+    controlOutput: string;
+    treatmentOutput: string;
+    winner: "control" | "treatment" | "tie";
+    controlScore: number;
+    treatmentScore: number;
+    explanation: string;
+    controlLatencyMs: number;
+    treatmentLatencyMs: number;
+  }>;
+  error?: string | null;
+  createdAt: string;
+  completedAt?: string | null;
+}
+
+export interface BotExperimentsResponse {
+  experiments: BotExperiment[];
+  datasets: Array<{
+    datasetName: string;
+    itemCount: number;
+    latestItemAt: string;
+  }>;
+  defaults: {
+    control: ExperimentVariantConfig;
+    treatment: ExperimentVariantConfig;
+  };
+}
+
+export const getBotExperiments = async (botId: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/experiments`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch bot experiments");
+  }
+
+  return res.json();
+};
+
+export const createBotExperiment = async (
+  botId: string,
+  payload: {
+    name: string;
+    hypothesis: string;
+    datasetName: string;
+    primaryMetric: string;
+    guardrailMetric: string;
+    targetingRules: Record<string, unknown>;
+    control: ExperimentVariantConfig;
+    treatment: ExperimentVariantConfig;
+  }
+) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/experiments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to create experiment");
+  }
+
+  return data;
+};
+
+export const runBotExperiment = async (botId: string, experimentId: string) => {
+  const res = await fetch(
+    `${API_BASE_URL}/api/bots/${botId}/experiments/${experimentId}/run`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+    }
+  );
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to run experiment");
+  }
+
+  return data;
+};
+
 export interface AgentStats {
   agentId: string;
   email: string;

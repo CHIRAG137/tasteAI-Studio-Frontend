@@ -276,6 +276,7 @@ const MyBots = () => {
                     onSessions={(id) => navigate(`/sessions/${id}`)}
                     onAnalytics={(id) => navigate(`/analytics/${id}`)}
                     onImprove={(id) => navigate(`/improve/${id}`)}
+                    onExperiments={(id) => navigate(`/experiments/${id}`)}
                   />
                 ))}
               </>
