@@ -437,3 +437,151 @@ export interface BotEvalDatasetsResponse {
   items: Array<Record<string, unknown>>;
   runs: EvalRun[];
 }
+
+// Regression Test Types
+export interface TestCase {
+  questionId: string;
+  question: string;
+  expectedAnswer: string;
+  priority: "high" | "medium" | "low";
+  source: "low_confidence" | "handoff" | "negative_feedback" | "manual";
+  createdFrom?: {
+    sessionId?: string;
+    score?: number;
+  };
+}
+
+export interface RegressionTestRun {
+  testCaseId: string;
+  botVersionId: string;
+  actualAnswer: string;
+  relevanceScore: number;
+  groundednessScore: number;
+  verdict: "passed" | "failed" | "regressed" | "improved";
+  explanation?: string;
+  runAt: string;
+}
+
+export interface RegressionTestStatistics {
+  totalTests: number;
+  passedTests: number;
+  failedTests: number;
+  regressions: number;
+  improvements: number;
+}
+
+export interface BotRegressionTest {
+  _id: string;
+  bot: string;
+  user: string;
+  name: string;
+  description?: string;
+  testCases: TestCase[];
+  lastRunAt?: string;
+  status: "active" | "archived" | "disabled";
+  statistics: RegressionTestStatistics;
+  testRuns: RegressionTestRun[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TestRunResults {
+  testSuiteId: string;
+  statistics: RegressionTestStatistics;
+  testRuns: RegressionTestRun[];
+  summary: {
+    improved: number;
+    regressed: number;
+    message: string;
+  };
+}
+
+// Regression Test API Functions
+export const createRegressionTests = async (botId: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/regression-tests`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to create regression tests");
+  }
+
+  return res.json();
+};
+
+export const getRegressionTests = async (botId: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/regression-tests`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch regression tests");
+  }
+
+  return res.json();
+};
+
+export const runRegressionTests = async (
+  botId: string,
+  testSuiteId: string,
+  botVersionId?: string
+): Promise<{ result: TestRunResults }> => {
+  const res = await fetch(
+    `${API_BASE_URL}/api/bots/${botId}/regression-tests/${testSuiteId}/run`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ botVersionId: botVersionId || "current" }),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to run regression tests");
+  }
+
+  return res.json();
+};
+
+export const getTestSuiteDetails = async (
+  botId: string,
+  testSuiteId: string
+): Promise<{ result: BotRegressionTest }> => {
+  const res = await fetch(
+    `${API_BASE_URL}/api/bots/${botId}/regression-tests/${testSuiteId}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch test suite details");
+  }
+
+  return res.json();
+};
+
+export const addTestCase = async (
+  botId: string,
+  testSuiteId: string,
+  testCase: {
+    question: string;
+    expectedAnswer: string;
+    priority?: "high" | "medium" | "low";
+  }
+) => {
+  const res = await fetch(
+    `${API_BASE_URL}/api/bots/${botId}/regression-tests/${testSuiteId}/test-cases`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(testCase),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to add test case");
+  }
+
+  return res.json();
+};

@@ -11,6 +11,12 @@ import {
   MessageSquarePlus,
   RefreshCw,
   ShieldCheck,
+  TestTubes,
+  Play,
+  AlertCircle,
+  Inbox,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -18,6 +24,18 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   applyBotImprovementAction,
@@ -25,11 +43,16 @@ import {
   getBotEvalDatasets,
   getBotSelfImprovementDashboard,
   runBotLLMJudge,
+  createRegressionTests,
+  getRegressionTests,
+  runRegressionTests,
   type BotSelfImprovementDashboard,
   type BotEvalDatasetsResponse,
   type EvalDatasetSourceType,
   type ImprovementAction,
   type ImprovementItem,
+  type BotRegressionTest,
+  type TestRunResults,
 } from "@/api/analytics";
 
 const actionLabels: Record<ImprovementAction, string> = {
@@ -98,6 +121,14 @@ const BotSelfImprovement = () => {
   const [evalData, setEvalData] = useState<BotEvalDatasetsResponse | null>(null);
   const [filter, setFilter] = useState<ImprovementItem["type"] | "all">("all");
 
+  // Regression Test State
+  const [regressionTests, setRegressionTests] = useState<BotRegressionTest[]>([]);
+  const [regressionLoading, setRegressionLoading] = useState(false);
+  const [testRunning, setTestRunning] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<TestRunResults | null>(null);
+  const [resultsModalOpen, setResultsModalOpen] = useState(false);
+  const [selectedTest, setSelectedTest] = useState<BotRegressionTest | null>(null);
+
   const fetchDashboard = async () => {
     if (!botId) return;
 
@@ -122,9 +153,91 @@ const BotSelfImprovement = () => {
     setEvalData(response.result || null);
   };
 
+  const fetchRegressionTests = async () => {
+    if (!botId) return;
+
+    try {
+      setRegressionLoading(true);
+      const response = await getRegressionTests(botId);
+      setRegressionTests(response.result || []);
+    } catch (error) {
+      toast({
+        title: "Unable to load regression tests",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setRegressionLoading(false);
+    }
+  };
+
+  const createRegressionTestSuite = async () => {
+    if (!botId) return;
+
+    try {
+      setRegressionLoading(true);
+      await createRegressionTests(botId);
+      toast({
+        title: "Regression test suite created",
+        description: "Tests created from production conversations.",
+      });
+      await fetchRegressionTests();
+    } catch (error) {
+      toast({
+        title: "Failed to create regression tests",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setRegressionLoading(false);
+    }
+  };
+
+  const runTest = async (testSuiteId: string) => {
+    if (!botId) return;
+
+    try {
+      setTestRunning(testSuiteId);
+      const response = await runRegressionTests(botId, testSuiteId);
+      setTestResults(response.result);
+      setResultsModalOpen(true);
+
+      // Show summary toast
+      if (response.result?.summary?.improved > 0 && response.result?.summary?.regressed > 0) {
+        toast({
+          title: "Tests completed with mixed results",
+          description: response.result.summary.message,
+          variant: "destructive",
+        });
+      } else if (response.result?.summary?.improved > 0) {
+        toast({
+          title: "Great improvements!",
+          description: response.result.summary.message,
+        });
+      } else if (response.result?.summary?.regressed > 0) {
+        toast({
+          title: "Regressions detected",
+          description: response.result.summary.message,
+          variant: "destructive",
+        });
+      }
+
+      await fetchRegressionTests();
+    } catch (error) {
+      toast({
+        title: "Failed to run tests",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setTestRunning(null);
+    }
+  };
+
   useEffect(() => {
     fetchDashboard();
     fetchEvalData().catch(() => null);
+    fetchRegressionTests().catch(() => null);
   }, [botId]);
 
   const filteredItems = useMemo(() => {
@@ -277,156 +390,429 @@ const BotSelfImprovement = () => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileStack className="w-5 h-5 text-primary" />
-                One-Click Eval Dataset Builder
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {datasetSources.map((source) => (
-                <div
-                  key={source.sourceType}
-                  className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="font-medium text-sm">{source.title}</p>
-                    <p className="text-sm text-muted-foreground">{source.description}</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={datasetLoading === source.sourceType}
-                    onClick={() => buildDataset(source.sourceType)}
-                  >
-                    <Database className="w-4 h-4 mr-2" />
-                    {datasetLoading === source.sourceType ? "Creating..." : "Create dataset"}
-                  </Button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="improvements" className="space-y-6">
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="improvements" className="flex items-center gap-2">
+              <BrainCircuit className="w-4 h-4" />
+              Improvements
+            </TabsTrigger>
+            <TabsTrigger value="eval-datasets" className="flex items-center gap-2">
+              <FileStack className="w-4 h-4" />
+              Eval Datasets
+            </TabsTrigger>
+            <TabsTrigger value="regression-tests" className="flex items-center gap-2">
+              <TestTubes className="w-4 h-4" />
+              Regression Tests
+            </TabsTrigger>
+          </TabsList>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Gavel className="w-5 h-5 text-primary" />
-                LLM-as-a-Judge Bot Grader
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {(evalData?.datasets || []).map((dataset) => (
-                  <div key={dataset.datasetName} className="rounded-lg border p-3">
-                    <div className="flex items-start justify-between gap-3">
+          {/* Eval Datasets Tab */}
+          <TabsContent value="eval-datasets" className="space-y-4">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileStack className="w-5 h-5 text-primary" />
+                    One-Click Eval Dataset Builder
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {datasetSources.map((source) => (
+                    <div
+                      key={source.sourceType}
+                      className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
                       <div>
-                        <p className="font-medium text-sm">{dataset.datasetName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {dataset.itemCount} examples
-                        </p>
+                        <p className="font-medium text-sm">{source.title}</p>
+                        <p className="text-sm text-muted-foreground">{source.description}</p>
                       </div>
                       <Button
                         size="sm"
-                        disabled={judgeLoading}
-                        onClick={() => runJudge(dataset.datasetName)}
+                        variant="secondary"
+                        disabled={datasetLoading === source.sourceType}
+                        onClick={() => buildDataset(source.sourceType)}
                       >
-                        Grade
+                        <Database className="w-4 h-4 mr-2" />
+                        {datasetLoading === source.sourceType ? "Creating..." : "Create dataset"}
                       </Button>
                     </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Gavel className="w-5 h-5 text-primary" />
+                    LLM-as-a-Judge Bot Grader
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(evalData?.datasets || []).map((dataset) => (
+                      <div key={dataset.datasetName} className="rounded-lg border p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-sm">{dataset.datasetName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {dataset.itemCount} examples
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            disabled={judgeLoading}
+                            onClick={() => runJudge(dataset.datasetName)}
+                          >
+                            Grade
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              {(evalData?.datasets?.length || 0) > 0 && (
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  disabled={judgeLoading}
-                  onClick={() => runJudge("all")}
-                >
-                  <Gavel className="w-4 h-4 mr-2" />
-                  {judgeLoading ? "Running judge..." : "Grade all datasets"}
-                </Button>
-              )}
+                  {(evalData?.datasets?.length || 0) > 0 && (
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      disabled={judgeLoading}
+                      onClick={() => runJudge("all")}
+                    >
+                      <Gavel className="w-4 h-4 mr-2" />
+                      {judgeLoading ? "Running judge..." : "Grade all datasets"}
+                    </Button>
+                  )}
 
-              {(evalData?.runs || []).slice(0, 1).map((run) => (
-                <div key={run._id} className="rounded-lg bg-muted/50 p-4 space-y-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium">Latest judge run</p>
-                      <p className="text-sm text-muted-foreground">{run.datasetName}</p>
+                  {(evalData?.runs || []).slice(0, 1).map((run) => (
+                    <div key={run._id} className="rounded-lg bg-muted/50 p-4 space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium">Latest judge run</p>
+                          <p className="text-sm text-muted-foreground">{run.datasetName}</p>
+                        </div>
+                        <Badge>{formatPercent(run.overallScore)}</Badge>
+                      </div>
+                      {run.criteria && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {Object.entries(run.criteria).map(([key, value]) => (
+                            <Score
+                              key={key}
+                              label={key.replace(/([A-Z])/g, " $1")}
+                              value={value}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {run.explanations?.[0] && (
+                        <p className="text-sm text-muted-foreground">
+                          {run.explanations[0].explanation}
+                        </p>
+                      )}
                     </div>
-                    <Badge>{formatPercent(run.overallScore)}</Badge>
+                  ))}
+
+                  {(evalData?.datasets?.length || 0) === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Create an eval dataset first, then run the judge to score relevance,
+                      helpfulness, groundedness, tone, instruction following, handoff
+                      correctness, refusal correctness, and response length fit.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Regression Tests Tab */}
+          <TabsContent value="regression-tests" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TestTubes className="w-5 h-5 text-primary" />
+                  Regression Testing
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Turn bad production conversations into permanent test cases. Re-run tests when
+                  your bot is updated to catch regressions and improvements.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {regressionTests.length === 0 ? (
+                  <div className="rounded-lg border-2 border-dashed p-8 text-center">
+                    <TestTubes className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="font-semibold">No regression tests yet</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Create test cases from your production conversations to catch regressions.
+                    </p>
+                    <Button
+                      className="mt-4"
+                      onClick={createRegressionTestSuite}
+                      disabled={regressionLoading}
+                    >
+                      {regressionLoading ? "Creating..." : "Create regression tests"}
+                    </Button>
                   </div>
-                  {run.criteria && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {Object.entries(run.criteria).map(([key, value]) => (
-                        <Score
-                          key={key}
-                          label={key.replace(/([A-Z])/g, " $1")}
-                          value={value}
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={createRegressionTestSuite}
+                      disabled={regressionLoading}
+                      className="w-full"
+                    >
+                      + Create additional test suite
+                    </Button>
+
+                    <div className="space-y-4">
+                      {regressionTests.map((testSuite) => (
+                        <RegressionTestCard
+                          key={testSuite._id}
+                          testSuite={testSuite}
+                          onRun={() => runTest(testSuite._id)}
+                          isRunning={testRunning === testSuite._id}
                         />
                       ))}
                     </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {testResults && (
+              <Dialog open={resultsModalOpen} onOpenChange={setResultsModalOpen}>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Regression Test Results</DialogTitle>
+                  </DialogHeader>
+
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded-lg border p-3">
+                      <p className="text-xs text-muted-foreground">Total Tests</p>
+                      <p className="text-2xl font-bold">{testResults.statistics.totalTests}</p>
+                    </div>
+                    <div className="rounded-lg border p-3 border-green-500/50 bg-green-50/50">
+                      <p className="text-xs text-muted-foreground">Passed</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {testResults.statistics.passedTests}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border p-3 border-red-500/50 bg-red-50/50">
+                      <p className="text-xs text-muted-foreground">Failed</p>
+                      <p className="text-2xl font-bold text-red-600">
+                        {testResults.statistics.failedTests}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <p className="text-xs text-muted-foreground">Pass Rate</p>
+                      <p className="text-2xl font-bold">
+                        {formatPercent(
+                          testResults.statistics.totalTests > 0
+                            ? testResults.statistics.passedTests /
+                                testResults.statistics.totalTests
+                            : 0
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Improvements vs Regressions */}
+                  {(testResults.summary.improved > 0 || testResults.summary.regressed > 0) && (
+                    <div className="rounded-lg border p-4 space-y-3">
+                      <p className="font-semibold flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5" />
+                        {testResults.summary.message}
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {testResults.summary.improved > 0 && (
+                          <div className="flex items-center gap-2 text-green-600">
+                            <TrendingUp className="w-4 h-4" />
+                            <span>{testResults.summary.improved} improved</span>
+                          </div>
+                        )}
+                        {testResults.summary.regressed > 0 && (
+                          <div className="flex items-center gap-2 text-red-600">
+                            <TrendingDown className="w-4 h-4" />
+                            <span>{testResults.summary.regressed} broken</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
-                  {run.explanations?.[0] && (
-                    <p className="text-sm text-muted-foreground">
-                      {run.explanations[0].explanation}
-                    </p>
-                  )}
-                </div>
+
+                  {/* Test Results Details */}
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    <p className="font-medium text-sm">Test Details</p>
+                    {testResults.testRuns.slice(0, 10).map((run, idx) => (
+                      <div key={idx} className="rounded-lg border p-3 space-y-2 text-sm">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <p className="font-medium">Test {idx + 1}</p>
+                            <p className="text-xs text-muted-foreground capitalize">
+                              {run.verdict}
+                            </p>
+                          </div>
+                          <Badge
+                            variant={
+                              run.verdict === "passed"
+                                ? "default"
+                                : run.verdict === "improved"
+                                  ? "secondary"
+                                  : "destructive"
+                            }
+                          >
+                            {run.verdict}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <p className="text-muted-foreground">Relevance</p>
+                            <p className="font-semibold">{formatPercent(run.relevanceScore)}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Groundedness</p>
+                            <p className="font-semibold">
+                              {formatPercent(run.groundednessScore)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+          </TabsContent>
+
+          {/* Improvements Tab */}
+          <TabsContent value="improvements" className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {(["all", ...Object.keys(typeLabels)] as Array<typeof filter>).map((itemType) => (
+                <Button
+                  key={itemType}
+                  variant={filter === itemType ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilter(itemType)}
+                >
+                  {itemType === "all" ? "All" : typeLabels[itemType]}
+                </Button>
               ))}
+            </div>
 
-              {(evalData?.datasets?.length || 0) === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Create an eval dataset first, then run the judge to score relevance,
-                  helpfulness, groundedness, tone, instruction following, handoff
-                  correctness, refusal correctness, and response length fit.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {(["all", ...Object.keys(typeLabels)] as Array<typeof filter>).map((itemType) => (
-            <Button
-              key={itemType}
-              variant={filter === itemType ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter(itemType)}
-            >
-              {itemType === "all" ? "All" : typeLabels[itemType]}
-            </Button>
-          ))}
-        </div>
-
-        {filteredItems.length > 0 ? (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            {filteredItems.map((item) => (
-              <ImprovementCard
-                key={item.key}
-                item={item}
-                onAction={applyAction}
-                actionLoading={actionLoading}
-              />
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <CheckCircle2 className="w-12 h-12 mx-auto text-primary mb-3" />
-              <p className="text-lg font-semibold">No items in this view</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                New weak answers and unknown intents will appear here as users chat.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+            {filteredItems.length > 0 ? (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {filteredItems.map((item) => (
+                  <ImprovementCard
+                    key={item.key}
+                    item={item}
+                    onAction={applyAction}
+                    actionLoading={actionLoading}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <CheckCircle2 className="w-12 h-12 mx-auto text-primary mb-3" />
+                  <p className="text-lg font-semibold">No items in this view</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    New weak answers and unknown intents will appear here as users chat.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
+  );
+};
+
+const RegressionTestCard = ({
+  testSuite,
+  onRun,
+  isRunning,
+}: {
+  testSuite: BotRegressionTest;
+  onRun: () => void;
+  isRunning: boolean;
+}) => {
+  const passRate =
+    testSuite.statistics.totalTests > 0
+      ? testSuite.statistics.passedTests / testSuite.statistics.totalTests
+      : 0;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <CardTitle className="text-base">{testSuite.name}</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">{testSuite.description}</p>
+          </div>
+          <Badge variant={testSuite.status === "active" ? "default" : "secondary"}>
+            {testSuite.status}
+          </Badge>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Statistics Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="rounded-lg border p-2">
+            <p className="text-xs text-muted-foreground">Total</p>
+            <p className="text-xl font-bold">{testSuite.statistics.totalTests}</p>
+          </div>
+          <div className="rounded-lg border p-2 border-green-500/50">
+            <p className="text-xs text-muted-foreground">Passed</p>
+            <p className="text-xl font-bold text-green-600">
+              {testSuite.statistics.passedTests}
+            </p>
+          </div>
+          <div className="rounded-lg border p-2 border-red-500/50">
+            <p className="text-xs text-muted-foreground">Failed</p>
+            <p className="text-xl font-bold text-red-600">{testSuite.statistics.failedTests}</p>
+          </div>
+          <div className="rounded-lg border p-2">
+            <p className="text-xs text-muted-foreground">Pass Rate</p>
+            <p className="text-xl font-bold">{formatPercent(passRate)}</p>
+          </div>
+        </div>
+
+        {/* Improvements/Regressions */}
+        {(testSuite.statistics.improvements > 0 || testSuite.statistics.regressions > 0) && (
+          <div className="rounded-lg bg-blue-50/50 border border-blue-200 p-3 space-y-2">
+            <p className="text-sm font-medium">Changes detected:</p>
+            <div className="flex items-center gap-4 text-sm">
+              {testSuite.statistics.improvements > 0 && (
+                <div className="flex items-center gap-1 text-green-600">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>{testSuite.statistics.improvements} improved</span>
+                </div>
+              )}
+              {testSuite.statistics.regressions > 0 && (
+                <div className="flex items-center gap-1 text-red-600">
+                  <TrendingDown className="w-4 h-4" />
+                  <span>{testSuite.statistics.regressions} broken</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Last Run Info */}
+        {testSuite.lastRunAt && (
+          <p className="text-xs text-muted-foreground">
+            Last run: {new Date(testSuite.lastRunAt).toLocaleDateString()}
+          </p>
+        )}
+
+        {/* Run Button */}
+        <Button className="w-full" onClick={onRun} disabled={isRunning}>
+          <Play className="w-4 h-4 mr-2" />
+          {isRunning ? "Running tests..." : "Run tests"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 };
 
