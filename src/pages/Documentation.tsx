@@ -229,15 +229,12 @@ export default function Documentation() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
       <Navbar pageTitle={bot?.name ? `Integration Guide - ${bot.name}` : "Integration Guide"} />
 
       {/* Main Content */}
-      <div className="w-full px-4 py-6 md:px-8 lg:px-10 xl:px-12 md:h-[calc(100vh-5rem)] md:overflow-hidden">
-
-      <Tabs defaultValue="normal-integration" orientation="vertical" className="space-y-0 mb-6 md:h-full">
-        <div className="flex flex-col md:flex-row items-start gap-4 md:gap-6 lg:gap-8 md:h-full">
-          <TabsList className="h-auto w-full md:w-72 md:h-full md:flex-col md:items-stretch md:justify-start rounded-xl p-2 border border-border/60 bg-muted/40 md:sticky md:top-0">
+      <Tabs defaultValue="normal-integration" orientation="vertical" className="flex-1 min-h-0 flex flex-col md:flex-row">
+          <TabsList className="h-auto w-full md:w-72 md:h-full md:flex-col md:items-stretch md:justify-start rounded-none p-3 gap-1 border-b md:border-b-0 md:border-r border-border/60 bg-muted/30 shrink-0">
             <TabsTrigger value="normal-integration" className="w-full justify-start text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
               Normal Integration
             </TabsTrigger>
@@ -260,7 +257,7 @@ export default function Documentation() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex-1 min-w-0 md:h-full md:overflow-y-auto md:pr-1">
+          <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 md:px-8 lg:px-10">
             <TabsContent value="normal-integration" className="mt-0">
               <Card className="mb-6 border-border/60 shadow-sm">
                 <CardHeader>
@@ -421,11 +418,7 @@ export default function Documentation() {
             </TabsContent>
 
           </div>
-        </div>
       </Tabs>
-
-
-      </div>
     </div>
   );
 }
