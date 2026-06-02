@@ -545,15 +545,12 @@ const BotAnalytics = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
       <Navbar pageTitle={botName ? `Analytics - ${botName}` : "Analytics"} />
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-6">
-
-        <Tabs defaultValue="observability" orientation="vertical">
-          <div className="flex flex-col md:flex-row gap-4 md:gap-6 md:h-[calc(100vh-13rem)]">
-            <TabsList className="h-auto md:self-start w-full md:w-64 md:flex-col md:items-stretch md:justify-start rounded-lg p-1 md:sticky md:top-0">
+        <Tabs defaultValue="observability" orientation="vertical" className="flex-1 min-h-0 flex flex-col md:flex-row">
+            <TabsList className="h-auto w-full md:w-72 md:h-full md:flex-col md:items-stretch md:justify-start rounded-none p-3 gap-1 border-b md:border-b-0 md:border-r border-border/60 bg-muted/30 shrink-0">
               <TabsTrigger
                 value="observability"
                 className="w-full justify-start text-left gap-2"
@@ -570,7 +567,7 @@ const BotAnalytics = () => {
               </TabsTrigger>
             </TabsList>
 
-            <div className="flex-1 min-w-0 md:overflow-y-auto md:pr-1">
+            <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 md:px-8 lg:px-10">
               <TabsContent value="observability" className="mt-0 space-y-6">
                 <ArizeObservabilityPanel />
               </TabsContent>
@@ -683,9 +680,7 @@ const BotAnalytics = () => {
                 </div>
               </TabsContent>
             </div>
-          </div>
         </Tabs>
-      </div>
     </div>
   );
 };
