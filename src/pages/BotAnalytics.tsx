@@ -4,7 +4,7 @@ import {
   Users, MessageSquare, TrendingUp, Clock, 
   AlertCircle, Phone, Activity, Calendar, Star,
   CheckCircle2, XCircle, UserCheck, Timer, Shield,
-  BrainCircuit, Gauge, Sparkles, Copy, ExternalLink, Layers3,
+  BrainCircuit, Gauge, Sparkles, Copy, ExternalLink, ArrowRight, Layers3, Info,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   getAgentAnalytics,
   getBotObservabilityInsights,
@@ -35,6 +37,8 @@ const BotAnalytics = () => {
   const [observabilityLoading, setObservabilityLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [botName, setBotName] = useState<string>("");
+  const [observabilityModalOpen, setObservabilityModalOpen] = useState(false);
+  const [observabilityModalType, setObservabilityModalType] = useState<"recommendations" | "lowConfidence" | null>(null);
 
   useEffect(() => {
     fetchBotDetails();
@@ -107,6 +111,21 @@ const BotAnalytics = () => {
   const formatPercent = (value: number | null | undefined) => {
     if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
     return `${Math.round(value * 100)}%`;
+  };
+
+  const formatHealthMetricValue = (
+    label: string,
+    component: { value: number | null; score: number }
+  ) => {
+    if (typeof component.value !== "number" || Number.isNaN(component.value)) {
+      return "N/A";
+    }
+
+    if (label === "Latency") {
+      return `${Math.round(component.value)} ms`;
+    }
+
+    return formatPercent(component.value);
   };
 
   const copyMcpConfig = async () => {
@@ -379,7 +398,19 @@ const BotAnalytics = () => {
             <CardContent className="pt-6">
               <div className="grid gap-5 lg:grid-cols-[220px_1fr] lg:items-center">
                 <div>
-                  <p className="text-sm text-muted-foreground">Bot Health Score</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">Bot Health Score</p>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>
+                          Overall health metric combining answer confidence, groundedness, latency, and fallback behavior. Ranges from 0-100 with status indicators: Healthy (80+), Watch (60-79), Needs Attention (&lt;60).
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <div className="flex items-end gap-2 mt-1">
                     <span className="text-5xl font-bold">
                       {observability.healthScore?.score ?? 0}
@@ -402,17 +433,59 @@ const BotAnalytics = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                   {[
-                    ["Answer confidence", observability.healthScore?.components.answerConfidence.score],
-                    ["Low-confidence rate", observability.healthScore?.components.lowConfidenceRate.score],
-                    ["Groundedness", observability.healthScore?.components.groundedness.score],
-                    ["Latency", observability.healthScore?.components.latency.score],
-                    ["Fallback rate", observability.healthScore?.components.fallbackRate.score],
-                    ["Handoff escalation", observability.healthScore?.components.handoffEscalationRate.score],
-                  ].map(([label, score]) => (
+                    {
+                      label: "Answer confidence",
+                      value: observability.healthScore?.components.answerConfidence.value,
+                      score: observability.healthScore?.components.answerConfidence.score,
+                      tooltip: "Measures how confident the bot is in its retrieved answers (0-100%). Higher confidence indicates strong grounding in training data.",
+                    },
+                    {
+                      label: "Low-confidence rate",
+                      value: observability.healthScore?.components.lowConfidenceRate.value,
+                      score: observability.healthScore?.components.lowConfidenceRate.score,
+                      tooltip: "Percentage of answers where confidence falls below 85%. Lower is better; high rates suggest need for more training data or prompt refinement.",
+                    },
+                    {
+                      label: "Groundedness",
+                      value: observability.healthScore?.components.groundedness.value,
+                      score: observability.healthScore?.components.groundedness.score,
+                      tooltip: "Measures how well answers are grounded in the training data (0-100%). Prevents hallucination and ensures factual accuracy.",
+                    },
+                    {
+                      label: "Latency",
+                      value: observability.healthScore?.components.latency.valueMs,
+                      score: observability.healthScore?.components.latency.score,
+                      tooltip: "Average response time in milliseconds. Lower latency indicates faster retrieval and better user experience. Scored on target response time thresholds.",
+                    },
+                    {
+                      label: "Fallback rate",
+                      value: observability.healthScore?.components.fallbackRate.value,
+                      score: observability.healthScore?.components.fallbackRate.score,
+                      tooltip: "Percentage of queries using fallback behavior (0-100%). Lower rates are better; high rates suggest training coverage gaps.",
+                    },
+                    {
+                      label: "Handoff escalation",
+                      value: observability.healthScore?.components.handoffEscalationRate.value,
+                      score: observability.healthScore?.components.handoffEscalationRate.score,
+                      tooltip: "Percentage of conversations escalated to human agents. Lower is better; high rates indicate bot limitations in handling complex queries.",
+                    },
+                  ].map(({ label, value, score, tooltip }) => (
                     <div key={label} className="rounded-lg bg-background/80 p-3">
                       <div className="flex items-center justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">{label}</span>
-                        <span className="font-semibold">{score ?? 0}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">{label}</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p>{tooltip}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <span className="font-semibold">
+                          {formatHealthMetricValue(label, { value: value ?? null, score: score ?? 0 })}
+                        </span>
                       </div>
                       <Progress value={Number(score || 0)} className="h-2" />
                     </div>
@@ -452,10 +525,22 @@ const BotAnalytics = () => {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Self-Improvement Queue</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base">Self-Improvement Queue</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>
+                        Prioritized list of actions recommended to improve bot performance. High priority items should be addressed first to enhance accuracy and user satisfaction.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {observability.recommendations.map((item) => (
+                {observability.recommendations.slice(0, 3).map((item) => (
                   <div key={item.title} className="p-3 rounded-lg bg-muted/50">
                     <div className="flex items-start justify-between gap-3">
                       <p className="font-medium text-sm">{item.title}</p>
@@ -469,36 +554,42 @@ const BotAnalytics = () => {
                     <p className="text-sm text-muted-foreground mt-1">{item.detail}</p>
                   </div>
                 ))}
+                {observability.recommendations.length > 3 && (
+                  <div className="pt-2 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setObservabilityModalType("recommendations");
+                        setObservabilityModalOpen(true);
+                      }}
+                    >
+                      Show {observability.recommendations.length - 3} more
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Phoenix MCP Loop</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {observability.selfImprovementLoop.map((step, index) => (
-                    <div key={step} className="flex gap-3">
-                      <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
-                        {index + 1}
-                      </div>
-                      <p className="text-sm text-muted-foreground pt-1">{step}</p>
-                    </div>
-                  ))}
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base">Low-Confidence Trace Samples</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>
+                        Recent queries where the bot had low confidence (below 85%) in its answers. These indicate knowledge gaps and are candidates for training data expansion or prompt refinement.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {observability.lowConfidenceQuestions.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Low-Confidence Trace Samples</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {observability.lowConfidenceQuestions.slice(0, 5).map((item) => (
-                  <div key={`${item.sessionId}-${item.timestamp}`} className="p-3 rounded-lg border">
+                {observability.lowConfidenceQuestions.slice(0, 3).map((item) => (
+                  <div key={`${item.sessionId}-${item.timestamp}`} className="p-3 rounded-lg border bg-background/90">
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-sm font-medium">{item.question || "Untitled question"}</p>
                       <Badge variant="outline">{formatPercent(item.score)}</Badge>
@@ -510,9 +601,132 @@ const BotAnalytics = () => {
                     )}
                   </div>
                 ))}
+                {observability.lowConfidenceQuestions.length > 3 && (
+                  <div className="pt-2 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setObservabilityModalType("lowConfidence");
+                        setObservabilityModalOpen(true);
+                      }}
+                    >
+                      Show {observability.lowConfidenceQuestions.length - 3} more
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          )}
+          </div>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base">Phoenix MCP Loop</CardTitle>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>
+                      The continuous cycle that powers bot self-improvement: trace interactions, analyze patterns, evaluate quality, and deploy improvements. This loop enables your agent to learn and improve over time.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="rounded-3xl border border-border/60 bg-muted/50 p-4">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    {observability.selfImprovementLoop.map((step, index) => (
+                      <div key={step} className="flex-1 rounded-3xl bg-background p-4 shadow-sm">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold">Step {index + 1}</p>
+                            <p className="text-xs text-muted-foreground">Phoenix loop phase</p>
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-col items-center gap-2 text-center text-xs text-muted-foreground">
+                  <span className="text-sm font-semibold">Continuous Phoenix MCP Cycle</span>
+                  <span className="max-w-2xl">
+                    This loop shows how trace data is captured, analyzed, improved, and deployed back into the agent workflow for ongoing observability and self-improvement.
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Dialog open={observabilityModalOpen} onOpenChange={setObservabilityModalOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {observabilityModalType === "recommendations"
+                    ? "All Self-Improvement Recommendations"
+                    : "All Low-Confidence Trace Samples"}
+                </DialogTitle>
+                <DialogDescription className="mt-1">
+                  {observabilityModalType === "recommendations"
+                    ? "Review every queued recommendation for this bot."
+                    : "Review all low-confidence traces to improve model grounding and fallback behavior."}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 mt-4">
+                {observabilityModalType === "recommendations" &&
+                  observability.recommendations.map((item) => (
+                    <div key={item.title} className="rounded-2xl border border-border/60 bg-muted/50 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium">{item.title}</p>
+                        <Badge
+                          variant={item.priority === "high" ? "destructive" : "secondary"}
+                          className="capitalize"
+                        >
+                          {item.priority}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">{item.detail}</p>
+                    </div>
+                  ))}
+
+                {observabilityModalType === "lowConfidence" &&
+                  observability.lowConfidenceQuestions.map((item) => (
+                    <div key={`${item.sessionId}-${item.timestamp}`} className="rounded-2xl border border-border/60 bg-muted/50 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="max-w-[70%]">
+                          <p className="font-medium">{item.question || "Untitled question"}</p>
+                          {item.answer && (
+                            <p className="text-sm text-muted-foreground mt-2">{item.answer}</p>
+                          )}
+                        </div>
+                        <Badge variant="outline">{formatPercent(item.score)}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-3">
+                        Session {item.sessionId} · {new Date(item.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <Button variant="outline" onClick={() => setObservabilityModalOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <pre className="max-h-56 overflow-auto rounded-lg bg-muted p-4 text-xs">
+            {JSON.stringify(observability.phoenix.mcpConfig, null, 2)}
+          </pre>
 
           <pre className="max-h-56 overflow-auto rounded-lg bg-muted p-4 text-xs">
             {JSON.stringify(observability.phoenix.mcpConfig, null, 2)}
@@ -686,3 +900,4 @@ const BotAnalytics = () => {
 };
 
 export default BotAnalytics;
+
