@@ -72,6 +72,7 @@ export default function Sessions() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedTrace, setSelectedTrace] = useState<TraceMetric | null>(null);
   const [traceViewerOpen, setTraceViewerOpen] = useState(false);
+  const [activeView, setActiveView] = useState<"summary" | "history" | "trace">("history");
 
   // Summarizer states
   const [summary, setSummary] = useState<string>("");
