@@ -81,6 +81,14 @@ export default function Sessions() {
   const [summarizerError, setSummarizerError] = useState<string>("");
   const [showSummary, setShowSummary] = useState(false);
 
+  // Auto-summarize when switching to summary view
+  useEffect(() => {
+    if (activeView === "summary" && selectedSession && selectedSession.messages.length > 0) {
+      summarizeSession();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeView, selectedSession?.id]);
+
   const parseBrowser = (userAgent: string | undefined) => {
     if (!userAgent || userAgent === 'Unknown') return 'Unknown Browser';
     if (userAgent.includes('Chrome')) return 'Chrome';
@@ -963,40 +971,14 @@ export default function Sessions() {
                     )
                   )}
 
-                  {/* Summarizer Button */}
                   {activeView === "summary" && (
                   <>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={summarizeSession}
-                      disabled={summarizing || selectedSession.messages.length === 0}
-                      size="sm"
-                      variant="secondary"
-                      className="flex-1"
-                    >
-                      {summarizing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Generating Summary...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          Summarize Conversation
-                        </>
-                      )}
-                    </Button>
-
-                    {showSummary && (
-                      <Button
-                        onClick={() => setShowSummary(!showSummary)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        {showSummary ? "Hide" : "Show"}
-                      </Button>
-                    )}
-                  </div>
+                  {summarizing && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Generating Summary...
+                    </div>
+                  )}
 
                   {summarizerAvailable === false && (
                     <Alert>
@@ -1015,7 +997,7 @@ export default function Sessions() {
                   )}
 
                   {/* Summary Display */}
-                  {showSummary && summary && (
+                  {!summarizing && summary && (
                     <div className="p-4 bg-muted rounded-lg border">
                       <div className="flex items-center gap-2 mb-2">
                         <Sparkles className="w-4 h-4 text-primary" />
