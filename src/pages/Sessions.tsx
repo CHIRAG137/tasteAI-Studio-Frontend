@@ -884,8 +884,12 @@ export default function Sessions() {
                       </button>
                     ))}
                   </div>
+                </CardHeader>
 
-                  {!!selectedSession.traceMetrics?.length && (
+                <ScrollArea className="flex-1 bg-white dark:bg-gray-900">
+                  <div className="px-6 pb-6 pt-4 space-y-4">
+                  {activeView === "trace" && (
+                    selectedSession.traceMetrics?.length ? (
                     <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -950,9 +954,18 @@ export default function Sessions() {
                         ))}
                       </div>
                     </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+                        <Activity className="mb-3 h-12 w-12 opacity-40" />
+                        <p className="text-sm font-medium">No traces for this session</p>
+                        <p className="mt-1 text-xs">Phoenix traces appear here for QA interactions.</p>
+                      </div>
+                    )
                   )}
 
                   {/* Summarizer Button */}
+                  {activeView === "summary" && (
+                  <>
                   <div className="flex gap-2">
                     <Button
                       onClick={summarizeSession}
@@ -1015,10 +1028,11 @@ export default function Sessions() {
                       </div>
                     </div>
                   )}
-                </CardHeader>
+                  </>
+                  )}
 
-                <ScrollArea className="flex-1 bg-white dark:bg-gray-900">
-                  <div className="px-6 pb-6 pt-4 space-y-4">
+                  {activeView === "history" && (
+                  <div className="space-y-4">
                     {selectedSession.messages.map((message, index) => (
                       <div key={index} className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                         {/* Avatar for assistant/bot/agent messages */}
