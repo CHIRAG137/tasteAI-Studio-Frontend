@@ -491,6 +491,7 @@ export default function Sessions() {
     setSummary("");
     setShowSummary(false);
     setSummarizerError("");
+    setActiveView("history");
 
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}/history/${sessionId}`, {
