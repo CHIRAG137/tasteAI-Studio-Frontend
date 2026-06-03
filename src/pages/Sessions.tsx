@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Activity, Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X, Filter, Sparkles, Loader2, MapPin, Monitor, Bot, Headphones } from "lucide-react";
+import { Activity, Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X, Filter, Sparkles, Loader2, MapPin, Monitor, Bot, Headphones, FileText } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -72,6 +72,7 @@ export default function Sessions() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedTrace, setSelectedTrace] = useState<TraceMetric | null>(null);
   const [traceViewerOpen, setTraceViewerOpen] = useState(false);
+  const [activeView, setActiveView] = useState<"summary" | "history" | "trace">("history");
 
   // Summarizer states
   const [summary, setSummary] = useState<string>("");
@@ -490,6 +491,7 @@ export default function Sessions() {
     setSummary("");
     setShowSummary(false);
     setSummarizerError("");
+    setActiveView("history");
 
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bots/${botId}/history/${sessionId}`, {
@@ -848,12 +850,46 @@ export default function Sessions() {
                     )}
                   </div>
 
-                  <div className="text-xs text-muted-foreground">
-                    Showing all {selectedSession.messages.length} entries from session history
-                    {!!selectedSession.traceMetrics?.length && ` with ${selectedSession.traceMetrics.length} Phoenix traces`}
+                  {/* View Toggle */}
+                  <div className="inline-flex w-full items-center gap-1 rounded-lg border bg-muted/40 p-1">
+                    {([
+                      { key: "summary", label: "Summary", icon: FileText },
+                      { key: "history", label: "History", icon: MessageSquare },
+                      { key: "trace", label: "Trace", icon: Activity },
+                    ] as const).map(({ key, label, icon: Icon }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setActiveView(key)}
+                        className={cn(
+                          "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                          activeView === key
+                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm"
+                            : "text-muted-foreground hover:bg-background hover:text-foreground"
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {label}
+                        {key === "trace" && !!selectedSession.traceMetrics?.length && (
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "ml-0.5 h-4 px-1 text-[10px]",
+                              activeView === key && "bg-white/20 text-white"
+                            )}
+                          >
+                            {selectedSession.traceMetrics.length}
+                          </Badge>
+                        )}
+                      </button>
+                    ))}
                   </div>
+                </CardHeader>
 
-                  {!!selectedSession.traceMetrics?.length && (
+                <ScrollArea className="flex-1 bg-white dark:bg-gray-900">
+                  <div className="px-6 pb-6 pt-4 space-y-4">
+                  {activeView === "trace" && (
+                    selectedSession.traceMetrics?.length ? (
                     <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -918,9 +954,18 @@ export default function Sessions() {
                         ))}
                       </div>
                     </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+                        <Activity className="mb-3 h-12 w-12 opacity-40" />
+                        <p className="text-sm font-medium">No traces for this session</p>
+                        <p className="mt-1 text-xs">Phoenix traces appear here for QA interactions.</p>
+                      </div>
+                    )
                   )}
 
                   {/* Summarizer Button */}
+                  {activeView === "summary" && (
+                  <>
                   <div className="flex gap-2">
                     <Button
                       onClick={summarizeSession}
@@ -983,10 +1028,11 @@ export default function Sessions() {
                       </div>
                     </div>
                   )}
-                </CardHeader>
+                  </>
+                  )}
 
-                <ScrollArea className="flex-1 bg-white dark:bg-gray-900">
-                  <div className="px-6 pb-6 pt-4 space-y-4">
+                  {activeView === "history" && (
+                  <div className="space-y-4">
                     {selectedSession.messages.map((message, index) => (
                       <div key={index} className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                         {/* Avatar for assistant/bot/agent messages */}
@@ -1077,6 +1123,8 @@ export default function Sessions() {
                         )}
                       </div>
                     ))}
+                  </div>
+                  )}
                   </div>
                 </ScrollArea>
               </>
