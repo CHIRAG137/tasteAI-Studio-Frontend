@@ -16,9 +16,12 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertCircle,
+  Activity,
   CheckCircle2,
   Clock,
   Database,
+  ExternalLink,
+  Gauge,
   Zap,
   Search,
   MessageSquare,
@@ -68,6 +71,17 @@ interface TraceTimelineViewerProps {
     };
     totalDurationMs?: number;
   };
+  phoenix?: {
+    enabled?: boolean;
+    projectName?: string | null;
+    baseUrl?: string | null;
+    traceId?: string | null;
+    spanId?: string | null;
+    spanName?: string | null;
+    traceUrl?: string | null;
+    traceUrlSource?: string | null;
+    mcpServer?: string | null;
+  };
   question?: string;
   answer?: string;
   confidence?: number;
@@ -78,12 +92,32 @@ const TraceTimelineViewer: React.FC<TraceTimelineViewerProps> = ({
   isOpen,
   onOpenChange,
   trace,
+  phoenix,
   question = '',
   answer = '',
   confidence,
   source = 'unknown',
 }) => {
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
+
+  const formatDuration = (duration?: number | null) => {
+    if (duration === null || duration === undefined) return 'N/A';
+    if (duration >= 1000) return `${(duration / 1000).toFixed(2)}s`;
+    return `${duration}ms`;
+  };
+
+  const formatPercent = (value?: number | null) => {
+    if (value === null || value === undefined) return 'N/A';
+    return `${(value * 100).toFixed(0)}%`;
+  };
+
+  const retrievalScore = trace?.retrieval?.retrievalScore ?? null;
+  const retrievalThreshold = trace?.retrieval?.retrievalThreshold ?? 0.85;
+  const matchedInKnowledgeBase =
+    retrievalScore !== null &&
+    retrievalScore > retrievalThreshold &&
+    Boolean(trace?.retrieval?.matchedQuestion);
+  const phoenixTraceAvailable = Boolean(phoenix?.enabled && phoenix?.traceId);
 
   // Build trace steps
   const buildTraceSteps = (): (TraceStep & { id: string })[] => {
@@ -240,7 +274,7 @@ const TraceTimelineViewer: React.FC<TraceTimelineViewerProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="w-5 h-5" />
-            Request Trace Timeline
+            Phoenix Trace Timeline
           </DialogTitle>
         </DialogHeader>
 
@@ -249,25 +283,102 @@ const TraceTimelineViewer: React.FC<TraceTimelineViewerProps> = ({
             {/* Overall Stats */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Request Overview</CardTitle>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-lg">Request Overview</CardTitle>
+                    <CardDescription>
+                      Local execution steps linked with Phoenix observability metadata.
+                    </CardDescription>
+                  </div>
+                  {phoenix?.traceUrl && (
+                    <a
+                      href={phoenix.traceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors hover:bg-muted"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open Phoenix
+                    </a>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="rounded-lg border p-3">
                     <p className="text-xs text-muted-foreground">Total Latency</p>
-                    <p className="text-2xl font-bold">{totalDuration}ms</p>
+                    <p className="text-2xl font-bold">{formatDuration(totalDuration)}</p>
                   </div>
                   <div className="rounded-lg border p-3">
                     <p className="text-xs text-muted-foreground">Confidence</p>
                     <p className="text-2xl font-bold">
-                      {confidence !== null && confidence !== undefined
-                        ? `${(confidence * 100).toFixed(0)}%`
-                        : 'N/A'}
+                      {formatPercent(confidence)}
                     </p>
                   </div>
                   <div className="rounded-lg border p-3">
                     <p className="text-xs text-muted-foreground">Source</p>
                     <p className="text-lg font-semibold capitalize">{source}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-primary" />
+                        <p className="text-sm font-medium">Phoenix Export</p>
+                      </div>
+                      <Badge className={phoenixTraceAvailable ? 'bg-green-600' : 'bg-gray-600'}>
+                        {phoenixTraceAvailable ? 'Linked' : 'Not linked'}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 grid gap-1 text-xs text-muted-foreground">
+                      <div className="flex justify-between gap-3">
+                        <span>Project</span>
+                        <span className="truncate font-medium text-foreground">
+                          {phoenix?.projectName || 'Not configured'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span>Trace ID</span>
+                        <span className="max-w-[220px] truncate font-mono text-foreground">
+                          {phoenix?.traceId || 'Unavailable'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span>MCP Server</span>
+                        <span className="font-medium text-foreground">
+                          {phoenix?.mcpServer || 'phoenix'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="flex items-center gap-2">
+                      <Gauge className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-medium">Retrieval Quality</p>
+                    </div>
+                    <div className="mt-3 grid gap-1 text-xs text-muted-foreground">
+                      <div className="flex justify-between gap-3">
+                        <span>Best Match</span>
+                        <span className="font-medium text-foreground">
+                          {formatPercent(retrievalScore)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span>Threshold</span>
+                        <span className="font-medium text-foreground">
+                          {formatPercent(retrievalThreshold)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span>Decision</span>
+                        <span className="font-medium text-foreground">
+                          {matchedInKnowledgeBase ? 'Knowledge match' : 'Fallback path'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -304,7 +415,7 @@ const TraceTimelineViewer: React.FC<TraceTimelineViewerProps> = ({
                               </p>
                               {step.duration !== undefined && (
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  Duration: {step.duration}ms
+                                  Duration: {formatDuration(step.duration)}
                                 </p>
                               )}
                             </div>

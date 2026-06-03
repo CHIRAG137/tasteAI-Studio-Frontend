@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X, Filter, Sparkles, Loader2, MapPin, Monitor, Bot, Headphones } from "lucide-react";
+import { Activity, Calendar as CalendarIcon, MessageSquare, Clock, User, Search, X, Filter, Sparkles, Loader2, MapPin, Monitor, Bot, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ import { Navbar } from "@/components/Navbar";
 import TraceTimelineViewer from "@/components/TraceTimelineViewer";
 
 type TraceData = Parameters<typeof TraceTimelineViewer>[0]["trace"];
+type PhoenixData = Parameters<typeof TraceTimelineViewer>[0]["phoenix"];
 
 interface TraceMetric {
   id: string;
@@ -28,6 +29,7 @@ interface TraceMetric {
   latencyMs?: number | null;
   usedFallback?: boolean;
   trace?: TraceData;
+  phoenix?: PhoenixData;
   createdAt?: string;
 }
 
@@ -857,7 +859,7 @@ export default function Sessions() {
                         <div>
                           <h4 className="text-sm font-semibold">Phoenix Trace Timeline</h4>
                           <p className="text-xs text-muted-foreground">
-                            Product-friendly view of embedding, retrieval, source, prompt, answer, and latency.
+                            Product-friendly view of local steps plus Phoenix trace links, project, span, and latency.
                           </p>
                         </div>
                         <Badge variant="secondary">
@@ -891,6 +893,17 @@ export default function Sessions() {
                                 <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                                   Match {formatConfidence(traceMetric.confidence)} - {traceMetric.source || "unknown"} - {formatLatency(traceMetric.latencyMs)}
                                 </p>
+                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                  <Badge variant="outline" className="h-5 gap-1 text-[11px]">
+                                    <Activity className="h-3 w-3" />
+                                    {traceMetric.phoenix?.traceId ? "Phoenix linked" : "Local trace"}
+                                  </Badge>
+                                  {traceMetric.phoenix?.projectName && (
+                                    <Badge variant="secondary" className="h-5 text-[11px]">
+                                      {traceMetric.phoenix.projectName}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                               <Badge className={cn(
                                 "capitalize",
@@ -1084,6 +1097,7 @@ export default function Sessions() {
         isOpen={traceViewerOpen}
         onOpenChange={setTraceViewerOpen}
         trace={selectedTrace?.trace}
+        phoenix={selectedTrace?.phoenix}
         question={selectedTrace?.question}
         answer={selectedTrace?.answer}
         confidence={selectedTrace?.confidence ?? undefined}
