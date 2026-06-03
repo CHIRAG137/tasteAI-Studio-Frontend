@@ -850,9 +850,39 @@ export default function Sessions() {
                     )}
                   </div>
 
-                  <div className="text-xs text-muted-foreground">
-                    Showing all {selectedSession.messages.length} entries from session history
-                    {!!selectedSession.traceMetrics?.length && ` with ${selectedSession.traceMetrics.length} Phoenix traces`}
+                  {/* View Toggle */}
+                  <div className="inline-flex w-full items-center gap-1 rounded-lg border bg-muted/40 p-1">
+                    {([
+                      { key: "summary", label: "Summary", icon: FileText },
+                      { key: "history", label: "History", icon: MessageSquare },
+                      { key: "trace", label: "Trace", icon: Activity },
+                    ] as const).map(({ key, label, icon: Icon }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setActiveView(key)}
+                        className={cn(
+                          "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                          activeView === key
+                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm"
+                            : "text-muted-foreground hover:bg-background hover:text-foreground"
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {label}
+                        {key === "trace" && !!selectedSession.traceMetrics?.length && (
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "ml-0.5 h-4 px-1 text-[10px]",
+                              activeView === key && "bg-white/20 text-white"
+                            )}
+                          >
+                            {selectedSession.traceMetrics.length}
+                          </Badge>
+                        )}
+                      </button>
+                    ))}
                   </div>
 
                   {!!selectedSession.traceMetrics?.length && (
