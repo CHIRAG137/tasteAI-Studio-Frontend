@@ -1124,6 +1124,8 @@ export default function Sessions() {
                       </div>
                     ))}
                   </div>
+                  )}
+                  </div>
                 </ScrollArea>
               </>
             ) : (
