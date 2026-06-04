@@ -418,6 +418,10 @@ const BotSelfImprovement = () => {
             <FileStack className="w-4 h-4" />
             Eval Datasets
           </TabsTrigger>
+          <TabsTrigger value="llm-judge" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
+            <Gavel className="w-4 h-4" />
+            LLM as Judge
+          </TabsTrigger>
           <TabsTrigger value="regression-tests" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
             <TestTubes className="w-4 h-4" />
             Regression Tests
@@ -425,37 +429,6 @@ const BotSelfImprovement = () => {
         </TabsList>
 
         <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 md:px-8 lg:px-10 space-y-6">
-          <Card className="border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="grid gap-6 lg:grid-cols-[240px_1fr_auto] lg:items-center">
-                <div>
-                  <p className="text-sm text-muted-foreground">Bot Health Score</p>
-                  <div className="flex items-end gap-2 mt-1">
-                    <span className="text-5xl font-bold">{dashboard.healthScore.score}</span>
-                    <span className="text-lg text-muted-foreground mb-1">/100</span>
-                  </div>
-                  <Badge className="mt-3 capitalize">
-                    {dashboard.healthScore.status.replace("_", " ")}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  <Metric label="Open Items" value={dashboard.summary.totalItems} />
-                  <Metric label="High Priority" value={dashboard.summary.highPriority} />
-                  <Metric label="Weak Answers" value={dashboard.summary.weakAnswers} />
-                  <Metric label="Unanswered" value={dashboard.summary.unanswered} />
-                  <Metric label="Grounding Risk" value={dashboard.summary.hallucinationRisk} />
-                  <Metric label="Repeated Intents" value={dashboard.summary.repeatedIntents} />
-                </div>
-
-                <Button variant="outline" onClick={fetchDashboard}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Phoenix Self-Introspection Tab */}
           <TabsContent value="introspection" className="mt-0 space-y-4">
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4">
