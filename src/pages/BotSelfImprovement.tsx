@@ -565,8 +565,7 @@ const BotSelfImprovement = () => {
 
           {/* Eval Datasets Tab */}
           <TabsContent value="eval-datasets" className="mt-0 space-y-4">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              <Card>
+            <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileStack className="w-5 h-5 text-primary" />
@@ -595,9 +594,12 @@ const BotSelfImprovement = () => {
                     </div>
                   ))}
                 </CardContent>
-              </Card>
+            </Card>
+          </TabsContent>
 
-              <Card>
+          {/* LLM as Judge Tab */}
+          <TabsContent value="llm-judge" className="mt-0 space-y-4">
+            <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Gavel className="w-5 h-5 text-primary" />
@@ -675,8 +677,7 @@ const BotSelfImprovement = () => {
                     </p>
                   )}
                 </CardContent>
-              </Card>
-            </div>
+            </Card>
           </TabsContent>
 
           {/* Regression Tests Tab */}
