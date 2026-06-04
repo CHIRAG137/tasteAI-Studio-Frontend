@@ -591,7 +591,7 @@ const BotSelfImprovement = () => {
           </TabsContent>
 
           {/* Eval Datasets Tab */}
-          <TabsContent value="eval-datasets" className="space-y-4">
+          <TabsContent value="eval-datasets" className="mt-0 space-y-4">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               <Card>
                 <CardHeader>
@@ -707,7 +707,7 @@ const BotSelfImprovement = () => {
           </TabsContent>
 
           {/* Regression Tests Tab */}
-          <TabsContent value="regression-tests" className="space-y-4">
+          <TabsContent value="regression-tests" className="mt-0 space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -868,7 +868,7 @@ const BotSelfImprovement = () => {
           </TabsContent>
 
           {/* Improvements Tab */}
-          <TabsContent value="improvements" className="space-y-4">
+          <TabsContent value="improvements" className="mt-0 space-y-4">
             <div className="flex flex-wrap gap-2">
               {(["all", ...Object.keys(typeLabels)] as Array<typeof filter>).map((itemType) => (
                 <Button
@@ -905,8 +905,8 @@ const BotSelfImprovement = () => {
               </Card>
             )}
           </TabsContent>
-        </Tabs>
-      </div>
+        </div>
+      </Tabs>
     </div>
   );
 };
