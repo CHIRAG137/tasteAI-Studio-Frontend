@@ -418,6 +418,10 @@ const BotSelfImprovement = () => {
             <FileStack className="w-4 h-4" />
             Eval Datasets
           </TabsTrigger>
+          <TabsTrigger value="llm-judge" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
+            <Gavel className="w-4 h-4" />
+            LLM as Judge
+          </TabsTrigger>
           <TabsTrigger value="regression-tests" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
             <TestTubes className="w-4 h-4" />
             Regression Tests
@@ -425,37 +429,6 @@ const BotSelfImprovement = () => {
         </TabsList>
 
         <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 md:px-8 lg:px-10 space-y-6">
-          <Card className="border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="grid gap-6 lg:grid-cols-[240px_1fr_auto] lg:items-center">
-                <div>
-                  <p className="text-sm text-muted-foreground">Bot Health Score</p>
-                  <div className="flex items-end gap-2 mt-1">
-                    <span className="text-5xl font-bold">{dashboard.healthScore.score}</span>
-                    <span className="text-lg text-muted-foreground mb-1">/100</span>
-                  </div>
-                  <Badge className="mt-3 capitalize">
-                    {dashboard.healthScore.status.replace("_", " ")}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  <Metric label="Open Items" value={dashboard.summary.totalItems} />
-                  <Metric label="High Priority" value={dashboard.summary.highPriority} />
-                  <Metric label="Weak Answers" value={dashboard.summary.weakAnswers} />
-                  <Metric label="Unanswered" value={dashboard.summary.unanswered} />
-                  <Metric label="Grounding Risk" value={dashboard.summary.hallucinationRisk} />
-                  <Metric label="Repeated Intents" value={dashboard.summary.repeatedIntents} />
-                </div>
-
-                <Button variant="outline" onClick={fetchDashboard}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Phoenix Self-Introspection Tab */}
           <TabsContent value="introspection" className="mt-0 space-y-4">
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4">
@@ -592,8 +565,7 @@ const BotSelfImprovement = () => {
 
           {/* Eval Datasets Tab */}
           <TabsContent value="eval-datasets" className="mt-0 space-y-4">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              <Card>
+            <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileStack className="w-5 h-5 text-primary" />
@@ -622,9 +594,12 @@ const BotSelfImprovement = () => {
                     </div>
                   ))}
                 </CardContent>
-              </Card>
+            </Card>
+          </TabsContent>
 
-              <Card>
+          {/* LLM as Judge Tab */}
+          <TabsContent value="llm-judge" className="mt-0 space-y-4">
+            <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Gavel className="w-5 h-5 text-primary" />
@@ -702,8 +677,7 @@ const BotSelfImprovement = () => {
                     </p>
                   )}
                 </CardContent>
-              </Card>
-            </div>
+            </Card>
           </TabsContent>
 
           {/* Regression Tests Tab */}
@@ -869,6 +843,8 @@ const BotSelfImprovement = () => {
 
           {/* Improvements Tab */}
           <TabsContent value="improvements" className="mt-0 space-y-4">
+            <HealthScoreCard dashboard={dashboard} onRefresh={fetchDashboard} />
+
             <div className="flex flex-wrap gap-2">
               {(["all", ...Object.keys(typeLabels)] as Array<typeof filter>).map((itemType) => (
                 <Button
@@ -1006,6 +982,124 @@ const Metric = ({ label, value }: { label: string; value: number }) => (
     <p className="text-2xl font-bold">{value}</p>
   </div>
 );
+
+const healthStatusStyles: Record<string, { ring: string; text: string; badge: string; label: string }> = {
+  healthy: {
+    ring: "stroke-emerald-500",
+    text: "text-emerald-600 dark:text-emerald-400",
+    badge: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400",
+    label: "Healthy",
+  },
+  watch: {
+    ring: "stroke-amber-500",
+    text: "text-amber-600 dark:text-amber-400",
+    badge: "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400",
+    label: "Watch",
+  },
+  needs_attention: {
+    ring: "stroke-rose-500",
+    text: "text-rose-600 dark:text-rose-400",
+    badge: "bg-rose-500/10 text-rose-600 border-rose-500/30 dark:text-rose-400",
+    label: "Needs attention",
+  },
+};
+
+const HealthScoreCard = ({
+  dashboard,
+  onRefresh,
+}: {
+  dashboard: BotSelfImprovementDashboard;
+  onRefresh: () => void;
+}) => {
+  const score = dashboard.healthScore.score;
+  const status = healthStatusStyles[dashboard.healthScore.status] || healthStatusStyles.watch;
+  const trend = dashboard.healthScore.trend;
+  const circumference = 2 * Math.PI * 52;
+  const offset = circumference - (Math.max(0, Math.min(100, score)) / 100) * circumference;
+
+  const metrics = [
+    { label: "Open Items", value: dashboard.summary.totalItems },
+    { label: "High Priority", value: dashboard.summary.highPriority },
+    { label: "Weak Answers", value: dashboard.summary.weakAnswers },
+    { label: "Unanswered", value: dashboard.summary.unanswered },
+    { label: "Grounding Risk", value: dashboard.summary.hallucinationRisk },
+    { label: "Repeated Intents", value: dashboard.summary.repeatedIntents },
+  ];
+
+  return (
+    <Card className="overflow-hidden border-border/60 shadow-sm">
+      <CardContent className="p-0">
+        <div className="grid gap-6 lg:grid-cols-[300px_1fr] lg:items-stretch">
+          {/* Score ring */}
+          <div className="relative flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-purple-600/10 via-primary/5 to-cyan-500/10 p-8">
+            <div className="relative h-36 w-36">
+              <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="52"
+                  fill="none"
+                  strokeWidth="10"
+                  className="stroke-muted"
+                />
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="52"
+                  fill="none"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={offset}
+                  className={`${status.ring} transition-all duration-700`}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className={`text-4xl font-bold ${status.text}`}>{score}</span>
+                <span className="text-xs text-muted-foreground">/ 100</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={`capitalize ${status.badge}`}>
+                {status.label}
+              </Badge>
+              {trend === "up" && <TrendingUp className="h-4 w-4 text-emerald-500" />}
+              {trend === "down" && <TrendingDown className="h-4 w-4 text-rose-500" />}
+            </div>
+            <p className="text-sm font-medium text-muted-foreground">Bot Health Score</p>
+          </div>
+
+          {/* Metrics */}
+          <div className="flex flex-col gap-4 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold">Improvement Overview</h3>
+                <p className="text-sm text-muted-foreground">
+                  Sampled {dashboard.healthScore.sampleSize} interactions
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={onRefresh}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {metrics.map((metric) => (
+                <div
+                  key={metric.label}
+                  className="rounded-xl border border-border/60 bg-muted/30 p-3 transition-colors hover:bg-muted/50"
+                >
+                  <p className="text-xs text-muted-foreground">{metric.label}</p>
+                  <p className="mt-1 text-2xl font-bold">{metric.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const ImprovementCard = ({
   item,
