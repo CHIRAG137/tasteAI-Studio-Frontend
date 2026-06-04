@@ -69,6 +69,30 @@ export const applyBotImprovementAction = async (
   return data;
 };
 
+export const askBotSelfIntrospection = async (
+  botId: string,
+  question: string
+) => {
+  const res = await fetch(
+    `${API_BASE_URL}/api/bots/${botId}/improvements/introspect`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ question }),
+    }
+  );
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to run bot self-introspection");
+  }
+
+  return data as { result: BotSelfIntrospectionResponse };
+};
+
 export type EvalDatasetSourceType =
   | "low_confidence_traces"
   | "handoff_sessions"
@@ -405,6 +429,58 @@ export interface BotSelfImprovementDashboard {
   };
   healthScore: BotHealthScore;
   items: ImprovementItem[];
+}
+
+export interface BotSelfIntrospectionResponse {
+  question: string;
+  answer: string;
+  defaultQuestions: string[];
+  evidence: {
+    phoenix: {
+      enabled?: boolean;
+      projectName?: string;
+      baseUrl?: string;
+      mcpServer?: string;
+      traceUrl?: string | null;
+      linkedTraceCount?: number;
+      recentTraceUrls?: Array<{
+        traceId: string;
+        spanId?: string | null;
+        traceUrl?: string | null;
+        question: string;
+        confidence?: number | null;
+      }>;
+    };
+    metrics: {
+      sampledInteractions: number;
+      lowConfidenceCount: number;
+      unansweredCount: number;
+      fallbackRate: number;
+      averageConfidence: number | null;
+      averageLatencyMs: number | null;
+      sourceBreakdown: Record<string, number>;
+      fallbackBreakdown: Record<string, number>;
+    };
+    failureClusters: Array<{
+      intentKey: string;
+      count: number;
+      avgConfidence: number | null;
+      avgLatencyMs: number | null;
+      fallbackCount: number;
+      examples: Array<{
+        question: string;
+        answer: string;
+        source: string;
+        confidence: number | null;
+        traceUrl?: string | null;
+        createdAt: string;
+      }>;
+    }>;
+    topLowConfidenceQuestions: Array<Record<string, unknown>>;
+    topUnansweredQuestions: Array<Record<string, unknown>>;
+    latestJudgeRun: Record<string, unknown> | null;
+    bestExperiment: Record<string, unknown> | null;
+  };
 }
 
 export interface EvalDatasetSummary {

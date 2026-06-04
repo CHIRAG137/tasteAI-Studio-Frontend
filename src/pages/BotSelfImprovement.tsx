@@ -14,7 +14,9 @@ import {
   TestTubes,
   Play,
   AlertCircle,
+  Activity,
   Inbox,
+  Send,
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
@@ -24,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +42,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   applyBotImprovementAction,
+  askBotSelfIntrospection,
   buildBotEvalDataset,
   getBotEvalDatasets,
   getBotSelfImprovementDashboard,
@@ -52,6 +56,7 @@ import {
   type ImprovementAction,
   type ImprovementItem,
   type BotRegressionTest,
+  type BotSelfIntrospectionResponse,
   type TestRunResults,
 } from "@/api/analytics";
 
@@ -104,6 +109,13 @@ const datasetSources: Array<{
   },
 ];
 
+const defaultIntrospectionQuestions = [
+  "Why did my bot fail yesterday?",
+  "What questions are users asking that I cannot answer?",
+  "Which prompt version performed best?",
+  "What should I add to training data?",
+];
+
 const formatPercent = (value: number | null | undefined) => {
   if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
   return `${Math.round(value * 100)}%`;
@@ -120,6 +132,9 @@ const BotSelfImprovement = () => {
   const [dashboard, setDashboard] = useState<BotSelfImprovementDashboard | null>(null);
   const [evalData, setEvalData] = useState<BotEvalDatasetsResponse | null>(null);
   const [filter, setFilter] = useState<ImprovementItem["type"] | "all">("all");
+  const [introspectionQuestion, setIntrospectionQuestion] = useState(defaultIntrospectionQuestions[0]);
+  const [introspectionLoading, setIntrospectionLoading] = useState(false);
+  const [introspectionResult, setIntrospectionResult] = useState<BotSelfIntrospectionResponse | null>(null);
 
   // Regression Test State
   const [regressionTests, setRegressionTests] = useState<BotRegressionTest[]>([]);
@@ -319,6 +334,33 @@ const BotSelfImprovement = () => {
     }
   };
 
+  const askIntrospectionTool = async (questionOverride?: string) => {
+    if (!botId) return;
+    const question = (questionOverride || introspectionQuestion).trim();
+    if (!question) {
+      toast({
+        title: "Ask a question first",
+        description: "Enter what you want the bot to inspect in its Phoenix traces.",
+      });
+      return;
+    }
+
+    try {
+      setIntrospectionLoading(true);
+      setIntrospectionQuestion(question);
+      const response = await askBotSelfIntrospection(botId, question);
+      setIntrospectionResult(response.result || null);
+    } catch (error) {
+      toast({
+        title: "Self-introspection failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIntrospectionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -396,6 +438,10 @@ const BotSelfImprovement = () => {
               <BrainCircuit className="w-4 h-4" />
               Improvements
             </TabsTrigger>
+            <TabsTrigger value="introspection" className="flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Ask Phoenix
+            </TabsTrigger>
             <TabsTrigger value="eval-datasets" className="flex items-center gap-2">
               <FileStack className="w-4 h-4" />
               Eval Datasets
@@ -405,6 +451,140 @@ const BotSelfImprovement = () => {
               Regression Tests
             </TabsTrigger>
           </TabsList>
+
+          {/* Phoenix Self-Introspection Tab */}
+          <TabsContent value="introspection" className="space-y-4">
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-primary" />
+                    MCP Self-Introspection Bot Tool
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Private admin tool: inspect recent Phoenix traces and identify what the bot is failing at.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {defaultIntrospectionQuestions.map((question) => (
+                      <Button
+                        key={question}
+                        variant="outline"
+                        className="h-auto justify-start whitespace-normal text-left"
+                        disabled={introspectionLoading}
+                        onClick={() => askIntrospectionTool(question)}
+                      >
+                        {question}
+                      </Button>
+                    ))}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Textarea
+                      value={introspectionQuestion}
+                      onChange={(event) => setIntrospectionQuestion(event.target.value)}
+                      placeholder="Ask anything about failures, missing training data, prompt versions, evals, handoffs, or recent Phoenix traces."
+                      className="min-h-28"
+                    />
+                    <Button
+                      onClick={() => askIntrospectionTool()}
+                      disabled={introspectionLoading}
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      {introspectionLoading ? "Inspecting traces..." : "Ask introspection tool"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Phoenix Evidence</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Metric
+                    label="Linked Traces"
+                    value={introspectionResult?.evidence?.phoenix?.linkedTraceCount || 0}
+                  />
+                  <Metric
+                    label="Sampled Interactions"
+                    value={introspectionResult?.evidence?.metrics?.sampledInteractions || 0}
+                  />
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Fallback Rate</p>
+                    <p className="text-2xl font-bold">
+                      {formatPercent(introspectionResult?.evidence?.metrics?.fallbackRate)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Phoenix Project</p>
+                    <p className="text-sm font-semibold">
+                      {introspectionResult?.evidence?.phoenix?.projectName || "Not inspected yet"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {introspectionResult ? (
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Answer</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      {introspectionResult.question}
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="whitespace-pre-wrap rounded-lg bg-muted/50 p-4 text-sm leading-relaxed">
+                      {introspectionResult.answer}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Top Failure Clusters</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {introspectionResult.evidence.failureClusters.slice(0, 5).map((cluster) => (
+                      <div key={cluster.intentKey} className="rounded-lg border p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium">
+                              {cluster.examples?.[0]?.question || cluster.intentKey}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {cluster.count} traces · {cluster.fallbackCount} fallback
+                            </p>
+                          </div>
+                          <Badge variant="outline">
+                            {formatPercent(cluster.avgConfidence)}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                    {introspectionResult.evidence.failureClusters.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        No repeated failure clusters were found in the sampled traces.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Activity className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-lg font-semibold">Ask the bot what it is failing at</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    The private tool uses recent Phoenix-linked traces, local trace metrics, eval runs, and experiments.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
 
           {/* Eval Datasets Tab */}
           <TabsContent value="eval-datasets" className="space-y-4">
