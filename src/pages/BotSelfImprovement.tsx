@@ -843,6 +843,8 @@ const BotSelfImprovement = () => {
 
           {/* Improvements Tab */}
           <TabsContent value="improvements" className="mt-0 space-y-4">
+            <HealthScoreCard dashboard={dashboard} onRefresh={fetchDashboard} />
+
             <div className="flex flex-wrap gap-2">
               {(["all", ...Object.keys(typeLabels)] as Array<typeof filter>).map((itemType) => (
                 <Button
