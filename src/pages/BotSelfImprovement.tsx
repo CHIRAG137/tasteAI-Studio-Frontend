@@ -397,63 +397,67 @@ const BotSelfImprovement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
       <Navbar pageTitle={`Improve - ${dashboard.bot.name}`} />
 
-      <div className="container mx-auto px-6 py-6 space-y-6">
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="pt-6">
-            <div className="grid gap-6 lg:grid-cols-[240px_1fr_auto] lg:items-center">
-              <div>
-                <p className="text-sm text-muted-foreground">Bot Health Score</p>
-                <div className="flex items-end gap-2 mt-1">
-                  <span className="text-5xl font-bold">{dashboard.healthScore.score}</span>
-                  <span className="text-lg text-muted-foreground mb-1">/100</span>
+      <Tabs
+        defaultValue="improvements"
+        orientation="vertical"
+        className="flex-1 min-h-0 flex flex-col md:flex-row"
+      >
+        <TabsList className="h-auto w-full md:w-72 md:h-full md:flex-col md:items-stretch md:justify-start rounded-none p-3 gap-1 border-b md:border-b-0 md:border-r border-border/60 bg-muted/30 shrink-0">
+          <TabsTrigger value="improvements" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
+            <BrainCircuit className="w-4 h-4" />
+            Improvements
+          </TabsTrigger>
+          <TabsTrigger value="introspection" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
+            <Activity className="w-4 h-4" />
+            Ask Phoenix
+          </TabsTrigger>
+          <TabsTrigger value="eval-datasets" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
+            <FileStack className="w-4 h-4" />
+            Eval Datasets
+          </TabsTrigger>
+          <TabsTrigger value="regression-tests" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
+            <TestTubes className="w-4 h-4" />
+            Regression Tests
+          </TabsTrigger>
+        </TabsList>
+
+        <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 md:px-8 lg:px-10 space-y-6">
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm">
+            <CardContent className="pt-6">
+              <div className="grid gap-6 lg:grid-cols-[240px_1fr_auto] lg:items-center">
+                <div>
+                  <p className="text-sm text-muted-foreground">Bot Health Score</p>
+                  <div className="flex items-end gap-2 mt-1">
+                    <span className="text-5xl font-bold">{dashboard.healthScore.score}</span>
+                    <span className="text-lg text-muted-foreground mb-1">/100</span>
+                  </div>
+                  <Badge className="mt-3 capitalize">
+                    {dashboard.healthScore.status.replace("_", " ")}
+                  </Badge>
                 </div>
-                <Badge className="mt-3 capitalize">
-                  {dashboard.healthScore.status.replace("_", " ")}
-                </Badge>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <Metric label="Open Items" value={dashboard.summary.totalItems} />
+                  <Metric label="High Priority" value={dashboard.summary.highPriority} />
+                  <Metric label="Weak Answers" value={dashboard.summary.weakAnswers} />
+                  <Metric label="Unanswered" value={dashboard.summary.unanswered} />
+                  <Metric label="Grounding Risk" value={dashboard.summary.hallucinationRisk} />
+                  <Metric label="Repeated Intents" value={dashboard.summary.repeatedIntents} />
+                </div>
+
+                <Button variant="outline" onClick={fetchDashboard}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
+                </Button>
               </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <Metric label="Open Items" value={dashboard.summary.totalItems} />
-                <Metric label="High Priority" value={dashboard.summary.highPriority} />
-                <Metric label="Weak Answers" value={dashboard.summary.weakAnswers} />
-                <Metric label="Unanswered" value={dashboard.summary.unanswered} />
-                <Metric label="Grounding Risk" value={dashboard.summary.hallucinationRisk} />
-                <Metric label="Repeated Intents" value={dashboard.summary.repeatedIntents} />
-              </div>
-
-              <Button variant="outline" onClick={fetchDashboard}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Tabs defaultValue="improvements" className="space-y-6">
-          <TabsList className="w-full justify-start">
-            <TabsTrigger value="improvements" className="flex items-center gap-2">
-              <BrainCircuit className="w-4 h-4" />
-              Improvements
-            </TabsTrigger>
-            <TabsTrigger value="introspection" className="flex items-center gap-2">
-              <Activity className="w-4 h-4" />
-              Ask Phoenix
-            </TabsTrigger>
-            <TabsTrigger value="eval-datasets" className="flex items-center gap-2">
-              <FileStack className="w-4 h-4" />
-              Eval Datasets
-            </TabsTrigger>
-            <TabsTrigger value="regression-tests" className="flex items-center gap-2">
-              <TestTubes className="w-4 h-4" />
-              Regression Tests
-            </TabsTrigger>
-          </TabsList>
+            </CardContent>
+          </Card>
 
           {/* Phoenix Self-Introspection Tab */}
-          <TabsContent value="introspection" className="space-y-4">
+          <TabsContent value="introspection" className="mt-0 space-y-4">
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4">
               <Card>
                 <CardHeader>
@@ -587,7 +591,7 @@ const BotSelfImprovement = () => {
           </TabsContent>
 
           {/* Eval Datasets Tab */}
-          <TabsContent value="eval-datasets" className="space-y-4">
+          <TabsContent value="eval-datasets" className="mt-0 space-y-4">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               <Card>
                 <CardHeader>
@@ -703,7 +707,7 @@ const BotSelfImprovement = () => {
           </TabsContent>
 
           {/* Regression Tests Tab */}
-          <TabsContent value="regression-tests" className="space-y-4">
+          <TabsContent value="regression-tests" className="mt-0 space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -864,7 +868,7 @@ const BotSelfImprovement = () => {
           </TabsContent>
 
           {/* Improvements Tab */}
-          <TabsContent value="improvements" className="space-y-4">
+          <TabsContent value="improvements" className="mt-0 space-y-4">
             <div className="flex flex-wrap gap-2">
               {(["all", ...Object.keys(typeLabels)] as Array<typeof filter>).map((itemType) => (
                 <Button
@@ -901,8 +905,8 @@ const BotSelfImprovement = () => {
               </Card>
             )}
           </TabsContent>
-        </Tabs>
-      </div>
+        </div>
+      </Tabs>
     </div>
   );
 };
