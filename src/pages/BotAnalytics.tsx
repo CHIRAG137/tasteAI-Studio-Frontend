@@ -5,6 +5,7 @@ import {
   AlertCircle, Phone, Activity, Calendar, Star,
   CheckCircle2, XCircle, UserCheck, Timer, Shield,
   BrainCircuit, Gauge, Sparkles, Copy, ExternalLink, ArrowRight, Layers3, Info,
+  TrendingDown,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,30 @@ import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Navbar } from "@/components/Navbar";
 import { getAuthHeaders } from "@/utils/auth";
+
+const healthStatusStyles: Record<
+  string,
+  { ring: string; text: string; badge: string; label: string }
+> = {
+  healthy: {
+    ring: "stroke-emerald-500",
+    text: "text-emerald-600 dark:text-emerald-400",
+    badge: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400",
+    label: "Healthy",
+  },
+  watch: {
+    ring: "stroke-amber-500",
+    text: "text-amber-600 dark:text-amber-400",
+    badge: "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400",
+    label: "Watch",
+  },
+  needs_attention: {
+    ring: "stroke-rose-500",
+    text: "text-rose-600 dark:text-rose-400",
+    badge: "bg-rose-500/10 text-rose-600 border-rose-500/30 dark:text-rose-400",
+    label: "Needs Attention",
+  },
+};
 
 const BotAnalytics = () => {
   const { botId } = useParams<{ botId: string }>();
@@ -388,106 +413,151 @@ const BotAnalytics = () => {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="pt-6">
-              <div className="grid gap-5 lg:grid-cols-[220px_1fr] lg:items-center">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-muted-foreground">Bot Health Score</p>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="w-4 h-4 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p>
-                          Overall health metric combining answer confidence, groundedness, latency, and fallback behavior. Ranges from 0-100 with status indicators: Healthy (80+), Watch (60-79), Needs Attention (&lt;60).
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <div className="flex items-end gap-2 mt-1">
-                    <span className="text-5xl font-bold">
-                      {observability.healthScore?.score ?? 0}
-                    </span>
-                    <span className="text-lg text-muted-foreground mb-1">/100</span>
-                  </div>
-                  <Badge className="mt-3 capitalize" variant={
-                    observability.healthScore?.status === "healthy"
-                      ? "default"
-                      : observability.healthScore?.status === "watch"
-                        ? "secondary"
-                        : "destructive"
-                  }>
-                    {(observability.healthScore?.status || "watch").replace("_", " ")}
-                  </Badge>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Based on {observability.healthScore?.sampleSize || 0} recent interactions
-                  </p>
-                </div>
+          {(() => {
+            const score = observability.healthScore?.score ?? 0;
+            const status =
+              healthStatusStyles[observability.healthScore?.status || "watch"] ||
+              healthStatusStyles.watch;
+            const trend = observability.healthScore?.trend;
+            const circumference = 2 * Math.PI * 52;
+            const offset =
+              circumference - (Math.max(0, Math.min(100, score)) / 100) * circumference;
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {[
-                    {
-                      label: "Answer confidence",
-                      value: observability.healthScore?.components.answerConfidence.value,
-                      score: observability.healthScore?.components.answerConfidence.score,
-                      tooltip: "Measures how confident the bot is in its retrieved answers (0-100%). Higher confidence indicates strong grounding in training data.",
-                    },
-                    {
-                      label: "Low-confidence rate",
-                      value: observability.healthScore?.components.lowConfidenceRate.value,
-                      score: observability.healthScore?.components.lowConfidenceRate.score,
-                      tooltip: "Percentage of answers where confidence falls below 85%. Lower is better; high rates suggest need for more training data or prompt refinement.",
-                    },
-                    {
-                      label: "Groundedness",
-                      value: observability.healthScore?.components.groundedness.value,
-                      score: observability.healthScore?.components.groundedness.score,
-                      tooltip: "Measures how well answers are grounded in the training data (0-100%). Prevents hallucination and ensures factual accuracy.",
-                    },
-                    {
-                      label: "Latency",
-                      value: observability.healthScore?.components.latency.valueMs,
-                      score: observability.healthScore?.components.latency.score,
-                      tooltip: "Average response time in milliseconds. Lower latency indicates faster retrieval and better user experience. Scored on target response time thresholds.",
-                    },
-                    {
-                      label: "Fallback rate",
-                      value: observability.healthScore?.components.fallbackRate.value,
-                      score: observability.healthScore?.components.fallbackRate.score,
-                      tooltip: "Percentage of queries using fallback behavior (0-100%). Lower rates are better; high rates suggest training coverage gaps.",
-                    },
-                    {
-                      label: "Handoff escalation",
-                      value: observability.healthScore?.components.handoffEscalationRate.value,
-                      score: observability.healthScore?.components.handoffEscalationRate.score,
-                      tooltip: "Percentage of conversations escalated to human agents. Lower is better; high rates indicate bot limitations in handling complex queries.",
-                    },
-                  ].map(({ label, value, score, tooltip }) => (
-                    <div key={label} className="rounded-lg bg-background/80 p-3">
-                      <div className="flex items-center justify-between text-sm mb-2">
-                        <div className="flex items-center gap-1">
-                          <span className="text-muted-foreground">{label}</span>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="w-3 h-3 text-muted-foreground cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <p>{tooltip}</p>
-                            </TooltipContent>
-                          </Tooltip>
+            const components = [
+              {
+                label: "Answer confidence",
+                value: observability.healthScore?.components.answerConfidence.value,
+                score: observability.healthScore?.components.answerConfidence.score,
+                tooltip: "Measures how confident the bot is in its retrieved answers (0-100%). Higher confidence indicates strong grounding in training data.",
+              },
+              {
+                label: "Low-confidence rate",
+                value: observability.healthScore?.components.lowConfidenceRate.value,
+                score: observability.healthScore?.components.lowConfidenceRate.score,
+                tooltip: "Percentage of answers where confidence falls below 85%. Lower is better; high rates suggest need for more training data or prompt refinement.",
+              },
+              {
+                label: "Groundedness",
+                value: observability.healthScore?.components.groundedness.value,
+                score: observability.healthScore?.components.groundedness.score,
+                tooltip: "Measures how well answers are grounded in the training data (0-100%). Prevents hallucination and ensures factual accuracy.",
+              },
+              {
+                label: "Latency",
+                value: observability.healthScore?.components.latency.valueMs,
+                score: observability.healthScore?.components.latency.score,
+                tooltip: "Average response time in milliseconds. Lower latency indicates faster retrieval and better user experience. Scored on target response time thresholds.",
+              },
+              {
+                label: "Fallback rate",
+                value: observability.healthScore?.components.fallbackRate.value,
+                score: observability.healthScore?.components.fallbackRate.score,
+                tooltip: "Percentage of queries using fallback behavior (0-100%). Lower rates are better; high rates suggest training coverage gaps.",
+              },
+              {
+                label: "Handoff escalation",
+                value: observability.healthScore?.components.handoffEscalationRate.value,
+                score: observability.healthScore?.components.handoffEscalationRate.score,
+                tooltip: "Percentage of conversations escalated to human agents. Lower is better; high rates indicate bot limitations in handling complex queries.",
+              },
+            ];
+
+            return (
+              <Card className="overflow-hidden border-border/60 shadow-sm">
+                <CardContent className="p-0">
+                  <div className="grid gap-6 lg:grid-cols-[300px_1fr] lg:items-stretch">
+                    {/* Score ring */}
+                    <div className="relative flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-purple-600/10 via-primary/5 to-cyan-500/10 p-8">
+                      <div className="relative h-36 w-36">
+                        <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
+                          <circle
+                            cx="60"
+                            cy="60"
+                            r="52"
+                            fill="none"
+                            strokeWidth="10"
+                            className="stroke-muted"
+                          />
+                          <circle
+                            cx="60"
+                            cy="60"
+                            r="52"
+                            fill="none"
+                            strokeWidth="10"
+                            strokeLinecap="round"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={offset}
+                            className={`${status.ring} transition-all duration-700`}
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className={`text-4xl font-bold ${status.text}`}>{score}</span>
+                          <span className="text-xs text-muted-foreground">/ 100</span>
                         </div>
-                        <span className="font-semibold">
-                          {formatHealthMetricValue(label, { value: value ?? null, score: score ?? 0 })}
-                        </span>
                       </div>
-                      <Progress value={Number(score || 0)} className="h-2" />
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`capitalize ${status.badge}`}>
+                          {status.label}
+                        </Badge>
+                        {trend === "up" && <TrendingUp className="h-4 w-4 text-emerald-500" />}
+                        {trend === "down" && <TrendingDown className="h-4 w-4 text-rose-500" />}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium text-muted-foreground">Bot Health Score</p>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p>
+                              Overall health metric combining answer confidence, groundedness, latency, and fallback behavior. Ranges from 0-100 with status indicators: Healthy (80+), Watch (60-79), Needs Attention (&lt;60).
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Based on {observability.healthScore?.sampleSize || 0} recent interactions
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+
+                    {/* Metric components */}
+                    <div className="flex flex-col gap-4 p-6">
+                      <div>
+                        <h3 className="text-base font-semibold">Health Breakdown</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Individual signals contributing to the overall score
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {components.map(({ label, value, score, tooltip }) => (
+                          <div
+                            key={label}
+                            className="rounded-xl border border-border/60 bg-muted/30 p-3 transition-colors hover:bg-muted/50"
+                          >
+                            <div className="flex items-center gap-1 min-w-0">
+                              <span className="text-xs text-muted-foreground truncate">{label}</span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="w-3 h-3 text-muted-foreground cursor-help shrink-0" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p>{tooltip}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <p className="mt-1 text-2xl font-bold">
+                              {formatHealthMetricValue(label, { value: value ?? null, score: score ?? 0 })}
+                            </p>
+                            <Progress value={Number(score || 0)} className="mt-2 h-1.5" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
