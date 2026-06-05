@@ -159,20 +159,14 @@ const BotAnalytics = () => {
     value: string | number; 
     subtitle?: string;
   }) => (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="pt-6">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold">{value}</p>
-            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-          </div>
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Icon className="w-5 h-5 text-primary" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="rounded-xl border border-border/60 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="h-4 w-4" />
+        <p className="text-xs">{title}</p>
+      </div>
+      <p className="mt-2 text-2xl font-bold">{value}</p>
+      {subtitle && <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>}
+    </div>
   );
 
   const AgentCard = ({ agent }: { agent: AgentStats }) => (
