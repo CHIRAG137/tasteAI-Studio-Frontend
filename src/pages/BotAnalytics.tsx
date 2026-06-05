@@ -5,6 +5,7 @@ import {
   AlertCircle, Phone, Activity, Calendar, Star,
   CheckCircle2, XCircle, UserCheck, Timer, Shield,
   BrainCircuit, Gauge, Sparkles, Copy, ExternalLink, ArrowRight, Layers3, Info,
+  TrendingDown,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,30 @@ import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Navbar } from "@/components/Navbar";
 import { getAuthHeaders } from "@/utils/auth";
+
+const healthStatusStyles: Record<
+  string,
+  { ring: string; text: string; badge: string; label: string }
+> = {
+  healthy: {
+    ring: "stroke-emerald-500",
+    text: "text-emerald-600 dark:text-emerald-400",
+    badge: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400",
+    label: "Healthy",
+  },
+  watch: {
+    ring: "stroke-amber-500",
+    text: "text-amber-600 dark:text-amber-400",
+    badge: "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400",
+    label: "Watch",
+  },
+  needs_attention: {
+    ring: "stroke-rose-500",
+    text: "text-rose-600 dark:text-rose-400",
+    badge: "bg-rose-500/10 text-rose-600 border-rose-500/30 dark:text-rose-400",
+    label: "Needs Attention",
+  },
+};
 
 const BotAnalytics = () => {
   const { botId } = useParams<{ botId: string }>();
