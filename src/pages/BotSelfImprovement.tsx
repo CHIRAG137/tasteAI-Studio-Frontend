@@ -835,6 +835,11 @@ const BotSelfImprovement = () => {
 
           {/* Improvements Tab */}
           <TabsContent value="improvements" className="mt-0 space-y-4">
+            <SectionHeader
+              icon={BrainCircuit}
+              title="Improvements"
+              description="Prioritized fixes from weak answers, unanswered questions, and grounding risks."
+            />
             <HealthScoreCard dashboard={dashboard} onRefresh={fetchDashboard} />
 
             <div className="flex flex-wrap gap-2">
