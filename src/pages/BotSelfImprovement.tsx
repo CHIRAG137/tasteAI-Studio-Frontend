@@ -431,24 +431,20 @@ const BotSelfImprovement = () => {
         <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 md:px-8 lg:px-10 space-y-6">
           {/* Phoenix Self-Introspection Tab */}
           <TabsContent value="introspection" className="mt-0 space-y-4">
+            <SectionHeader
+              icon={Activity}
+              title="Ask Phoenix"
+              description="Private admin tool: inspect recent Phoenix traces and identify what the bot is failing at."
+            />
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-primary" />
-                    MCP Self-Introspection Bot Tool
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Private admin tool: inspect recent Phoenix traces and identify what the bot is failing at.
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <Card className="border-border/60 shadow-sm">
+                <CardContent className="space-y-4 pt-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {defaultIntrospectionQuestions.map((question) => (
                       <Button
                         key={question}
                         variant="outline"
-                        className="h-auto justify-start whitespace-normal text-left"
+                        className="h-auto justify-start whitespace-normal text-left rounded-xl border-border/60 bg-muted/30 hover:bg-muted/60"
                         disabled={introspectionLoading}
                         onClick={() => askIntrospectionTool(question)}
                       >
@@ -467,6 +463,7 @@ const BotSelfImprovement = () => {
                     <Button
                       onClick={() => askIntrospectionTool()}
                       disabled={introspectionLoading}
+                      className="bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90"
                     >
                       <Send className="w-4 h-4 mr-2" />
                       {introspectionLoading ? "Inspecting traces..." : "Ask introspection tool"}
@@ -475,7 +472,7 @@ const BotSelfImprovement = () => {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="border-border/60 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-base">Phoenix Evidence</CardTitle>
                 </CardHeader>
@@ -565,51 +562,63 @@ const BotSelfImprovement = () => {
 
           {/* Eval Datasets Tab */}
           <TabsContent value="eval-datasets" className="mt-0 space-y-4">
-            <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileStack className="w-5 h-5 text-primary" />
-                    One-Click Eval Dataset Builder
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {datasetSources.map((source) => (
-                    <div
-                      key={source.sourceType}
-                      className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div>
-                        <p className="font-medium text-sm">{source.title}</p>
-                        <p className="text-sm text-muted-foreground">{source.description}</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={datasetLoading === source.sourceType}
-                        onClick={() => buildDataset(source.sourceType)}
-                      >
-                        <Database className="w-4 h-4 mr-2" />
-                        {datasetLoading === source.sourceType ? "Creating..." : "Create dataset"}
-                      </Button>
-                    </div>
-                  ))}
-                </CardContent>
-            </Card>
+            <SectionHeader
+              icon={FileStack}
+              title="Eval Datasets"
+              description="One-click builders that turn production signals into evaluation datasets."
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {datasetSources.map((source) => (
+                <div
+                  key={source.sourceType}
+                  className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/30 p-5 transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Database className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm">{source.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{source.description}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="w-full"
+                    disabled={datasetLoading === source.sourceType}
+                    onClick={() => buildDataset(source.sourceType)}
+                  >
+                    <Database className="w-4 h-4 mr-2" />
+                    {datasetLoading === source.sourceType ? "Creating..." : "Create dataset"}
+                  </Button>
+                </div>
+              ))}
+            </div>
           </TabsContent>
 
           {/* LLM as Judge Tab */}
           <TabsContent value="llm-judge" className="mt-0 space-y-4">
-            <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Gavel className="w-5 h-5 text-primary" />
-                    LLM-as-a-Judge Bot Grader
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+            <SectionHeader
+              icon={Gavel}
+              title="LLM as Judge"
+              description="Grade your eval datasets on relevance, groundedness, tone, and more."
+              action={
+                (evalData?.datasets?.length || 0) > 0 ? (
+                  <Button
+                    disabled={judgeLoading}
+                    onClick={() => runJudge("all")}
+                    className="bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90"
+                  >
+                    <Gavel className="w-4 h-4 mr-2" />
+                    {judgeLoading ? "Running judge..." : "Grade all datasets"}
+                  </Button>
+                ) : undefined
+              }
+            />
+            <Card className="border-border/60 shadow-sm">
+                <CardContent className="space-y-4 pt-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {(evalData?.datasets || []).map((dataset) => (
-                      <div key={dataset.datasetName} className="rounded-lg border p-3">
+                      <div key={dataset.datasetName} className="rounded-xl border border-border/60 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="font-medium text-sm">{dataset.datasetName}</p>
@@ -629,20 +638,8 @@ const BotSelfImprovement = () => {
                     ))}
                   </div>
 
-                  {(evalData?.datasets?.length || 0) > 0 && (
-                    <Button
-                      className="w-full"
-                      variant="outline"
-                      disabled={judgeLoading}
-                      onClick={() => runJudge("all")}
-                    >
-                      <Gavel className="w-4 h-4 mr-2" />
-                      {judgeLoading ? "Running judge..." : "Grade all datasets"}
-                    </Button>
-                  )}
-
                   {(evalData?.runs || []).slice(0, 1).map((run) => (
-                    <div key={run._id} className="rounded-lg bg-muted/50 p-4 space-y-4">
+                    <div key={run._id} className="rounded-xl border border-border/60 bg-gradient-to-br from-purple-600/5 via-primary/5 to-cyan-500/5 p-4 space-y-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="font-medium">Latest judge run</p>
@@ -682,27 +679,22 @@ const BotSelfImprovement = () => {
 
           {/* Regression Tests Tab */}
           <TabsContent value="regression-tests" className="mt-0 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TestTubes className="w-5 h-5 text-primary" />
-                  Regression Testing
-                </CardTitle>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Turn bad production conversations into permanent test cases. Re-run tests when
-                  your bot is updated to catch regressions and improvements.
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <SectionHeader
+              icon={TestTubes}
+              title="Regression Tests"
+              description="Turn bad production conversations into permanent test cases and re-run them after updates."
+            />
+            <Card className="border-border/60 shadow-sm">
+              <CardContent className="space-y-4 pt-6">
                 {regressionTests.length === 0 ? (
-                  <div className="rounded-lg border-2 border-dashed p-8 text-center">
+                  <div className="rounded-xl border-2 border-dashed border-border/60 p-10 text-center">
                     <TestTubes className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
                     <p className="font-semibold">No regression tests yet</p>
                     <p className="text-sm text-muted-foreground mt-1">
                       Create test cases from your production conversations to catch regressions.
                     </p>
                     <Button
-                      className="mt-4"
+                      className="mt-4 bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90"
                       onClick={createRegressionTestSuite}
                       disabled={regressionLoading}
                     >
@@ -843,6 +835,11 @@ const BotSelfImprovement = () => {
 
           {/* Improvements Tab */}
           <TabsContent value="improvements" className="mt-0 space-y-4">
+            <SectionHeader
+              icon={BrainCircuit}
+              title="Improvements"
+              description="Prioritized fixes from weak answers, unanswered questions, and grounding risks."
+            />
             <HealthScoreCard dashboard={dashboard} onRefresh={fetchDashboard} />
 
             <div className="flex flex-wrap gap-2">
@@ -980,6 +977,33 @@ const Metric = ({ label, value }: { label: string; value: number }) => (
   <div className="rounded-lg bg-background/80 p-3">
     <p className="text-xs text-muted-foreground">{label}</p>
     <p className="text-2xl font-bold">{value}</p>
+  </div>
+);
+
+const SectionHeader = ({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: typeof Database;
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+}) => (
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex items-start gap-3">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-cyan-500 text-white shadow-md">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <h2 className="text-lg font-semibold leading-tight">{title}</h2>
+        {description && (
+          <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+        )}
+      </div>
+    </div>
+    {action}
   </div>
 );
 
