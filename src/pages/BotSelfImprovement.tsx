@@ -431,24 +431,20 @@ const BotSelfImprovement = () => {
         <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 md:px-8 lg:px-10 space-y-6">
           {/* Phoenix Self-Introspection Tab */}
           <TabsContent value="introspection" className="mt-0 space-y-4">
+            <SectionHeader
+              icon={Activity}
+              title="Ask Phoenix"
+              description="Private admin tool: inspect recent Phoenix traces and identify what the bot is failing at."
+            />
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-primary" />
-                    MCP Self-Introspection Bot Tool
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Private admin tool: inspect recent Phoenix traces and identify what the bot is failing at.
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <Card className="border-border/60 shadow-sm">
+                <CardContent className="space-y-4 pt-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {defaultIntrospectionQuestions.map((question) => (
                       <Button
                         key={question}
                         variant="outline"
-                        className="h-auto justify-start whitespace-normal text-left"
+                        className="h-auto justify-start whitespace-normal text-left rounded-xl border-border/60 bg-muted/30 hover:bg-muted/60"
                         disabled={introspectionLoading}
                         onClick={() => askIntrospectionTool(question)}
                       >
@@ -467,6 +463,7 @@ const BotSelfImprovement = () => {
                     <Button
                       onClick={() => askIntrospectionTool()}
                       disabled={introspectionLoading}
+                      className="bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90"
                     >
                       <Send className="w-4 h-4 mr-2" />
                       {introspectionLoading ? "Inspecting traces..." : "Ask introspection tool"}
@@ -475,7 +472,7 @@ const BotSelfImprovement = () => {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="border-border/60 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-base">Phoenix Evidence</CardTitle>
                 </CardHeader>
