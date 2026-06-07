@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -19,6 +19,18 @@ import {
   Send,
   TrendingUp,
   TrendingDown,
+  Plus,
+  Trash2,
+  Sparkles,
+  Zap,
+  Clock,
+  ThumbsUp,
+  ThumbsDown,
+  Scale,
+  History,
+  Eye,
+  Target,
+  BarChart3,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -27,6 +39,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +67,8 @@ import {
   applyBotImprovementAction,
   askBotSelfIntrospection,
   buildBotEvalDataset,
+  createBotEvalDatasetType,
+  deleteBotEvalDatasetType,
   getBotEvalDatasets,
   getBotSelfImprovementDashboard,
   runBotLLMJudge,
@@ -52,7 +77,12 @@ import {
   runRegressionTests,
   type BotSelfImprovementDashboard,
   type BotEvalDatasetsResponse,
+  type BotEvalDatasetType,
+  type EvalDatasetPolarity,
   type EvalDatasetSourceType,
+  type EvalRun,
+  type EvalTraceSource,
+  type JudgeEvalMode,
   type ImprovementAction,
   type ImprovementItem,
   type BotRegressionTest,
@@ -82,32 +112,152 @@ const typeLabels: Record<ImprovementItem["type"], string> = {
   repeated_unknown_intent: "Repeated intent",
 };
 
-const datasetSources: Array<{
+type DatasetSourceCard = {
   sourceType: EvalDatasetSourceType;
   title: string;
   description: string;
-}> = [
+  polarity: EvalDatasetPolarity;
+  icon: typeof Database;
+};
+
+const negativeDatasetSources: DatasetSourceCard[] = [
+  {
+    sourceType: "unanswered_questions",
+    title: "Unanswered questions",
+    description: "Fallbacks and source=none production answers to close knowledge gaps.",
+    polarity: "negative",
+    icon: AlertCircle,
+  },
   {
     sourceType: "low_confidence_traces",
     title: "Low-confidence traces",
     description: "Questions where retrieval confidence was weak or missing.",
+    polarity: "negative",
+    icon: TrendingDown,
+  },
+  {
+    sourceType: "hallucination_risk",
+    title: "Hallucination risk",
+    description: "Answers with high grounding risk that need citation or training fixes.",
+    polarity: "negative",
+    icon: AlertTriangle,
   },
   {
     sourceType: "handoff_sessions",
     title: "Handoff sessions",
     description: "Conversations that needed human support or escalation.",
+    polarity: "negative",
+    icon: LifeBuoy,
   },
   {
     sourceType: "negative_feedback",
     title: "Negative feedback",
-    description: "Rated or commented sessions that need regression coverage.",
+    description: "Low-rated or commented sessions that need regression coverage.",
+    polarity: "negative",
+    icon: ThumbsDown,
   },
   {
-    sourceType: "unanswered_questions",
-    title: "Unanswered questions",
-    description: "Fallbacks and source=none production answers.",
+    sourceType: "slow_responses",
+    title: "Slow responses",
+    description: "High-latency traces to benchmark performance regressions.",
+    polarity: "negative",
+    icon: Clock,
   },
 ];
+
+const positiveDatasetSources: DatasetSourceCard[] = [
+  {
+    sourceType: "high_confidence_traces",
+    title: "High-confidence traces",
+    description: "Strong answers with confidence ≥ 90% to use as gold-standard baselines.",
+    polarity: "positive",
+    icon: TrendingUp,
+  },
+  {
+    sourceType: "grounded_answers",
+    title: "Grounded answers",
+    description: "Well-grounded responses with low hallucination risk.",
+    polarity: "positive",
+    icon: ShieldCheck,
+  },
+  {
+    sourceType: "qa_retrieval_hits",
+    title: "QA retrieval hits",
+    description: "Successful training-data matches with strong retrieval scores.",
+    polarity: "positive",
+    icon: CheckCircle2,
+  },
+  {
+    sourceType: "positive_feedback",
+    title: "Positive feedback",
+    description: "Highly rated sessions to preserve as expected behavior.",
+    polarity: "positive",
+    icon: ThumbsUp,
+  },
+  {
+    sourceType: "resolved_handoffs",
+    title: "Resolved handoffs",
+    description: "Successfully resolved escalations without re-escalation.",
+    polarity: "positive",
+    icon: Sparkles,
+  },
+];
+
+const polarityBadgeVariant: Record<
+  EvalDatasetPolarity | "mixed",
+  "default" | "secondary" | "destructive" | "outline"
+> = {
+  positive: "default",
+  negative: "destructive",
+  neutral: "secondary",
+  mixed: "outline",
+};
+
+const judgeCriteriaLabels: Record<string, string> = {
+  relevance: "Relevance",
+  helpfulness: "Helpfulness",
+  groundedness: "Groundedness",
+  toneMatch: "Tone match",
+  instructionFollowing: "Instruction following",
+  handoffCorrectness: "Handoff correctness",
+  refusalCorrectness: "Refusal correctness",
+  responseLengthFit: "Response length",
+};
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "N/A";
+  return new Date(value).toLocaleString();
+};
+
+const builtinDatasetNames: Record<string, string> = {
+  low_confidence_traces: "Low Confidence Traces",
+  high_confidence_traces: "High Confidence Traces",
+  handoff_sessions: "Handoff Sessions",
+  resolved_handoffs: "Resolved Handoffs",
+  negative_feedback: "Negative Feedback",
+  positive_feedback: "Positive Feedback",
+  unanswered_questions: "Unanswered Questions",
+  grounded_answers: "Grounded Answers",
+  hallucination_risk: "Hallucination Risk",
+  qa_retrieval_hits: "QA Retrieval Hits",
+  slow_responses: "Slow Responses",
+};
+
+type JudgeCatalogEntry = {
+  key: string;
+  title: string;
+  description: string;
+  polarity: EvalDatasetPolarity;
+  icon: typeof Database;
+  datasetName: string;
+  kind: "builtin" | "custom";
+  sourceType?: EvalDatasetSourceType;
+  customTypeId?: string;
+  itemCount: number;
+  latestItemAt?: string;
+  latestRun?: EvalRun | null;
+  isBuilt: boolean;
+};
 
 const defaultIntrospectionQuestions = [
   "Why did my bot fail yesterday?",
@@ -128,13 +278,36 @@ const BotSelfImprovement = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [datasetLoading, setDatasetLoading] = useState<string | null>(null);
-  const [judgeLoading, setJudgeLoading] = useState(false);
+  const [judgeLoading, setJudgeLoading] = useState<string | null>(null);
+  const [judgeEvalMode, setJudgeEvalMode] = useState<JudgeEvalMode>("standard");
+  const [judgePassThreshold, setJudgePassThreshold] = useState(0.7);
+  const [judgeSelectedCriteria, setJudgeSelectedCriteria] = useState<string[]>([]);
+  const [selectedJudgeRun, setSelectedJudgeRun] = useState<EvalRun | null>(null);
+  const [judgeRunModalOpen, setJudgeRunModalOpen] = useState(false);
   const [dashboard, setDashboard] = useState<BotSelfImprovementDashboard | null>(null);
   const [evalData, setEvalData] = useState<BotEvalDatasetsResponse | null>(null);
   const [filter, setFilter] = useState<ImprovementItem["type"] | "all">("all");
   const [introspectionQuestion, setIntrospectionQuestion] = useState(defaultIntrospectionQuestions[0]);
   const [introspectionLoading, setIntrospectionLoading] = useState(false);
   const [introspectionResult, setIntrospectionResult] = useState<BotSelfIntrospectionResponse | null>(null);
+
+  const [customTypeDialogOpen, setCustomTypeDialogOpen] = useState(false);
+  const [customTypeSaving, setCustomTypeSaving] = useState(false);
+  const [customTypeForm, setCustomTypeForm] = useState({
+    name: "",
+    description: "",
+    polarity: "neutral" as EvalDatasetPolarity,
+    traceSource: "interaction_metrics" as EvalTraceSource,
+    confidenceMin: "",
+    confidenceMax: "",
+    hallucinationRiskMax: "",
+    groundednessScoreMin: "",
+    usedFallback: "any" as "any" | "true" | "false",
+    sources: "",
+    latencyMsMin: "",
+    userRatingMin: "",
+    handoffStatus: "",
+  });
 
   // Regression Test State
   const [regressionTests, setRegressionTests] = useState<BotRegressionTest[]>([]);
@@ -290,12 +463,18 @@ const BotSelfImprovement = () => {
     }
   };
 
-  const buildDataset = async (sourceType: EvalDatasetSourceType) => {
+  const buildDataset = async (
+    sourceType: EvalDatasetSourceType,
+    customTypeId?: string,
+    loadingKey?: string
+  ) => {
     if (!botId) return;
 
+    const key = loadingKey || customTypeId || sourceType;
+
     try {
-      setDatasetLoading(sourceType);
-      const response = await buildBotEvalDataset(botId, sourceType);
+      setDatasetLoading(key);
+      const response = await buildBotEvalDataset(botId, sourceType, customTypeId);
       toast({
         title: "Eval dataset created",
         description: `${response.result?.createdCount || 0} examples added to ${response.result?.datasetName}.`,
@@ -312,16 +491,321 @@ const BotSelfImprovement = () => {
     }
   };
 
-  const runJudge = async (datasetName: string) => {
+  const resetCustomTypeForm = () => {
+    setCustomTypeForm({
+      name: "",
+      description: "",
+      polarity: "neutral",
+      traceSource: "interaction_metrics",
+      confidenceMin: "",
+      confidenceMax: "",
+      hallucinationRiskMax: "",
+      groundednessScoreMin: "",
+      usedFallback: "any",
+      sources: "",
+      latencyMsMin: "",
+      userRatingMin: "",
+      handoffStatus: "",
+    });
+  };
+
+  const createCustomDatasetType = async () => {
+    if (!botId) return;
+
+    const name = customTypeForm.name.trim();
+    if (!name) {
+      toast({
+        title: "Name required",
+        description: "Give your custom eval type a descriptive name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const parseNumber = (value: string) => {
+      if (!value.trim()) return undefined;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    };
+
+    const traceFilters =
+      customTypeForm.traceSource === "interaction_metrics"
+        ? {
+            confidenceMin: parseNumber(customTypeForm.confidenceMin),
+            confidenceMax: parseNumber(customTypeForm.confidenceMax),
+            hallucinationRiskMax: parseNumber(customTypeForm.hallucinationRiskMax),
+            groundednessScoreMin: parseNumber(customTypeForm.groundednessScoreMin),
+            usedFallback:
+              customTypeForm.usedFallback === "any"
+                ? null
+                : customTypeForm.usedFallback === "true",
+            sources: customTypeForm.sources
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean),
+            latencyMsMin: parseNumber(customTypeForm.latencyMsMin),
+          }
+        : {};
+
+    const handoffFilters =
+      customTypeForm.traceSource === "handoff_sessions"
+        ? {
+            statuses: customTypeForm.handoffStatus
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean),
+            userRatingMin: parseNumber(customTypeForm.userRatingMin),
+          }
+        : {};
+
+    try {
+      setCustomTypeSaving(true);
+      await createBotEvalDatasetType(botId, {
+        name,
+        description: customTypeForm.description.trim(),
+        polarity: customTypeForm.polarity,
+        traceSource: customTypeForm.traceSource,
+        traceFilters,
+        handoffFilters,
+        datasetName: name,
+      });
+      toast({
+        title: "Custom eval type created",
+        description: `"${name}" is ready to build datasets from matching traces.`,
+      });
+      setCustomTypeDialogOpen(false);
+      resetCustomTypeForm();
+      await fetchEvalData();
+    } catch (error) {
+      toast({
+        title: "Failed to create custom type",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCustomTypeSaving(false);
+    }
+  };
+
+  const removeCustomDatasetType = async (type: BotEvalDatasetType) => {
     if (!botId) return;
 
     try {
-      setJudgeLoading(true);
-      const response = await runBotLLMJudge(botId, datasetName);
+      await deleteBotEvalDatasetType(botId, type._id);
+      toast({
+        title: "Custom type deleted",
+        description: `"${type.name}" was removed.`,
+      });
+      await fetchEvalData();
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const renderDatasetSourceCard = (source: DatasetSourceCard) => {
+    const Icon = source.icon;
+    return (
+      <div
+        key={source.sourceType}
+        className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/30 p-5 transition-colors hover:bg-muted/50"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Icon className="h-4 w-4" />
+          </div>
+          <Badge variant={polarityBadgeVariant[source.polarity]} className="text-[10px] uppercase">
+            {source.polarity}
+          </Badge>
+        </div>
+        <div className="flex-1">
+          <p className="font-semibold text-sm">{source.title}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{source.description}</p>
+        </div>
+        <Button
+          size="sm"
+          className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90 shadow-md"
+          disabled={datasetLoading === source.sourceType}
+          onClick={() => buildDataset(source.sourceType)}
+        >
+          <Database className="w-4 h-4 mr-2" />
+          {datasetLoading === source.sourceType ? "Creating..." : "Create dataset"}
+        </Button>
+      </div>
+    );
+  };
+
+  const customTypes = evalData?.customTypes || [];
+  const judgeConfig = evalData?.judgeConfig;
+  const judgeSummary = evalData?.judgeSummary;
+  const allCriteria = judgeConfig?.criteria || [];
+
+  const builtDatasets = evalData?.datasets || [];
+
+  const findBuiltDataset = (datasetName: string) =>
+    builtDatasets.find((dataset) => dataset.datasetName === datasetName);
+
+  const catalogFromSource = (source: DatasetSourceCard): JudgeCatalogEntry => {
+    const datasetName =
+      evalData?.builtinTypes?.find((type) => type.sourceType === source.sourceType)
+        ?.datasetName || builtinDatasetNames[source.sourceType] || source.title;
+    const built = findBuiltDataset(datasetName);
+
+    return {
+      key: source.sourceType,
+      title: source.title,
+      description: source.description,
+      polarity: source.polarity,
+      icon: source.icon,
+      datasetName,
+      kind: "builtin",
+      sourceType: source.sourceType,
+      itemCount: built?.itemCount || 0,
+      latestItemAt: built?.latestItemAt,
+      latestRun: built?.latestRun || null,
+      isBuilt: (built?.itemCount || 0) > 0,
+    };
+  };
+
+  const judgeCatalog = useMemo(() => {
+    const catalogNames = new Set<string>();
+
+    const negative = negativeDatasetSources.map(catalogFromSource);
+    negative.forEach((entry) => catalogNames.add(entry.datasetName));
+
+    const positive = positiveDatasetSources.map(catalogFromSource);
+    positive.forEach((entry) => catalogNames.add(entry.datasetName));
+
+    const custom: JudgeCatalogEntry[] = customTypes.map((type) => {
+      const datasetName = type.datasetName || type.name;
+      const built = builtDatasets.find(
+        (dataset) => dataset.datasetName === datasetName
+      );
+
+      return {
+        key: `custom:${type._id}`,
+        title: type.name,
+        description: type.description || "Custom trace-based evaluation criteria.",
+        polarity: type.polarity,
+        icon: Zap,
+        datasetName,
+        kind: "custom",
+        customTypeId: type._id,
+        itemCount: built?.itemCount || 0,
+        latestItemAt: built?.latestItemAt,
+        latestRun: built?.latestRun || null,
+        isBuilt: (built?.itemCount || 0) > 0,
+      };
+    });
+    custom.forEach((entry) => catalogNames.add(entry.datasetName));
+
+    const other = builtDatasets
+      .filter((dataset) => !catalogNames.has(dataset.datasetName))
+      .map((dataset) => ({
+        key: `other:${dataset.datasetName}`,
+        title: dataset.datasetName,
+        description: dataset.description || "Additional eval dataset.",
+        polarity: (dataset.polarity as EvalDatasetPolarity) || "neutral",
+        icon: Database,
+        datasetName: dataset.datasetName,
+        kind: "builtin" as const,
+        itemCount: dataset.itemCount,
+        latestItemAt: dataset.latestItemAt,
+        latestRun: dataset.latestRun || null,
+        isBuilt: dataset.itemCount > 0,
+      }));
+
+    return { negative, positive, custom, other };
+  }, [evalData, customTypes]);
+
+  const builtCatalogEntries = useMemo(
+    () =>
+      [
+        ...judgeCatalog.negative,
+        ...judgeCatalog.positive,
+        ...judgeCatalog.custom,
+        ...judgeCatalog.other,
+      ].filter((entry) => entry.isBuilt),
+    [judgeCatalog]
+  );
+
+  const runJudgeBatch = async (datasetNames: string[], loadingKey: string) => {
+    if (!botId) return;
+    if (!datasetNames.length) {
+      toast({
+        title: "No built datasets",
+        description: "Create datasets first using Create dataset or Build & grade on a type below.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setJudgeLoading(loadingKey);
+    try {
+      for (const name of datasetNames) {
+        await runBotLLMJudge(botId, {
+          datasetName: name,
+          evalMode: judgeEvalMode,
+          passThreshold: judgePassThreshold,
+          selectedCriteria:
+            judgeEvalMode === "custom" ? judgeSelectedCriteria : undefined,
+        });
+      }
+      toast({
+        title: "Batch grading completed",
+        description: `Graded ${datasetNames.length} dataset(s).`,
+      });
+      await fetchEvalData();
+    } catch (error) {
+      toast({
+        title: "Batch grading failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setJudgeLoading(null);
+    }
+  };
+
+  const toggleJudgeCriterion = (key: string) => {
+    setJudgeSelectedCriteria((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+    );
+  };
+
+  const runJudge = async (datasetName: string, loadingKey?: string) => {
+    if (!botId) return;
+
+    const key = loadingKey || datasetName;
+
+    try {
+      setJudgeLoading(key);
+      const response = await runBotLLMJudge(botId, {
+        datasetName,
+        evalMode: judgeEvalMode,
+        passThreshold: judgePassThreshold,
+        selectedCriteria:
+          judgeEvalMode === "custom" ? judgeSelectedCriteria : undefined,
+      });
+
+      const result = response.result;
+      const passRate =
+        typeof result?.passRate === "number"
+          ? `${Math.round(result.passRate * 100)}% pass rate`
+          : `Overall: ${formatPercent(result?.overallScore)}`;
+
       toast({
         title: "LLM-as-a-Judge completed",
-        description: `Overall score: ${formatPercent(response.result?.overallScore)}`,
+        description: `${result?.datasetName || datasetName} — ${passRate}`,
       });
+
+      if (result) {
+        setSelectedJudgeRun(result);
+        setJudgeRunModalOpen(true);
+      }
+
       await fetchEvalData();
     } catch (error) {
       toast({
@@ -330,9 +814,96 @@ const BotSelfImprovement = () => {
         variant: "destructive",
       });
     } finally {
-      setJudgeLoading(false);
+      setJudgeLoading(null);
     }
   };
+
+  const buildCatalogDataset = async (entry: JudgeCatalogEntry) => {
+    if (!botId) return;
+
+    try {
+      setDatasetLoading(entry.key);
+      if (entry.kind === "custom" && entry.customTypeId) {
+        await buildBotEvalDataset(botId, "custom", entry.customTypeId);
+      } else if (entry.sourceType) {
+        await buildBotEvalDataset(botId, entry.sourceType);
+      }
+      toast({
+        title: "Eval dataset created",
+        description: `Examples added to ${entry.datasetName}.`,
+      });
+      await fetchEvalData();
+    } catch (error) {
+      toast({
+        title: "Dataset build failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDatasetLoading(null);
+    }
+  };
+
+  const buildAndJudge = async (entry: JudgeCatalogEntry) => {
+    if (!botId) return;
+
+    try {
+      setJudgeLoading(entry.key);
+      if (!entry.isBuilt) {
+        if (entry.kind === "custom" && entry.customTypeId) {
+          await buildBotEvalDataset(botId, "custom", entry.customTypeId);
+        } else if (entry.sourceType) {
+          await buildBotEvalDataset(botId, entry.sourceType);
+        }
+        await fetchEvalData();
+      }
+
+      const response = await runBotLLMJudge(botId, {
+        datasetName: entry.datasetName,
+        evalMode: judgeEvalMode,
+        passThreshold: judgePassThreshold,
+        selectedCriteria:
+          judgeEvalMode === "custom" ? judgeSelectedCriteria : undefined,
+      });
+
+      const result = response.result;
+      toast({
+        title: entry.isBuilt ? "LLM-as-a-Judge completed" : "Built & graded",
+        description: `${entry.datasetName} — ${formatPercent(result?.overallScore)}`,
+      });
+
+      if (result) {
+        setSelectedJudgeRun(result);
+        setJudgeRunModalOpen(true);
+      }
+
+      await fetchEvalData();
+    } catch (error) {
+      toast({
+        title: "Judge run failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setJudgeLoading(null);
+    }
+  };
+
+  const renderJudgeCatalogCard = (entry: JudgeCatalogEntry) => (
+    <JudgeCatalogCard
+      key={entry.key}
+      entry={entry}
+      datasetLoading={datasetLoading === entry.key}
+      judgeLoading={judgeLoading === entry.key}
+      onCreateDataset={() => buildCatalogDataset(entry)}
+      onGrade={() => runJudge(entry.datasetName, entry.key)}
+      onBuildAndGrade={() => buildAndJudge(entry)}
+      onViewRun={(run) => {
+        setSelectedJudgeRun(run);
+        setJudgeRunModalOpen(true);
+      }}
+    />
+  );
 
   const askIntrospectionTool = async (questionOverride?: string) => {
     if (!botId) return;
@@ -561,119 +1132,401 @@ const BotSelfImprovement = () => {
           </TabsContent>
 
           {/* Eval Datasets Tab */}
-          <TabsContent value="eval-datasets" className="mt-0 space-y-4">
+          <TabsContent value="eval-datasets" className="mt-0 space-y-6">
             <SectionHeader
               icon={FileStack}
               title="Eval Datasets"
-              description="One-click builders that turn production signals into evaluation datasets."
+              description="Build regression and gold-standard datasets from production traces — failures to fix and successes to preserve."
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {datasetSources.map((source) => (
-                <div
-                  key={source.sourceType}
-                  className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/30 p-5 transition-colors hover:bg-muted/50"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-sm">{source.title}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{source.description}</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90 shadow-md"
-                    disabled={datasetLoading === source.sourceType}
-                    onClick={() => buildDataset(source.sourceType)}
-                  >
-                    <Database className="w-4 h-4 mr-2" />
-                    {datasetLoading === source.sourceType ? "Creating..." : "Create dataset"}
-                  </Button>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <ThumbsDown className="h-4 w-4 text-destructive" />
+                <h3 className="text-sm font-semibold">Regression gaps</h3>
+                <span className="text-xs text-muted-foreground">
+                  Negative signals — failures, gaps, and risks to evaluate and improve
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {negativeDatasetSources.map(renderDatasetSourceCard)}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <ThumbsUp className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">Gold standard</h3>
+                <span className="text-xs text-muted-foreground">
+                  Positive signals — high-quality answers to benchmark against
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {positiveDatasetSources.map(renderDatasetSourceCard)}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-amber-500" />
+                  <h3 className="text-sm font-semibold">Custom eval types</h3>
+                  <span className="text-xs text-muted-foreground">
+                    Define your own trace filters and evaluate on your criteria
+                  </span>
                 </div>
-              ))}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCustomTypeDialogOpen(true)}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create custom type
+                </Button>
+              </div>
+
+              {customTypes.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {customTypes.map((type) => (
+                    <div
+                      key={type._id}
+                      className="group flex flex-col gap-3 rounded-xl border border-dashed border-border/80 bg-muted/20 p-5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+                          <Zap className="h-4 w-4" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Badge variant={polarityBadgeVariant[type.polarity]} className="text-[10px] uppercase">
+                            {type.polarity}
+                          </Badge>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => removeCustomDatasetType(type)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm">{type.name}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {type.description || "Custom trace-based evaluation criteria."}
+                        </p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Source: {type.traceSource === "handoff_sessions" ? "Handoff sessions" : "Bot interactions"}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        variant="secondary"
+                        disabled={datasetLoading === type._id}
+                        onClick={() => buildDataset("custom", type._id, type._id)}
+                      >
+                        <Database className="w-4 h-4 mr-2" />
+                        {datasetLoading === type._id ? "Creating..." : "Create dataset"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="py-8 text-center">
+                    <Zap className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-sm font-medium">No custom eval types yet</p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                      Create a type like &quot;Unanswered pricing questions&quot; with confidence and fallback filters,
+                      then build datasets and run LLM-as-a-Judge on them.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
 
           {/* LLM as Judge Tab */}
-          <TabsContent value="llm-judge" className="mt-0 space-y-4">
+          <TabsContent value="llm-judge" className="mt-0 space-y-6">
             <SectionHeader
               icon={Gavel}
               title="LLM as Judge"
-              description="Grade your eval datasets on relevance, groundedness, tone, and more."
+              description="Grade regression and gold-standard datasets with polarity-aware scoring, configurable criteria, and per-item verdicts."
               action={
-                (evalData?.datasets?.length || 0) > 0 ? (
+                builtCatalogEntries.length > 0 ? (
                   <Button
-                    disabled={judgeLoading}
-                    onClick={() => runJudge("all")}
+                    disabled={!!judgeLoading}
+                    onClick={() =>
+                      runJudgeBatch(
+                        builtCatalogEntries.map((entry) => entry.datasetName),
+                        "all"
+                      )
+                    }
                     className="bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90"
                   >
                     <Gavel className="w-4 h-4 mr-2" />
-                    {judgeLoading ? "Running judge..." : "Grade all datasets"}
+                    {judgeLoading === "all" ? "Running judge..." : "Grade all built datasets"}
                   </Button>
                 ) : undefined
               }
             />
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Metric
+                label="Dataset types"
+                value={
+                  judgeCatalog.negative.length +
+                  judgeCatalog.positive.length +
+                  judgeCatalog.custom.length
+                }
+              />
+              <Metric label="Built datasets" value={builtCatalogEntries.length} />
+              <Metric label="Judge runs" value={judgeSummary?.totalRuns || 0} />
+              <div className="rounded-lg bg-background/80 p-3">
+                <p className="text-xs text-muted-foreground">Avg score</p>
+                <p className="text-2xl font-bold">
+                  {formatPercent(judgeSummary?.averageOverallScore)}
+                </p>
+              </div>
+            </div>
+
             <Card className="border-border/60 shadow-sm">
-                <CardContent className="space-y-4 pt-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(evalData?.datasets || []).map((dataset) => (
-                      <div key={dataset.datasetName} className="rounded-xl border border-border/60 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
-                        <div className="flex items-start justify-between gap-3">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Scale className="h-4 w-4 text-primary" />
+                  Judge configuration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Evaluation mode</Label>
+                    <Select
+                      value={judgeEvalMode}
+                      onValueChange={(value: JudgeEvalMode) => setJudgeEvalMode(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(judgeConfig?.evalModes || []).map((mode) => (
+                          <SelectItem key={mode.key} value={mode.key}>
+                            {mode.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {judgeConfig?.evalModes.find((mode) => mode.key === judgeEvalMode)
+                        ?.description ||
+                        "Standard mode auto-selects regression or gold-standard grading based on dataset polarity."}
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label>Pass threshold</Label>
+                      <span className="text-sm font-semibold">
+                        {Math.round(judgePassThreshold * 100)}%
+                      </span>
+                    </div>
+                    <Slider
+                      value={[judgePassThreshold]}
+                      min={0.5}
+                      max={0.95}
+                      step={0.05}
+                      onValueChange={(value) => setJudgePassThreshold(value[0])}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Negative datasets: items below threshold pass (confirms failure). Positive
+                      datasets: items above threshold pass (confirms quality).
+                    </p>
+                  </div>
+                </div>
+
+                {judgeEvalMode === "custom" && (
+                  <div className="rounded-lg border p-4 space-y-3">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      Select criteria to grade
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {allCriteria.map((criterion) => (
+                        <label
+                          key={criterion.key}
+                          className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/40"
+                        >
+                          <Checkbox
+                            checked={judgeSelectedCriteria.includes(criterion.key)}
+                            onCheckedChange={() => toggleJudgeCriterion(criterion.key)}
+                          />
                           <div>
-                            <p className="font-medium text-sm">{dataset.datasetName}</p>
+                            <p className="text-sm font-medium">{criterion.label}</p>
                             <p className="text-xs text-muted-foreground">
-                              {dataset.itemCount} examples
+                              {criterion.description}
                             </p>
                           </div>
-                          <Button
-                            size="sm"
-                            disabled={judgeLoading}
-                            onClick={() => runJudge(dataset.datasetName)}
-                          >
-                            Grade
-                          </Button>
-                        </div>
-                      </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-lg bg-muted/30 p-4">
+                  <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Grading dimensions
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {allCriteria.map((criterion) => (
+                      <Badge key={criterion.key} variant="outline" className="text-xs">
+                        {criterion.label}
+                      </Badge>
                     ))}
                   </div>
-
-                  {(evalData?.runs || []).slice(0, 1).map((run) => (
-                    <div key={run._id} className="rounded-xl border border-border/60 bg-gradient-to-br from-purple-600/5 via-primary/5 to-cyan-500/5 p-4 space-y-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium">Latest judge run</p>
-                          <p className="text-sm text-muted-foreground">{run.datasetName}</p>
-                        </div>
-                        <Badge>{formatPercent(run.overallScore)}</Badge>
-                      </div>
-                      {run.criteria && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {Object.entries(run.criteria).map(([key, value]) => (
-                            <Score
-                              key={key}
-                              label={key.replace(/([A-Z])/g, " $1")}
-                              value={value}
-                            />
-                          ))}
-                        </div>
-                      )}
-                      {run.explanations?.[0] && (
-                        <p className="text-sm text-muted-foreground">
-                          {run.explanations[0].explanation}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-
-                  {(evalData?.datasets?.length || 0) === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      Create an eval dataset first, then run the judge to score relevance,
-                      helpfulness, groundedness, tone, instruction following, handoff
-                      correctness, refusal correctness, and response length fit.
-                    </p>
-                  )}
-                </CardContent>
+                </div>
+              </CardContent>
             </Card>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <ThumbsDown className="h-4 w-4 text-destructive" />
+                  <h3 className="text-sm font-semibold">Regression datasets</h3>
+                  <span className="text-xs text-muted-foreground">
+                    All built-in negative eval types
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!!judgeLoading}
+                  onClick={() =>
+                    runJudgeBatch(
+                      judgeCatalog.negative
+                        .filter((entry) => entry.isBuilt)
+                        .map((entry) => entry.datasetName),
+                      "batch-negative"
+                    )
+                  }
+                >
+                  {judgeLoading === "batch-negative" ? "Grading..." : "Grade all built regression"}
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {judgeCatalog.negative.map(renderJudgeCatalogCard)}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <ThumbsUp className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Gold standard datasets</h3>
+                  <span className="text-xs text-muted-foreground">
+                    All built-in positive eval types
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!!judgeLoading}
+                  onClick={() =>
+                    runJudgeBatch(
+                      judgeCatalog.positive
+                        .filter((entry) => entry.isBuilt)
+                        .map((entry) => entry.datasetName),
+                      "batch-positive"
+                    )
+                  }
+                >
+                  {judgeLoading === "batch-positive"
+                    ? "Grading..."
+                    : "Grade all built gold standard"}
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {judgeCatalog.positive.map(renderJudgeCatalogCard)}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-amber-500" />
+                  <h3 className="text-sm font-semibold">Custom eval types</h3>
+                  <span className="text-xs text-muted-foreground">
+                    User-defined trace filters — fetched from your bot
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCustomTypeDialogOpen(true)}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create custom type
+                </Button>
+              </div>
+              {judgeCatalog.custom.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {judgeCatalog.custom.map(renderJudgeCatalogCard)}
+                </div>
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="py-8 text-center">
+                    <Zap className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-sm font-medium">No custom eval types yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Create a custom type here or in the Eval Datasets tab, then build and grade it.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {judgeCatalog.other.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Database className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">Other built datasets</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {judgeCatalog.other.map(renderJudgeCatalogCard)}
+                </div>
+              </div>
+            )}
+
+            {(evalData?.runs?.length || 0) > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">Judge run history</h3>
+                </div>
+                <div className="space-y-3">
+                  {(evalData?.runs || []).map((run) => (
+                    <JudgeRunCard
+                      key={run._id}
+                      run={run}
+                      onView={() => {
+                        setSelectedJudgeRun(run);
+                        setJudgeRunModalOpen(true);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Dialog open={judgeRunModalOpen} onOpenChange={setJudgeRunModalOpen}>
+              <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Judge run details</DialogTitle>
+                </DialogHeader>
+                {selectedJudgeRun && (
+                  <JudgeRunDetail run={selectedJudgeRun} />
+                )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Regression Tests Tab */}
@@ -879,6 +1732,16 @@ const BotSelfImprovement = () => {
           </TabsContent>
         </div>
       </Tabs>
+
+      <CustomEvalTypeDialog
+        open={customTypeDialogOpen}
+        onOpenChange={setCustomTypeDialogOpen}
+        form={customTypeForm}
+        onFormChange={setCustomTypeForm}
+        saving={customTypeSaving}
+        onSubmit={createCustomDatasetType}
+        onReset={resetCustomTypeForm}
+      />
     </div>
   );
 };
@@ -1213,6 +2076,520 @@ const Score = ({ label, value }: { label: string; value: number | null }) => (
       <span className="font-semibold">{formatPercent(value)}</span>
     </div>
     <Progress value={typeof value === "number" ? value * 100 : 0} className="h-2" />
+  </div>
+);
+
+const JudgeCatalogCard = ({
+  entry,
+  datasetLoading,
+  judgeLoading,
+  onCreateDataset,
+  onGrade,
+  onBuildAndGrade,
+  onViewRun,
+}: {
+  entry: JudgeCatalogEntry;
+  datasetLoading: boolean;
+  judgeLoading: boolean;
+  onCreateDataset: () => void;
+  onGrade: () => void;
+  onBuildAndGrade: () => void;
+  onViewRun: (run: EvalRun) => void;
+}) => {
+  const Icon = entry.icon;
+  const latestRun = entry.latestRun;
+  const isBusy = datasetLoading || judgeLoading;
+
+  return (
+    <div
+      className={`flex flex-col gap-3 rounded-xl border p-5 transition-colors hover:bg-muted/50 ${
+        entry.kind === "custom"
+          ? "border-dashed border-border/80 bg-muted/20"
+          : "border-border/60 bg-muted/30"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div
+          className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+            entry.kind === "custom"
+              ? "bg-amber-500/10 text-amber-600"
+              : "bg-primary/10 text-primary"
+          }`}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="flex items-center gap-1">
+          <Badge variant={polarityBadgeVariant[entry.polarity]} className="text-[10px] uppercase">
+            {entry.polarity}
+          </Badge>
+          {!entry.isBuilt && (
+            <Badge variant="outline" className="text-[10px]">
+              Not built
+            </Badge>
+          )}
+        </div>
+      </div>
+      <div className="flex-1 space-y-2">
+        <p className="font-semibold text-sm">{entry.title}</p>
+        <p className="text-sm text-muted-foreground line-clamp-2">{entry.description}</p>
+        <p className="text-xs text-muted-foreground">
+          {entry.isBuilt
+            ? `${entry.itemCount} examples · updated ${formatDateTime(entry.latestItemAt)}`
+            : "No examples yet — create from production traces"}
+        </p>
+        {latestRun?.status === "completed" && (
+          <div className="rounded-lg border bg-background/60 p-2 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">Last grade</span>
+              <span className="font-semibold">{formatPercent(latestRun.overallScore)}</span>
+            </div>
+            {typeof latestRun.passRate === "number" && (
+              <p className="text-muted-foreground mt-1">
+                {Math.round(latestRun.passRate * 100)}% pass · {latestRun.passedCount} passed ·{" "}
+                {latestRun.failedCount} failed
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col gap-2">
+        {!entry.isBuilt ? (
+          <>
+            <Button size="sm" variant="outline" disabled={isBusy} onClick={onCreateDataset}>
+              <Database className="w-4 h-4 mr-2" />
+              {datasetLoading ? "Creating..." : "Create dataset"}
+            </Button>
+            <Button
+              size="sm"
+              className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90"
+              disabled={isBusy}
+              onClick={onBuildAndGrade}
+            >
+              <Gavel className="w-4 h-4 mr-2" />
+              {judgeLoading ? "Working..." : "Build & grade"}
+            </Button>
+          </>
+        ) : (
+          <div className="flex gap-2">
+            {latestRun && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => onViewRun(latestRun)}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                View
+              </Button>
+            )}
+            <Button
+              size="sm"
+              className="flex-1 bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90"
+              disabled={isBusy}
+              onClick={onGrade}
+            >
+              <Gavel className="w-4 h-4 mr-2" />
+              {judgeLoading ? "Grading..." : "Grade"}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const CustomEvalTypeDialog = ({
+  open,
+  onOpenChange,
+  form,
+  onFormChange,
+  saving,
+  onSubmit,
+  onReset,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  form: {
+    name: string;
+    description: string;
+    polarity: EvalDatasetPolarity;
+    traceSource: EvalTraceSource;
+    confidenceMin: string;
+    confidenceMax: string;
+    hallucinationRiskMax: string;
+    groundednessScoreMin: string;
+    usedFallback: "any" | "true" | "false";
+    sources: string;
+    latencyMsMin: string;
+    userRatingMin: string;
+    handoffStatus: string;
+  };
+  onFormChange: Dispatch<SetStateAction<typeof form>>;
+  saving: boolean;
+  onSubmit: () => void;
+  onReset: () => void;
+}) => (
+  <Dialog
+    open={open}
+    onOpenChange={(nextOpen) => {
+      onOpenChange(nextOpen);
+      if (!nextOpen) onReset();
+    }}
+  >
+    <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Create custom eval type</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4 pt-2">
+        <div className="space-y-2">
+          <Label htmlFor="custom-type-name">Name</Label>
+          <Input
+            id="custom-type-name"
+            placeholder="e.g. Unanswered pricing questions"
+            value={form.name}
+            onChange={(e) => onFormChange((prev) => ({ ...prev, name: e.target.value }))}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="custom-type-description">Description</Label>
+          <Textarea
+            id="custom-type-description"
+            placeholder="What traces should this eval type capture?"
+            value={form.description}
+            onChange={(e) => onFormChange((prev) => ({ ...prev, description: e.target.value }))}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Polarity</Label>
+            <Select
+              value={form.polarity}
+              onValueChange={(value: EvalDatasetPolarity) =>
+                onFormChange((prev) => ({ ...prev, polarity: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="negative">Negative (regression)</SelectItem>
+                <SelectItem value="positive">Positive (gold standard)</SelectItem>
+                <SelectItem value="neutral">Neutral</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Trace source</Label>
+            <Select
+              value={form.traceSource}
+              onValueChange={(value: EvalTraceSource) =>
+                onFormChange((prev) => ({ ...prev, traceSource: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="interaction_metrics">Bot interactions</SelectItem>
+                <SelectItem value="handoff_sessions">Handoff sessions</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {form.traceSource === "interaction_metrics" ? (
+          <div className="space-y-3 rounded-lg border p-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Trace filters
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Min confidence (0–1)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="1"
+                  value={form.confidenceMin}
+                  onChange={(e) =>
+                    onFormChange((prev) => ({ ...prev, confidenceMin: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Max confidence (0–1)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="1"
+                  value={form.confidenceMax}
+                  onChange={(e) =>
+                    onFormChange((prev) => ({ ...prev, confidenceMax: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Max hallucination risk</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="1"
+                  value={form.hallucinationRiskMax}
+                  onChange={(e) =>
+                    onFormChange((prev) => ({ ...prev, hallucinationRiskMax: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Min groundedness</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="1"
+                  value={form.groundednessScoreMin}
+                  onChange={(e) =>
+                    onFormChange((prev) => ({ ...prev, groundednessScoreMin: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Used fallback</Label>
+                <Select
+                  value={form.usedFallback}
+                  onValueChange={(value: "any" | "true" | "false") =>
+                    onFormChange((prev) => ({ ...prev, usedFallback: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any</SelectItem>
+                    <SelectItem value="true">Yes only</SelectItem>
+                    <SelectItem value="false">No only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Min latency (ms)</Label>
+                <Input
+                  type="number"
+                  value={form.latencyMsMin}
+                  onChange={(e) =>
+                    onFormChange((prev) => ({ ...prev, latencyMsMin: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Answer sources (comma-separated)</Label>
+              <Input
+                placeholder="qa, llm, dataset, none"
+                value={form.sources}
+                onChange={(e) => onFormChange((prev) => ({ ...prev, sources: e.target.value }))}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3 rounded-lg border p-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Handoff filters
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Min user rating (1–5)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="5"
+                  value={form.userRatingMin}
+                  onChange={(e) =>
+                    onFormChange((prev) => ({ ...prev, userRatingMin: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Statuses (comma-separated)</Label>
+                <Input
+                  placeholder="resolved, active"
+                  value={form.handoffStatus}
+                  onChange={(e) =>
+                    onFormChange((prev) => ({ ...prev, handoffStatus: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              onOpenChange(false);
+              onReset();
+            }}
+          >
+            Cancel
+          </Button>
+          <Button disabled={saving} onClick={onSubmit}>
+            {saving ? "Creating..." : "Create type"}
+          </Button>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+);
+
+const JudgeRunCard = ({
+  run,
+  onView,
+}: {
+  run: EvalRun;
+  onView: () => void;
+}) => {
+  const statusColor =
+    run.status === "completed"
+      ? "text-emerald-600"
+      : run.status === "failed"
+        ? "text-destructive"
+        : "text-amber-600";
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-gradient-to-br from-purple-600/5 via-primary/5 to-cyan-500/5 p-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-medium text-sm">{run.datasetName}</p>
+            <Badge variant="outline" className={`text-[10px] capitalize ${statusColor}`}>
+              {run.status}
+            </Badge>
+            {run.polarity && (
+              <Badge variant={polarityBadgeVariant[run.polarity]} className="text-[10px] uppercase">
+                {run.polarity}
+              </Badge>
+            )}
+            {run.evalMode && (
+              <Badge variant="secondary" className="text-[10px]">
+                {run.evalMode.replace(/_/g, " ")}
+              </Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {run.itemCount || run.explanations?.length || 0} items ·{" "}
+            {formatDateTime(run.completedAt || run.createdAt)} · {run.judgeModel}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {run.status === "completed" && (
+            <div className="text-right">
+              <p className="text-lg font-bold">{formatPercent(run.overallScore)}</p>
+              {typeof run.passRate === "number" && (
+                <p className="text-xs text-muted-foreground">
+                  {Math.round(run.passRate * 100)}% pass
+                </p>
+              )}
+            </div>
+          )}
+          <Button size="sm" variant="outline" onClick={onView}>
+            <Eye className="w-4 h-4 mr-1" />
+            Details
+          </Button>
+        </div>
+      </div>
+      {run.status === "failed" && run.error && (
+        <p className="text-sm text-destructive mt-2">{run.error}</p>
+      )}
+    </div>
+  );
+};
+
+const JudgeRunDetail = ({ run }: { run: EvalRun }) => (
+  <div className="space-y-5">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="rounded-lg border p-3">
+        <p className="text-xs text-muted-foreground">Overall score</p>
+        <p className="text-xl font-bold">{formatPercent(run.overallScore)}</p>
+      </div>
+      <div className="rounded-lg border p-3">
+        <p className="text-xs text-muted-foreground">Pass rate</p>
+        <p className="text-xl font-bold">
+          {typeof run.passRate === "number" ? `${Math.round(run.passRate * 100)}%` : "N/A"}
+        </p>
+      </div>
+      <div className="rounded-lg border p-3">
+        <p className="text-xs text-muted-foreground">Passed</p>
+        <p className="text-xl font-bold text-emerald-600">{run.passedCount ?? 0}</p>
+      </div>
+      <div className="rounded-lg border p-3">
+        <p className="text-xs text-muted-foreground">Failed</p>
+        <p className="text-xl font-bold text-destructive">{run.failedCount ?? 0}</p>
+      </div>
+    </div>
+
+    {run.criteria && (
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Criteria breakdown</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {Object.entries(run.criteria).map(([key, value]) => (
+            <Score
+              key={key}
+              label={judgeCriteriaLabels[key] || key.replace(/([A-Z])/g, " $1")}
+              value={value}
+            />
+          ))}
+        </div>
+      </div>
+    )}
+
+    <div className="space-y-3">
+      <p className="text-sm font-medium">Per-item verdicts</p>
+      {(run.explanations || []).map((item, index) => (
+        <div key={`${item.itemId}-${index}`} className="rounded-lg border p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium">{item.question}</p>
+              {item.sourceType && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Source: {item.sourceType.replace(/_/g, " ")}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <Badge
+                variant={
+                  item.verdict === "pass"
+                    ? "default"
+                    : item.verdict === "fail"
+                      ? "destructive"
+                      : "secondary"
+                }
+              >
+                {item.verdict || "review"}
+              </Badge>
+              <span className="text-sm font-semibold">
+                {formatPercent(item.overallItemScore ?? null)}
+              </span>
+            </div>
+          </div>
+          {item.scores && (
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(item.scores).map(([key, value]) => (
+                <Badge key={key} variant="outline" className="text-[10px]">
+                  {judgeCriteriaLabels[key] || key}: {formatPercent(value)}
+                </Badge>
+              ))}
+            </div>
+          )}
+          <p className="text-sm text-muted-foreground">{item.explanation}</p>
+        </div>
+      ))}
+    </div>
   </div>
 );
 

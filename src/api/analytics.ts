@@ -95,9 +95,56 @@ export const askBotSelfIntrospection = async (
 
 export type EvalDatasetSourceType =
   | "low_confidence_traces"
+  | "high_confidence_traces"
   | "handoff_sessions"
+  | "resolved_handoffs"
   | "negative_feedback"
-  | "unanswered_questions";
+  | "positive_feedback"
+  | "unanswered_questions"
+  | "grounded_answers"
+  | "hallucination_risk"
+  | "qa_retrieval_hits"
+  | "slow_responses"
+  | "custom";
+
+export type EvalDatasetPolarity = "positive" | "negative" | "neutral";
+
+export type EvalTraceSource = "interaction_metrics" | "handoff_sessions";
+
+export interface EvalTraceFilters {
+  confidenceMin?: number | null;
+  confidenceMax?: number | null;
+  hallucinationRiskMin?: number | null;
+  hallucinationRiskMax?: number | null;
+  groundednessScoreMin?: number | null;
+  groundednessScoreMax?: number | null;
+  usedFallback?: boolean | null;
+  sources?: string[];
+  userEmotions?: string[];
+  latencyMsMin?: number | null;
+  latencyMsMax?: number | null;
+  retrievalScoreMin?: number | null;
+}
+
+export interface EvalHandoffFilters {
+  statuses?: string[];
+  escalated?: boolean | null;
+  userRatingMin?: number | null;
+  userRatingMax?: number | null;
+  hasFeedback?: boolean | null;
+}
+
+export interface BotEvalDatasetType {
+  _id: string;
+  name: string;
+  description: string;
+  polarity: EvalDatasetPolarity;
+  traceSource: EvalTraceSource;
+  traceFilters: EvalTraceFilters;
+  handoffFilters: EvalHandoffFilters;
+  datasetName?: string | null;
+  createdAt: string;
+}
 
 export const getBotEvalDatasets = async (botId: string) => {
   const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/eval-datasets`, {
@@ -113,7 +160,8 @@ export const getBotEvalDatasets = async (botId: string) => {
 
 export const buildBotEvalDataset = async (
   botId: string,
-  sourceType: EvalDatasetSourceType
+  sourceType: EvalDatasetSourceType,
+  customTypeId?: string
 ) => {
   const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/eval-datasets/build`, {
     method: "POST",
@@ -121,7 +169,7 @@ export const buildBotEvalDataset = async (
       "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
-    body: JSON.stringify({ sourceType }),
+    body: JSON.stringify({ sourceType, customTypeId }),
   });
 
   const data = await res.json();
@@ -132,14 +180,95 @@ export const buildBotEvalDataset = async (
   return data;
 };
 
-export const runBotLLMJudge = async (botId: string, datasetName: string) => {
+export const getBotEvalDatasetTypes = async (botId: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/eval-dataset-types`, {
+    headers: getAuthHeaders(),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to fetch eval dataset types");
+  }
+
+  return data;
+};
+
+export const createBotEvalDatasetType = async (
+  botId: string,
+  payload: {
+    name: string;
+    description?: string;
+    polarity?: EvalDatasetPolarity;
+    traceSource?: EvalTraceSource;
+    traceFilters?: EvalTraceFilters;
+    handoffFilters?: EvalHandoffFilters;
+    datasetName?: string;
+  }
+) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/eval-dataset-types`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to create eval dataset type");
+  }
+
+  return data;
+};
+
+export const deleteBotEvalDatasetType = async (botId: string, typeId: string) => {
+  const res = await fetch(
+    `${API_BASE_URL}/api/bots/${botId}/eval-dataset-types/${typeId}`,
+    {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    }
+  );
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to delete eval dataset type");
+  }
+
+  return data;
+};
+
+export type JudgeEvalMode = "standard" | "regression" | "gold_standard" | "custom";
+
+export interface JudgeCriterion {
+  key: string;
+  label: string;
+  description: string;
+}
+
+export interface JudgeEvalModeOption {
+  key: JudgeEvalMode;
+  label: string;
+  description: string;
+}
+
+export const runBotLLMJudge = async (
+  botId: string,
+  options: {
+    datasetName: string;
+    evalMode?: JudgeEvalMode;
+    selectedCriteria?: string[];
+    passThreshold?: number;
+  }
+) => {
   const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/evals/judge`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
-    body: JSON.stringify({ datasetName }),
+    body: JSON.stringify(options),
   });
 
   const data = await res.json();
@@ -488,6 +617,9 @@ export interface EvalDatasetSummary {
   sourceTypes: string[];
   itemCount: number;
   latestItemAt: string;
+  polarity?: EvalDatasetPolarity | "mixed";
+  description?: string;
+  latestRun?: EvalRun | null;
 }
 
 export interface EvalRun {
@@ -495,12 +627,24 @@ export interface EvalRun {
   datasetName: string;
   status: "running" | "completed" | "failed";
   judgeModel: string;
+  evalMode?: JudgeEvalMode;
+  polarity?: EvalDatasetPolarity | "mixed";
+  sourceTypes?: string[];
+  itemCount?: number;
+  passThreshold?: number;
+  passedCount?: number;
+  failedCount?: number;
+  passRate?: number | null;
+  selectedCriteria?: string[];
   criteria?: Record<string, number>;
   overallScore: number | null;
   explanations: Array<{
     itemId: string;
     question: string;
     scores: Record<string, number>;
+    overallItemScore?: number | null;
+    verdict?: "pass" | "fail" | "review";
+    sourceType?: string | null;
     explanation: string;
   }>;
   error?: string | null;
@@ -508,10 +652,34 @@ export interface EvalRun {
   completedAt?: string | null;
 }
 
+export interface JudgeSummary {
+  totalDatasets: number;
+  totalItems: number;
+  totalRuns: number;
+  completedRuns: number;
+  averageOverallScore: number | null;
+  latestRun: EvalRun | null;
+}
+
+export interface JudgeConfig {
+  criteria: JudgeCriterion[];
+  evalModes: JudgeEvalModeOption[];
+  defaultPassThreshold: number;
+  sourceTypePolarity: Record<string, EvalDatasetPolarity>;
+}
+
 export interface BotEvalDatasetsResponse {
   datasets: EvalDatasetSummary[];
   items: Array<Record<string, unknown>>;
   runs: EvalRun[];
+  customTypes?: BotEvalDatasetType[];
+  builtinTypes?: Array<{
+    sourceType: EvalDatasetSourceType;
+    datasetName: string;
+    polarity?: EvalDatasetPolarity;
+  }>;
+  judgeSummary?: JudgeSummary;
+  judgeConfig?: JudgeConfig;
 }
 
 // Regression Test Types
