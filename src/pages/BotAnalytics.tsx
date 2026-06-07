@@ -463,7 +463,7 @@ const BotAnalytics = () => {
             ];
 
             return (
-              <Card className="overflow-hidden border-border/60 shadow-sm">
+              <Card className="overflow-hidden shadow-sm">
                 <CardContent className="p-0">
                   <div className="grid gap-6 lg:grid-cols-[300px_1fr] lg:items-stretch">
                     {/* Score ring */}
