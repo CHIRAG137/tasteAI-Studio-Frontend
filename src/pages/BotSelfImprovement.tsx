@@ -582,8 +582,7 @@ const BotSelfImprovement = () => {
                   </div>
                   <Button
                     size="sm"
-                    variant="secondary"
-                    className="w-full"
+                    className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90 shadow-md"
                     disabled={datasetLoading === source.sourceType}
                     onClick={() => buildDataset(source.sourceType)}
                   >
