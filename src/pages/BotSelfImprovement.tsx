@@ -983,6 +983,33 @@ const Metric = ({ label, value }: { label: string; value: number }) => (
   </div>
 );
 
+const SectionHeader = ({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: typeof Database;
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+}) => (
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex items-start gap-3">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-cyan-500 text-white shadow-md">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <h2 className="text-lg font-semibold leading-tight">{title}</h2>
+        {description && (
+          <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+        )}
+      </div>
+    </div>
+    {action}
+  </div>
+);
+
 const healthStatusStyles: Record<string, { ring: string; text: string; badge: string; label: string }> = {
   healthy: {
     ring: "stroke-emerald-500",
