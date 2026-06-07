@@ -597,17 +597,28 @@ const BotSelfImprovement = () => {
 
           {/* LLM as Judge Tab */}
           <TabsContent value="llm-judge" className="mt-0 space-y-4">
-            <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Gavel className="w-5 h-5 text-primary" />
-                    LLM-as-a-Judge Bot Grader
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+            <SectionHeader
+              icon={Gavel}
+              title="LLM as Judge"
+              description="Grade your eval datasets on relevance, groundedness, tone, and more."
+              action={
+                (evalData?.datasets?.length || 0) > 0 ? (
+                  <Button
+                    disabled={judgeLoading}
+                    onClick={() => runJudge("all")}
+                    className="bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90"
+                  >
+                    <Gavel className="w-4 h-4 mr-2" />
+                    {judgeLoading ? "Running judge..." : "Grade all datasets"}
+                  </Button>
+                ) : undefined
+              }
+            />
+            <Card className="border-border/60 shadow-sm">
+                <CardContent className="space-y-4 pt-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {(evalData?.datasets || []).map((dataset) => (
-                      <div key={dataset.datasetName} className="rounded-lg border p-3">
+                      <div key={dataset.datasetName} className="rounded-xl border border-border/60 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="font-medium text-sm">{dataset.datasetName}</p>
@@ -627,20 +638,8 @@ const BotSelfImprovement = () => {
                     ))}
                   </div>
 
-                  {(evalData?.datasets?.length || 0) > 0 && (
-                    <Button
-                      className="w-full"
-                      variant="outline"
-                      disabled={judgeLoading}
-                      onClick={() => runJudge("all")}
-                    >
-                      <Gavel className="w-4 h-4 mr-2" />
-                      {judgeLoading ? "Running judge..." : "Grade all datasets"}
-                    </Button>
-                  )}
-
                   {(evalData?.runs || []).slice(0, 1).map((run) => (
-                    <div key={run._id} className="rounded-lg bg-muted/50 p-4 space-y-4">
+                    <div key={run._id} className="rounded-xl border border-border/60 bg-gradient-to-br from-purple-600/5 via-primary/5 to-cyan-500/5 p-4 space-y-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="font-medium">Latest judge run</p>
