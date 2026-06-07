@@ -679,27 +679,22 @@ const BotSelfImprovement = () => {
 
           {/* Regression Tests Tab */}
           <TabsContent value="regression-tests" className="mt-0 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TestTubes className="w-5 h-5 text-primary" />
-                  Regression Testing
-                </CardTitle>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Turn bad production conversations into permanent test cases. Re-run tests when
-                  your bot is updated to catch regressions and improvements.
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <SectionHeader
+              icon={TestTubes}
+              title="Regression Tests"
+              description="Turn bad production conversations into permanent test cases and re-run them after updates."
+            />
+            <Card className="border-border/60 shadow-sm">
+              <CardContent className="space-y-4 pt-6">
                 {regressionTests.length === 0 ? (
-                  <div className="rounded-lg border-2 border-dashed p-8 text-center">
+                  <div className="rounded-xl border-2 border-dashed border-border/60 p-10 text-center">
                     <TestTubes className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
                     <p className="font-semibold">No regression tests yet</p>
                     <p className="text-sm text-muted-foreground mt-1">
                       Create test cases from your production conversations to catch regressions.
                     </p>
                     <Button
-                      className="mt-4"
+                      className="mt-4 bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90"
                       onClick={createRegressionTestSuite}
                       disabled={regressionLoading}
                     >
