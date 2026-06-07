@@ -562,36 +562,37 @@ const BotSelfImprovement = () => {
 
           {/* Eval Datasets Tab */}
           <TabsContent value="eval-datasets" className="mt-0 space-y-4">
-            <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileStack className="w-5 h-5 text-primary" />
-                    One-Click Eval Dataset Builder
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {datasetSources.map((source) => (
-                    <div
-                      key={source.sourceType}
-                      className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div>
-                        <p className="font-medium text-sm">{source.title}</p>
-                        <p className="text-sm text-muted-foreground">{source.description}</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={datasetLoading === source.sourceType}
-                        onClick={() => buildDataset(source.sourceType)}
-                      >
-                        <Database className="w-4 h-4 mr-2" />
-                        {datasetLoading === source.sourceType ? "Creating..." : "Create dataset"}
-                      </Button>
-                    </div>
-                  ))}
-                </CardContent>
-            </Card>
+            <SectionHeader
+              icon={FileStack}
+              title="Eval Datasets"
+              description="One-click builders that turn production signals into evaluation datasets."
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {datasetSources.map((source) => (
+                <div
+                  key={source.sourceType}
+                  className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/30 p-5 transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Database className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm">{source.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{source.description}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="w-full"
+                    disabled={datasetLoading === source.sourceType}
+                    onClick={() => buildDataset(source.sourceType)}
+                  >
+                    <Database className="w-4 h-4 mr-2" />
+                    {datasetLoading === source.sourceType ? "Creating..." : "Create dataset"}
+                  </Button>
+                </div>
+              ))}
+            </div>
           </TabsContent>
 
           {/* LLM as Judge Tab */}
