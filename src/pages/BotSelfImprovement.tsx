@@ -2663,9 +2663,8 @@ const JudgeRunHistoryPanel = ({
         )}
       </div>
 
-      <Card className="border-border/60">
-        <CardContent className="space-y-4 pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 rounded-xl border border-border/50 bg-muted/30 p-4">
             <div className="space-y-2">
               <Label>Dataset</Label>
               <Select
@@ -2824,8 +2823,7 @@ const JudgeRunHistoryPanel = ({
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 };
