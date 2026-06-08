@@ -329,6 +329,7 @@ const BotSelfImprovement = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [datasetLoading, setDatasetLoading] = useState<string | null>(null);
+  const [evalDatasetTab, setEvalDatasetTab] = useState("negative");
   const [judgeLoading, setJudgeLoading] = useState<string | null>(null);
   const [judgeEvalMode, setJudgeEvalMode] = useState<JudgeEvalMode>("standard");
   const [judgePassThreshold, setJudgePassThreshold] = useState(0.7);
@@ -1264,52 +1265,56 @@ const BotSelfImprovement = () => {
               description="Build regression and gold-standard datasets from production traces — failures to fix and successes to preserve."
             />
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <ThumbsDown className="h-4 w-4 text-destructive" />
-                <h3 className="text-sm font-semibold">Regression gaps</h3>
-                <span className="text-xs text-muted-foreground">
-                  Negative signals — failures, gaps, and risks to evaluate and improve
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {negativeDatasetSources.map(renderDatasetSourceCard)}
-              </div>
-            </div>
+            <Tabs value={evalDatasetTab} onValueChange={setEvalDatasetTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:inline-grid">
+                <TabsTrigger value="negative" className="gap-1.5">
+                  <ThumbsDown className="h-4 w-4" />
+                  Regression gaps
+                </TabsTrigger>
+                <TabsTrigger value="positive" className="gap-1.5">
+                  <ThumbsUp className="h-4 w-4" />
+                  Gold standard
+                </TabsTrigger>
+                <TabsTrigger value="custom" className="gap-1.5">
+                  <Zap className="h-4 w-4" />
+                  Custom
+                </TabsTrigger>
+              </TabsList>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <ThumbsUp className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold">Gold standard</h3>
-                <span className="text-xs text-muted-foreground">
-                  Positive signals — high-quality answers to benchmark against
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {positiveDatasetSources.map(renderDatasetSourceCard)}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-amber-500" />
-                  <h3 className="text-sm font-semibold">Custom eval types</h3>
-                  <span className="text-xs text-muted-foreground">
-                    Define your own trace filters and evaluate on your criteria
-                  </span>
+              <TabsContent value="negative" className="mt-4 space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Negative signals — failures, gaps, and risks to evaluate and improve.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {negativeDatasetSources.map(renderDatasetSourceCard)}
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCustomTypeDialogOpen(true)}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create custom type
-                </Button>
-              </div>
+              </TabsContent>
 
-              {customTypes.length > 0 ? (
+              <TabsContent value="positive" className="mt-4 space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Positive signals — high-quality answers to benchmark against.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {positiveDatasetSources.map(renderDatasetSourceCard)}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="custom" className="mt-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    Define your own trace filters and evaluate on your criteria.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCustomTypeDialogOpen(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create custom type
+                  </Button>
+                </div>
+
+                {customTypes.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {customTypes.map((type) => (
                     <div
@@ -1356,7 +1361,7 @@ const BotSelfImprovement = () => {
                     </div>
                   ))}
                 </div>
-              ) : (
+                ) : (
                 <Card className="border-dashed">
                   <CardContent className="py-8 text-center">
                     <Zap className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
@@ -1367,8 +1372,9 @@ const BotSelfImprovement = () => {
                     </p>
                   </CardContent>
                 </Card>
-              )}
-            </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           {/* LLM as Judge Tab */}
