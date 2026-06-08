@@ -329,6 +329,7 @@ const BotSelfImprovement = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [datasetLoading, setDatasetLoading] = useState<string | null>(null);
+  const [evalDatasetTab, setEvalDatasetTab] = useState("negative");
   const [judgeLoading, setJudgeLoading] = useState<string | null>(null);
   const [judgeEvalMode, setJudgeEvalMode] = useState<JudgeEvalMode>("standard");
   const [judgePassThreshold, setJudgePassThreshold] = useState(0.7);
