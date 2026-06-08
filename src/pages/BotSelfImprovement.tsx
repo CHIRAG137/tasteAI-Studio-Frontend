@@ -330,6 +330,7 @@ const BotSelfImprovement = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [datasetLoading, setDatasetLoading] = useState<string | null>(null);
   const [evalDatasetTab, setEvalDatasetTab] = useState("negative");
+  const [judgeDatasetTab, setJudgeDatasetTab] = useState("negative");
   const [judgeLoading, setJudgeLoading] = useState<string | null>(null);
   const [judgeEvalMode, setJudgeEvalMode] = useState<JudgeEvalMode>("standard");
   const [judgePassThreshold, setJudgePassThreshold] = useState(0.7);
@@ -1518,102 +1519,107 @@ const BotSelfImprovement = () => {
               </CardContent>
             </Card>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <ThumbsDown className="h-4 w-4 text-destructive" />
-                  <h3 className="text-sm font-semibold">Regression datasets</h3>
+            <Tabs value={judgeDatasetTab} onValueChange={setJudgeDatasetTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:inline-grid">
+                <TabsTrigger value="negative" className="gap-1.5">
+                  <ThumbsDown className="h-4 w-4" />
+                  Regression
+                </TabsTrigger>
+                <TabsTrigger value="positive" className="gap-1.5">
+                  <ThumbsUp className="h-4 w-4" />
+                  Gold standard
+                </TabsTrigger>
+                <TabsTrigger value="custom" className="gap-1.5">
+                  <Zap className="h-4 w-4" />
+                  Custom
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="negative" className="mt-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
                   <span className="text-xs text-muted-foreground">
                     All built-in negative eval types
                   </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!!judgeLoading}
+                    onClick={() =>
+                      runJudgeBatch(
+                        judgeCatalog.negative
+                          .filter((entry) => entry.isBuilt)
+                          .map((entry) => entry.datasetName),
+                        "batch-negative"
+                      )
+                    }
+                  >
+                    {judgeLoading === "batch-negative" ? "Grading..." : "Grade all built regression"}
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!!judgeLoading}
-                  onClick={() =>
-                    runJudgeBatch(
-                      judgeCatalog.negative
-                        .filter((entry) => entry.isBuilt)
-                        .map((entry) => entry.datasetName),
-                      "batch-negative"
-                    )
-                  }
-                >
-                  {judgeLoading === "batch-negative" ? "Grading..." : "Grade all built regression"}
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {judgeCatalog.negative.map(renderJudgeCatalogCard)}
-              </div>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {judgeCatalog.negative.map(renderJudgeCatalogCard)}
+                </div>
+              </TabsContent>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <ThumbsUp className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">Gold standard datasets</h3>
+              <TabsContent value="positive" className="mt-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
                   <span className="text-xs text-muted-foreground">
                     All built-in positive eval types
                   </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!!judgeLoading}
+                    onClick={() =>
+                      runJudgeBatch(
+                        judgeCatalog.positive
+                          .filter((entry) => entry.isBuilt)
+                          .map((entry) => entry.datasetName),
+                        "batch-positive"
+                      )
+                    }
+                  >
+                    {judgeLoading === "batch-positive"
+                      ? "Grading..."
+                      : "Grade all built gold standard"}
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!!judgeLoading}
-                  onClick={() =>
-                    runJudgeBatch(
-                      judgeCatalog.positive
-                        .filter((entry) => entry.isBuilt)
-                        .map((entry) => entry.datasetName),
-                      "batch-positive"
-                    )
-                  }
-                >
-                  {judgeLoading === "batch-positive"
-                    ? "Grading..."
-                    : "Grade all built gold standard"}
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {judgeCatalog.positive.map(renderJudgeCatalogCard)}
-              </div>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {judgeCatalog.positive.map(renderJudgeCatalogCard)}
+                </div>
+              </TabsContent>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-amber-500" />
-                  <h3 className="text-sm font-semibold">Custom eval types</h3>
+              <TabsContent value="custom" className="mt-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
                   <span className="text-xs text-muted-foreground">
                     User-defined trace filters — fetched from your bot
                   </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCustomTypeDialogOpen(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create custom type
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCustomTypeDialogOpen(true)}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create custom type
-                </Button>
-              </div>
-              {judgeCatalog.custom.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {judgeCatalog.custom.map(renderJudgeCatalogCard)}
-                </div>
-              ) : (
-                <Card className="border-dashed">
-                  <CardContent className="py-8 text-center">
-                    <Zap className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-sm font-medium">No custom eval types yet</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Create a custom type here or in the Eval Datasets tab, then build and grade it.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+                {judgeCatalog.custom.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {judgeCatalog.custom.map(renderJudgeCatalogCard)}
+                  </div>
+                ) : (
+                  <Card className="border-dashed">
+                    <CardContent className="py-8 text-center">
+                      <Zap className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-sm font-medium">No custom eval types yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Create a custom type here or in the Eval Datasets tab, then build and grade it.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            </Tabs>
 
             {judgeCatalog.other.length > 0 && (
               <div className="space-y-3">
