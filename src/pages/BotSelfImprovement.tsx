@@ -2823,8 +2823,7 @@ const JudgeRunHistoryPanel = ({
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 };
