@@ -31,8 +31,12 @@ import {
   Eye,
   Target,
   BarChart3,
+  Rocket,
+  ShieldAlert,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import { BotAutopilotPanel } from "@/components/BotAutopilotPanel";
+import { BotMonitoringPanel } from "@/components/BotMonitoringPanel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +54,15 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import {
   Dialog,
   DialogContent,
@@ -229,6 +242,44 @@ const formatDateTime = (value?: string | null) => {
   return new Date(value).toLocaleString();
 };
 
+const JUDGE_HISTORY_PAGE_SIZE = 5;
+
+type JudgeHistoryStatusFilter = "all" | "completed" | "failed" | "running";
+type JudgeHistoryPolarityFilter = "all" | EvalDatasetPolarity | "mixed";
+type JudgeHistoryEvalModeFilter = "all" | JudgeEvalMode;
+
+function getVisiblePages(
+  currentPage: number,
+  totalPages: number
+): Array<number | "ellipsis"> {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages: Array<number | "ellipsis"> = [1];
+
+  if (currentPage > 3) {
+    pages.push("ellipsis");
+  }
+
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+
+  for (let page = start; page <= end; page += 1) {
+    pages.push(page);
+  }
+
+  if (currentPage < totalPages - 2) {
+    pages.push("ellipsis");
+  }
+
+  if (totalPages > 1) {
+    pages.push(totalPages);
+  }
+
+  return pages;
+}
+
 const builtinDatasetNames: Record<string, string> = {
   low_confidence_traces: "Low Confidence Traces",
   high_confidence_traces: "High Confidence Traces",
@@ -284,6 +335,13 @@ const BotSelfImprovement = () => {
   const [judgeSelectedCriteria, setJudgeSelectedCriteria] = useState<string[]>([]);
   const [selectedJudgeRun, setSelectedJudgeRun] = useState<EvalRun | null>(null);
   const [judgeRunModalOpen, setJudgeRunModalOpen] = useState(false);
+  const [judgeHistoryPage, setJudgeHistoryPage] = useState(1);
+  const [judgeHistoryFilters, setJudgeHistoryFilters] = useState({
+    datasetName: "all",
+    status: "all" as JudgeHistoryStatusFilter,
+    polarity: "all" as JudgeHistoryPolarityFilter,
+    evalMode: "all" as JudgeHistoryEvalModeFilter,
+  });
   const [dashboard, setDashboard] = useState<BotSelfImprovementDashboard | null>(null);
   const [evalData, setEvalData] = useState<BotEvalDatasetsResponse | null>(null);
   const [filter, setFilter] = useState<ImprovementItem["type"] | "all">("all");
@@ -732,6 +790,65 @@ const BotSelfImprovement = () => {
     [judgeCatalog]
   );
 
+  const judgeHistoryDatasetOptions = useMemo(() => {
+    const names = new Set<string>();
+    (evalData?.runs || []).forEach((run) => {
+      if (run.datasetName) names.add(run.datasetName);
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [evalData?.runs]);
+
+  const filteredJudgeRuns = useMemo(() => {
+    return (evalData?.runs || []).filter((run) => {
+      if (
+        judgeHistoryFilters.datasetName !== "all" &&
+        run.datasetName !== judgeHistoryFilters.datasetName
+      ) {
+        return false;
+      }
+      if (
+        judgeHistoryFilters.status !== "all" &&
+        run.status !== judgeHistoryFilters.status
+      ) {
+        return false;
+      }
+      if (
+        judgeHistoryFilters.polarity !== "all" &&
+        run.polarity !== judgeHistoryFilters.polarity
+      ) {
+        return false;
+      }
+      if (
+        judgeHistoryFilters.evalMode !== "all" &&
+        run.evalMode !== judgeHistoryFilters.evalMode
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [evalData?.runs, judgeHistoryFilters]);
+
+  const judgeHistoryTotalPages = Math.max(
+    1,
+    Math.ceil(filteredJudgeRuns.length / JUDGE_HISTORY_PAGE_SIZE)
+  );
+
+  const paginatedJudgeRuns = useMemo(() => {
+    const safePage = Math.min(judgeHistoryPage, judgeHistoryTotalPages);
+    const start = (safePage - 1) * JUDGE_HISTORY_PAGE_SIZE;
+    return filteredJudgeRuns.slice(start, start + JUDGE_HISTORY_PAGE_SIZE);
+  }, [filteredJudgeRuns, judgeHistoryPage, judgeHistoryTotalPages]);
+
+  useEffect(() => {
+    setJudgeHistoryPage(1);
+  }, [judgeHistoryFilters]);
+
+  useEffect(() => {
+    if (judgeHistoryPage > judgeHistoryTotalPages) {
+      setJudgeHistoryPage(judgeHistoryTotalPages);
+    }
+  }, [judgeHistoryPage, judgeHistoryTotalPages]);
+
   const runJudgeBatch = async (datasetNames: string[], loadingKey: string) => {
     if (!botId) return;
     if (!datasetNames.length) {
@@ -996,6 +1113,14 @@ const BotSelfImprovement = () => {
           <TabsTrigger value="regression-tests" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
             <TestTubes className="w-4 h-4" />
             Regression Tests
+          </TabsTrigger>
+          <TabsTrigger value="autopilot" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
+            <Rocket className="w-4 h-4" />
+            Autopilot
+          </TabsTrigger>
+          <TabsTrigger value="monitoring" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
+            <ShieldAlert className="w-4 h-4" />
+            Monitoring
           </TabsTrigger>
         </TabsList>
 
@@ -1497,24 +1622,22 @@ const BotSelfImprovement = () => {
             )}
 
             {(evalData?.runs?.length || 0) > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <History className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-semibold">Judge run history</h3>
-                </div>
-                <div className="space-y-3">
-                  {(evalData?.runs || []).map((run) => (
-                    <JudgeRunCard
-                      key={run._id}
-                      run={run}
-                      onView={() => {
-                        setSelectedJudgeRun(run);
-                        setJudgeRunModalOpen(true);
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
+              <JudgeRunHistoryPanel
+                runs={paginatedJudgeRuns}
+                totalRuns={evalData?.runs?.length || 0}
+                filteredCount={filteredJudgeRuns.length}
+                page={Math.min(judgeHistoryPage, judgeHistoryTotalPages)}
+                totalPages={judgeHistoryTotalPages}
+                pageSize={JUDGE_HISTORY_PAGE_SIZE}
+                filters={judgeHistoryFilters}
+                datasetOptions={judgeHistoryDatasetOptions}
+                onFiltersChange={setJudgeHistoryFilters}
+                onPageChange={setJudgeHistoryPage}
+                onViewRun={(run) => {
+                  setSelectedJudgeRun(run);
+                  setJudgeRunModalOpen(true);
+                }}
+              />
             )}
 
             <Dialog open={judgeRunModalOpen} onOpenChange={setJudgeRunModalOpen}>
@@ -1527,6 +1650,16 @@ const BotSelfImprovement = () => {
                 )}
               </DialogContent>
             </Dialog>
+          </TabsContent>
+
+          {/* Autopilot Tab */}
+          <TabsContent value="autopilot" className="mt-0 space-y-4">
+            {botId ? <BotAutopilotPanel botId={botId} /> : null}
+          </TabsContent>
+
+          {/* Monitoring Tab */}
+          <TabsContent value="monitoring" className="mt-0 space-y-4">
+            {botId ? <BotMonitoringPanel botId={botId} /> : null}
           </TabsContent>
 
           {/* Regression Tests Tab */}
@@ -2445,6 +2578,245 @@ const CustomEvalTypeDialog = ({
     </DialogContent>
   </Dialog>
 );
+
+const JudgeRunHistoryPanel = ({
+  runs,
+  totalRuns,
+  filteredCount,
+  page,
+  totalPages,
+  pageSize,
+  filters,
+  datasetOptions,
+  onFiltersChange,
+  onPageChange,
+  onViewRun,
+}: {
+  runs: EvalRun[];
+  totalRuns: number;
+  filteredCount: number;
+  page: number;
+  totalPages: number;
+  pageSize: number;
+  filters: {
+    datasetName: string;
+    status: JudgeHistoryStatusFilter;
+    polarity: JudgeHistoryPolarityFilter;
+    evalMode: JudgeHistoryEvalModeFilter;
+  };
+  datasetOptions: string[];
+  onFiltersChange: (filters: {
+    datasetName: string;
+    status: JudgeHistoryStatusFilter;
+    polarity: JudgeHistoryPolarityFilter;
+    evalMode: JudgeHistoryEvalModeFilter;
+  }) => void;
+  onPageChange: (page: number) => void;
+  onViewRun: (run: EvalRun) => void;
+}) => {
+  const visiblePages = getVisiblePages(page, totalPages);
+  const showingFrom = filteredCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingTo = Math.min(page * pageSize, filteredCount);
+  const hasActiveFilters =
+    filters.datasetName !== "all" ||
+    filters.status !== "all" ||
+    filters.polarity !== "all" ||
+    filters.evalMode !== "all";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <History className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">Judge run history</h3>
+          <span className="text-xs text-muted-foreground">
+            {filteredCount} of {totalRuns} runs
+          </span>
+        </div>
+        {hasActiveFilters && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() =>
+              onFiltersChange({
+                datasetName: "all",
+                status: "all",
+                polarity: "all",
+                evalMode: "all",
+              })
+            }
+          >
+            Clear filters
+          </Button>
+        )}
+      </div>
+
+      <Card className="border-border/60">
+        <CardContent className="space-y-4 pt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="space-y-2">
+              <Label>Dataset</Label>
+              <Select
+                value={filters.datasetName}
+                onValueChange={(value) =>
+                  onFiltersChange({ ...filters, datasetName: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All datasets" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All datasets</SelectItem>
+                  {datasetOptions.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={filters.status}
+                onValueChange={(value: JudgeHistoryStatusFilter) =>
+                  onFiltersChange({ ...filters, status: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="running">Running</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Polarity</Label>
+              <Select
+                value={filters.polarity}
+                onValueChange={(value: JudgeHistoryPolarityFilter) =>
+                  onFiltersChange({ ...filters, polarity: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All polarities</SelectItem>
+                  <SelectItem value="negative">Negative (regression)</SelectItem>
+                  <SelectItem value="positive">Positive (gold standard)</SelectItem>
+                  <SelectItem value="neutral">Neutral</SelectItem>
+                  <SelectItem value="mixed">Mixed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Eval mode</Label>
+              <Select
+                value={filters.evalMode}
+                onValueChange={(value: JudgeHistoryEvalModeFilter) =>
+                  onFiltersChange({ ...filters, evalMode: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All modes</SelectItem>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="regression">Regression</SelectItem>
+                  <SelectItem value="gold_standard">Gold standard</SelectItem>
+                  <SelectItem value="custom">Custom criteria</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {runs.length > 0 ? (
+            <div className="space-y-3">
+              {runs.map((run) => (
+                <JudgeRunCard key={run._id} run={run} onView={() => onViewRun(run)} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed py-10 text-center">
+              <History className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+              <p className="text-sm font-medium">No runs match these filters</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Try clearing filters or selecting a different dataset or status.
+              </p>
+            </div>
+          )}
+
+          {filteredCount > 0 && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2 border-t">
+              <p className="text-xs text-muted-foreground">
+                Showing {showingFrom}–{showingTo} of {filteredCount} runs
+              </p>
+              {totalPages > 1 && (
+                <Pagination className="mx-0 w-auto justify-end">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        className={
+                          page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"
+                        }
+                        onClick={(event) => {
+                          event.preventDefault();
+                          if (page > 1) onPageChange(page - 1);
+                        }}
+                      />
+                    </PaginationItem>
+                    {visiblePages.map((pageNumber, index) =>
+                      pageNumber === "ellipsis" ? (
+                        <PaginationItem key={`ellipsis-${index}`}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      ) : (
+                        <PaginationItem key={pageNumber}>
+                          <PaginationLink
+                            href="#"
+                            isActive={page === pageNumber}
+                            className="cursor-pointer"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              onPageChange(pageNumber);
+                            }}
+                          >
+                            {pageNumber}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )
+                    )}
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        className={
+                          page >= totalPages
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
+                        onClick={(event) => {
+                          event.preventDefault();
+                          if (page < totalPages) onPageChange(page + 1);
+                        }}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 const JudgeRunCard = ({
   run,

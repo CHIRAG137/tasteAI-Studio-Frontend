@@ -829,3 +829,265 @@ export const addTestCase = async (
 
   return res.json();
 };
+
+export type AutopilotCadence = "daily" | "weekly" | "monthly";
+
+export interface BotAutopilotDelivery {
+  email: { enabled: boolean; recipients: string[] };
+  slack: { enabled: boolean; channelId: string };
+}
+
+export interface BotAutopilotConfig {
+  _id: string;
+  bot: string;
+  enabled: boolean;
+  prompt: string;
+  cadence: AutopilotCadence;
+  timeOfDay: string;
+  timezone: string;
+  delivery: BotAutopilotDelivery;
+  lastRunAt?: string | null;
+  nextRunAt?: string | null;
+  lastStatus?: "never_run" | "completed" | "failed";
+  lastError?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BotAutopilotRecommendation {
+  priority: "high" | "medium" | "low";
+  title: string;
+  detail: string;
+  evidence?: string[];
+  suggestedAction?: string;
+  channel?: string;
+}
+
+export interface BotAutopilotRun {
+  _id: string;
+  bot: string;
+  trigger: "preview" | "manual" | "scheduled";
+  prompt: string;
+  period: { from: string; to: string; cadence: AutopilotCadence };
+  status: "completed" | "failed";
+  summary: string;
+  recommendations: BotAutopilotRecommendation[];
+  evidence?: Record<string, unknown>;
+  deliveries?: Array<{
+    channel: string;
+    target: string;
+    status: string;
+    error?: string;
+    sentAt?: string;
+  }>;
+  error?: string | null;
+  createdAt: string;
+}
+
+export interface BotAutopilotResponse {
+  config: BotAutopilotConfig;
+  runs: BotAutopilotRun[];
+  phoenix?: Record<string, unknown>;
+  defaults?: {
+    prompt: string;
+    cadence: AutopilotCadence;
+    timeOfDay: string;
+    timezone: string;
+  };
+}
+
+export const getBotAutopilot = async (botId: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/autopilot`, {
+    headers: getAuthHeaders(),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to fetch bot autopilot");
+  }
+
+  return data as { result: BotAutopilotResponse };
+};
+
+export const saveBotAutopilot = async (
+  botId: string,
+  payload: Partial<{
+    enabled: boolean;
+    prompt: string;
+    cadence: AutopilotCadence;
+    timeOfDay: string;
+    timezone: string;
+    delivery: BotAutopilotDelivery;
+  }>
+) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/autopilot`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to save bot autopilot");
+  }
+
+  return data;
+};
+
+export const generateBotAutopilotRecommendations = async (
+  botId: string,
+  options: {
+    trigger?: "preview" | "manual" | "scheduled";
+    send?: boolean;
+    promptOverride?: string;
+  } = {}
+) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/autopilot/generate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(options),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to generate autopilot recommendations");
+  }
+
+  return data as { result: BotAutopilotRun };
+};
+
+export type MonitoringMetricType =
+  | "low_confidence_rate"
+  | "groundedness_score"
+  | "hallucination_risk_avg"
+  | "latency_avg_ms"
+  | "latency_p95_ms"
+  | "handoff_rate"
+  | "handoff_rate_spike"
+  | "fallback_rate"
+  | "unknown_intent_cluster_count"
+  | "largest_unknown_cluster";
+
+export type MonitoringOperator = "above" | "below";
+
+export interface MonitoringRule {
+  _id?: string;
+  ruleKey: string;
+  name: string;
+  description?: string;
+  metricType: MonitoringMetricType;
+  operator: MonitoringOperator;
+  threshold: number;
+  windowHours?: number;
+  minOccurrences?: number;
+  enabled: boolean;
+  isBuiltin?: boolean;
+}
+
+export interface MonitoringAlert {
+  _id: string;
+  ruleKey: string;
+  ruleName: string;
+  severity: "critical" | "warning" | "info";
+  status: "active" | "resolved" | "acknowledged";
+  title: string;
+  message: string;
+  metricType: string;
+  operator: string;
+  threshold: number;
+  currentValue: number | null;
+  windowHours: number;
+  evidence?: Record<string, unknown>;
+  triggeredAt: string;
+  notifications?: Array<Record<string, unknown>>;
+}
+
+export interface BotMonitoringResponse {
+  config: {
+    enabled: boolean;
+    checkIntervalMinutes: number;
+    cooldownMinutes: number;
+    notifyOnDashboard: boolean;
+    rules: MonitoringRule[];
+    delivery: BotAutopilotDelivery;
+    lastCheckedAt?: string | null;
+    lastStatus?: string;
+  };
+  snapshot: Record<string, unknown>;
+  rulePreviews: Array<{
+    ruleKey: string;
+    name: string;
+    metricType: string;
+    operator: string;
+    threshold: number;
+    currentValue: number | null;
+    wouldTrigger: boolean;
+    formattedCurrent: string;
+    formattedThreshold: string;
+  }>;
+  activeAlerts: MonitoringAlert[];
+  recentAlerts: MonitoringAlert[];
+  phoenix?: Record<string, unknown>;
+  metricCatalog: Array<{ metricType: string; label: string }>;
+  builtinRules: MonitoringRule[];
+}
+
+export const getBotMonitoring = async (botId: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/monitoring`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch monitoring");
+  return data as { result: BotMonitoringResponse };
+};
+
+export const saveBotMonitoring = async (
+  botId: string,
+  payload: Record<string, unknown>
+) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/monitoring`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to save monitoring");
+  return data;
+};
+
+export const evaluateBotMonitoring = async (botId: string, notify = false) => {
+  const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/monitoring/evaluate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    body: JSON.stringify({ notify }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to evaluate monitoring");
+  return data;
+};
+
+export const acknowledgeMonitoringAlert = async (botId: string, alertId: string) => {
+  const res = await fetch(
+    `${API_BASE_URL}/api/bots/${botId}/monitoring/alerts/${alertId}/acknowledge`,
+    { method: "POST", headers: getAuthHeaders() }
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to acknowledge alert");
+  return data;
+};
+
+export const resolveMonitoringAlert = async (botId: string, alertId: string) => {
+  const res = await fetch(
+    `${API_BASE_URL}/api/bots/${botId}/monitoring/alerts/${alertId}/resolve`,
+    { method: "POST", headers: getAuthHeaders() }
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to resolve alert");
+  return data;
+};
