@@ -339,6 +339,63 @@ const defaultIntrospectionQuestions = [
   "What should I add to training data?",
 ];
 
+const selfImprovementNavItems: Array<{
+  value: string;
+  label: string;
+  icon: typeof BrainCircuit;
+  description: string;
+}> = [
+  {
+    value: "improvements",
+    label: "Improvements",
+    icon: BrainCircuit,
+    description:
+      "Review and act on prioritized production issues — weak answers, unanswered questions, low confidence, and grounding risks.",
+  },
+  {
+    value: "introspection",
+    label: "Ask Phoenix",
+    icon: Activity,
+    description:
+      "Ask natural-language questions about failures and trace evidence from Phoenix, eval runs, and experiments.",
+  },
+  {
+    value: "eval-datasets",
+    label: "Eval Datasets",
+    icon: FileStack,
+    description:
+      "Build regression and gold-standard datasets from production traces — capture failures to fix and successes to preserve.",
+  },
+  {
+    value: "llm-judge",
+    label: "LLM as Judge",
+    icon: Gavel,
+    description:
+      "Grade datasets with polarity-aware LLM scoring, configurable criteria, pass thresholds, and per-item verdicts.",
+  },
+  {
+    value: "regression-tests",
+    label: "Regression Tests",
+    icon: TestTubes,
+    description:
+      "Capture production failures as reusable test cases and re-run them after every bot or prompt change.",
+  },
+  {
+    value: "autopilot",
+    label: "Autopilot",
+    icon: Rocket,
+    description:
+      "Schedule AI-generated improvement recommendations from traces, evals, handoffs, and experiments.",
+  },
+  {
+    value: "monitoring",
+    label: "Monitoring",
+    icon: ShieldAlert,
+    description:
+      "Set threshold alerts on confidence, latency, handoffs, and intent clusters — with email or Slack delivery.",
+  },
+];
+
 const formatPercent = (value: number | null | undefined) => {
   if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
   return `${Math.round(value * 100)}%`;
@@ -369,6 +426,7 @@ const BotSelfImprovement = () => {
   });
   const [dashboard, setDashboard] = useState<BotSelfImprovementDashboard | null>(null);
   const [evalData, setEvalData] = useState<BotEvalDatasetsResponse | null>(null);
+  const [activeSection, setActiveSection] = useState("improvements");
   const [filter, setFilter] = useState<ImprovementItem["type"] | "all">("all");
   const [improvementDetailOpen, setImprovementDetailOpen] = useState(false);
   const [selectedImprovement, setSelectedImprovement] = useState<ImprovementItem | null>(null);
@@ -1166,6 +1224,13 @@ const BotSelfImprovement = () => {
     };
   }, [activeIntrospectionEvidence, introspectionHistoryTotal]);
 
+  const activeNavItem = useMemo(
+    () =>
+      selfImprovementNavItems.find((item) => item.value === activeSection) ||
+      selfImprovementNavItems[0],
+    [activeSection]
+  );
+
   const selectIntrospectionRun = (run: BotSelfIntrospectionRun) => {
     setSelectedIntrospectionRun(run);
   };
@@ -1244,44 +1309,48 @@ const BotSelfImprovement = () => {
     );
   }
 
+  const ActiveNavIcon = activeNavItem.icon;
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
       <Navbar pageTitle={`Improve - ${dashboard.bot.name}`} />
 
       <Tabs
-        defaultValue="improvements"
+        value={activeSection}
+        onValueChange={setActiveSection}
         orientation="vertical"
         className="flex-1 min-h-0 flex flex-col md:flex-row"
       >
-        <TabsList className="h-auto w-full md:w-72 md:h-full md:flex-col md:items-stretch md:justify-start rounded-none p-3 gap-1 border-b md:border-b-0 md:border-r border-border/60 bg-muted/30 shrink-0">
-          <TabsTrigger value="improvements" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
-            <BrainCircuit className="w-4 h-4" />
-            Improvements
-          </TabsTrigger>
-          <TabsTrigger value="introspection" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
-            <Activity className="w-4 h-4" />
-            Ask Phoenix
-          </TabsTrigger>
-          <TabsTrigger value="eval-datasets" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
-            <FileStack className="w-4 h-4" />
-            Eval Datasets
-          </TabsTrigger>
-          <TabsTrigger value="llm-judge" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
-            <Gavel className="w-4 h-4" />
-            LLM as Judge
-          </TabsTrigger>
-          <TabsTrigger value="regression-tests" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
-            <TestTubes className="w-4 h-4" />
-            Regression Tests
-          </TabsTrigger>
-          <TabsTrigger value="autopilot" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
-            <Rocket className="w-4 h-4" />
-            Autopilot
-          </TabsTrigger>
-          <TabsTrigger value="monitoring" className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400">
-            <ShieldAlert className="w-4 h-4" />
-            Monitoring
-          </TabsTrigger>
+        <TabsList className="h-auto w-full md:w-72 md:h-full md:min-h-0 md:flex-col md:items-stretch md:justify-between rounded-none p-3 gap-0 border-b md:border-b-0 md:border-r border-border/60 bg-muted/30 shrink-0">
+          <div className="flex w-full flex-wrap gap-1 md:flex-col md:flex-1 md:min-h-0 md:overflow-y-auto">
+            {selfImprovementNavItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <TabsTrigger
+                  key={item.value}
+                  value={item.value}
+                  className="w-full justify-start gap-2 text-left rounded-md px-3 py-2 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:from-purple-500 dark:data-[state=active]:to-cyan-400"
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </TabsTrigger>
+              );
+            })}
+          </div>
+
+          <div className="hidden md:block w-full mt-4 pt-4 border-t border-border/50 shrink-0">
+            <div className="flex items-start gap-2.5 px-1">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600/15 to-cyan-500/15">
+                <ActiveNavIcon className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold">{activeNavItem.label}</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+                  {activeNavItem.description}
+                </p>
+              </div>
+            </div>
+          </div>
         </TabsList>
 
         <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 md:px-8 lg:px-10 space-y-6">
