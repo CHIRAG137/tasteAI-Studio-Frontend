@@ -560,57 +560,121 @@ export interface BotSelfImprovementDashboard {
   items: ImprovementItem[];
 }
 
+export interface BotSelfIntrospectionEvidence {
+  phoenix: {
+    enabled?: boolean;
+    projectName?: string;
+    baseUrl?: string;
+    mcpServer?: string;
+    traceUrl?: string | null;
+    linkedTraceCount?: number;
+    recentTraceUrls?: Array<{
+      traceId: string;
+      spanId?: string | null;
+      traceUrl?: string | null;
+      question: string;
+      confidence?: number | null;
+    }>;
+  };
+  metrics: {
+    sampledInteractions: number;
+    lowConfidenceCount: number;
+    unansweredCount: number;
+    fallbackRate: number;
+    averageConfidence: number | null;
+    averageLatencyMs: number | null;
+    sourceBreakdown: Record<string, number>;
+    fallbackBreakdown: Record<string, number>;
+  };
+  failureClusters: Array<{
+    intentKey: string;
+    count: number;
+    avgConfidence: number | null;
+    avgLatencyMs: number | null;
+    fallbackCount: number;
+    examples: Array<{
+      question: string;
+      answer: string;
+      source: string;
+      confidence: number | null;
+      traceUrl?: string | null;
+      createdAt: string;
+    }>;
+  }>;
+  topLowConfidenceQuestions: Array<Record<string, unknown>>;
+  topUnansweredQuestions: Array<Record<string, unknown>>;
+  handoffs?: {
+    sampled: number;
+    unresolved: number;
+    escalated: number;
+    recentQuestions: Array<Record<string, unknown>>;
+  };
+  latestJudgeRun: Record<string, unknown> | null;
+  bestExperiment: Record<string, unknown> | null;
+  recentExperiments?: Array<Record<string, unknown>>;
+}
+
 export interface BotSelfIntrospectionResponse {
+  _id?: string;
+  createdAt?: string;
   question: string;
   answer: string;
   defaultQuestions: string[];
-  evidence: {
-    phoenix: {
-      enabled?: boolean;
-      projectName?: string;
-      baseUrl?: string;
-      mcpServer?: string;
-      traceUrl?: string | null;
-      linkedTraceCount?: number;
-      recentTraceUrls?: Array<{
-        traceId: string;
-        spanId?: string | null;
-        traceUrl?: string | null;
-        question: string;
-        confidence?: number | null;
-      }>;
-    };
-    metrics: {
-      sampledInteractions: number;
-      lowConfidenceCount: number;
-      unansweredCount: number;
-      fallbackRate: number;
-      averageConfidence: number | null;
-      averageLatencyMs: number | null;
-      sourceBreakdown: Record<string, number>;
-      fallbackBreakdown: Record<string, number>;
-    };
-    failureClusters: Array<{
-      intentKey: string;
-      count: number;
-      avgConfidence: number | null;
-      avgLatencyMs: number | null;
-      fallbackCount: number;
-      examples: Array<{
-        question: string;
-        answer: string;
-        source: string;
-        confidence: number | null;
-        traceUrl?: string | null;
-        createdAt: string;
-      }>;
-    }>;
-    topLowConfidenceQuestions: Array<Record<string, unknown>>;
-    topUnansweredQuestions: Array<Record<string, unknown>>;
-    latestJudgeRun: Record<string, unknown> | null;
-    bestExperiment: Record<string, unknown> | null;
+  evidence: BotSelfIntrospectionEvidence;
+}
+
+export interface BotSelfIntrospectionRun {
+  _id: string;
+  bot: string;
+  user: string;
+  question: string;
+  answer: string;
+  evidence: BotSelfIntrospectionEvidence;
+  summary: {
+    linkedTraceCount: number;
+    sampledInteractions: number;
+    lowConfidenceCount: number;
+    unansweredCount: number;
+    fallbackRate: number | null;
+    failureClusterCount: number;
+    phoenixProjectName: string | null;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BotSelfIntrospectionHistoryResponse {
+  runs: BotSelfIntrospectionRun[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
   };
 }
+
+export const getBotSelfIntrospectionHistory = async (
+  botId: string,
+  options?: { page?: number; pageSize?: number; search?: string }
+) => {
+  const params = new URLSearchParams();
+  if (options?.page) params.set("page", String(options.page));
+  if (options?.pageSize) params.set("pageSize", String(options.pageSize));
+  if (options?.search?.trim()) params.set("search", options.search.trim());
+
+  const query = params.toString();
+  const res = await fetch(
+    `${API_BASE_URL}/api/bots/${botId}/improvements/introspect/history${query ? `?${query}` : ""}`,
+    { headers: getAuthHeaders() }
+  );
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to fetch introspection history");
+  }
+
+  return data as { result: BotSelfIntrospectionHistoryResponse };
+};
 
 export interface EvalDatasetSummary {
   datasetName: string;
@@ -741,17 +805,25 @@ export interface TestRunResults {
 }
 
 // Regression Test API Functions
-export const createRegressionTests = async (botId: string) => {
+export const createRegressionTests = async (
+  botId: string,
+  options?: { name?: string; description?: string }
+) => {
   const res = await fetch(`${API_BASE_URL}/api/bots/${botId}/regression-tests`, {
     method: "POST",
-    headers: getAuthHeaders(),
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(options || {}),
   });
 
+  const data = await res.json();
   if (!res.ok) {
-    throw new Error("Failed to create regression tests");
+    throw new Error(data?.message || "Failed to create regression tests");
   }
 
-  return res.json();
+  return data;
 };
 
 export const getRegressionTests = async (botId: string) => {
@@ -775,16 +847,20 @@ export const runRegressionTests = async (
     `${API_BASE_URL}/api/bots/${botId}/regression-tests/${testSuiteId}/run`,
     {
       method: "POST",
-      headers: getAuthHeaders(),
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify({ botVersionId: botVersionId || "current" }),
     }
   );
 
+  const data = await res.json();
   if (!res.ok) {
-    throw new Error("Failed to run regression tests");
+    throw new Error(data?.message || "Failed to run regression tests");
   }
 
-  return res.json();
+  return data;
 };
 
 export const getTestSuiteDetails = async (
